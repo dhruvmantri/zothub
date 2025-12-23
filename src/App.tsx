@@ -12,6 +12,8 @@ import Clubs from "./pages/Clubs";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ClubDashboard from "./pages/ClubDashboard";
+import CreateOpportunity from "./pages/CreateOpportunity";
+import CreateEvent from "./pages/CreateEvent";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentProfileSetup from "./pages/StudentProfileSetup";
 import NotFound from "./pages/NotFound";
@@ -37,6 +39,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/opportunities/new" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <CreateOpportunity />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/events/new" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <CreateEvent />
                 </ProtectedRoute>
               } 
             />
