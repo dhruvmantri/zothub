@@ -1,0 +1,300 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
+  Plus, 
+  MoreHorizontal, 
+  Mail, 
+  UserCog, 
+  Trash2,
+  Users,
+  Loader2,
+  Clock,
+  CheckCircle,
+} from "lucide-react";
+import { format } from "date-fns";
+
+interface TeamMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  status: string;
+  invited_at: string;
+  joined_at: string | null;
+}
+
+interface TeamManagementProps {
+  teamMembers: TeamMember[];
+  onAddMember: (email: string, name: string, role: string) => Promise<boolean>;
+  onUpdateMember: (id: string, updates: { role?: string; status?: string }) => Promise<boolean>;
+  onRemoveMember: (id: string) => Promise<boolean>;
+}
+
+const ROLES = [
+  { value: "admin", label: "Admin" },
+  { value: "officer", label: "Officer" },
+  { value: "member", label: "Member" },
+];
+
+const statusColors = {
+  pending: "secondary",
+  active: "success",
+  inactive: "muted",
+} as const;
+
+export function TeamManagement({ 
+  teamMembers, 
+  onAddMember, 
+  onUpdateMember, 
+  onRemoveMember 
+}: TeamManagementProps) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
+  
+  // Form state
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("member");
+
+  const handleAddMember = async () => {
+    if (!email.trim()) return;
+    
+    setIsSubmitting(true);
+    const success = await onAddMember(email.trim(), name.trim(), role);
+    setIsSubmitting(false);
+    
+    if (success) {
+      setIsAddDialogOpen(false);
+      setEmail("");
+      setName("");
+      setRole("member");
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToDelete) return;
+    
+    await onRemoveMember(memberToDelete.id);
+    setMemberToDelete(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Team Members</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage who has access to your club's dashboard
+          </p>
+        </div>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add Member
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Team Member</DialogTitle>
+              <DialogDescription>
+                Invite someone to join your club's team
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="member@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddMember} disabled={isSubmitting || !email.trim()}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Member"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Team Members List */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        {teamMembers.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">No team members yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Add members to give them access to your club's dashboard
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {teamMembers.map((member) => (
+              <div 
+                key={member.id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/20 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground truncate">
+                      {member.name || member.email}
+                    </p>
+                    <Badge 
+                      variant={statusColors[member.status as keyof typeof statusColors] || "muted"}
+                      className="capitalize"
+                    >
+                      {member.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
+                      {member.status === "active" && <CheckCircle className="w-3 h-3 mr-1" />}
+                      {member.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5" />
+                      {member.email}
+                    </span>
+                    <span className="capitalize">
+                      {member.role}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Invited {format(new Date(member.invited_at), "MMM d, yyyy")}
+                  </p>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="shrink-0">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      onClick={() => onUpdateMember(member.id, { role: "admin" })}
+                      className="gap-2"
+                    >
+                      <UserCog className="w-4 h-4" /> Make Admin
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onUpdateMember(member.id, { role: "officer" })}
+                      className="gap-2"
+                    >
+                      <UserCog className="w-4 h-4" /> Make Officer
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onUpdateMember(member.id, { role: "member" })}
+                      className="gap-2"
+                    >
+                      <UserCog className="w-4 h-4" /> Make Member
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => setMemberToDelete(member)}
+                      className="gap-2 text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" /> Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!memberToDelete} onOpenChange={() => setMemberToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {memberToDelete?.name || memberToDelete?.email} from the team? 
+              They will lose access to the club dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveMember} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -152,6 +152,56 @@ export type Database = {
         }
         Relationships: []
       }
+      club_team_members: {
+        Row: {
+          club_id: string
+          created_at: string
+          email: string
+          id: string
+          invited_at: string
+          joined_at: string | null
+          name: string | null
+          role: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string
+          joined_at?: string | null
+          name?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string
+          joined_at?: string | null
+          name?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_team_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           banner_url: string | null
@@ -473,6 +523,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      archive_past_events: { Args: never; Returns: undefined }
       get_all_clubs_public: {
         Args: never
         Returns: {
