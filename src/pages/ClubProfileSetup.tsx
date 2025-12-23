@@ -242,7 +242,7 @@ export default function ClubProfileSetup() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Category <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -256,7 +256,7 @@ export default function ClubProfileSetup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
                 <Textarea
                   id="description"
                   placeholder="Tell students what your club is about, your mission, and what members can expect..."
@@ -282,7 +282,7 @@ export default function ClubProfileSetup() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Label htmlFor="logoUrl">Logo URL <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
                 <Input
                   id="logoUrl"
                   type="url"
@@ -312,7 +312,7 @@ export default function ClubProfileSetup() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="bannerUrl">Banner URL</Label>
+                <Label htmlFor="bannerUrl">Banner URL <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
                 <Input
                   id="bannerUrl"
                   type="url"
