@@ -9,7 +9,8 @@ import {
   Settings,
   Bell,
   TrendingUp,
-  ChevronLeft
+  ChevronLeft,
+  Pencil
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [applicationCount, setApplicationCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [clubName, setClubName] = useState("My Club");
 
   // Fetch counts
   useEffect(() => {
@@ -59,6 +61,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         .maybeSingle();
 
       if (clubProfile) {
+        // Fetch club name
+        const { data: fullProfile } = await supabase
+          .from("club_profiles")
+          .select("club_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (fullProfile?.club_name) {
+          setClubName(fullProfile.club_name);
+        }
+
         const { count: appCount } = await supabase
           .from("applications")
           .select("*, opportunities!inner(club_id)", { count: "exact", head: true })
@@ -138,17 +151,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Club Info */}
-        <div className="p-4 border-b border-border">
+        <Link 
+          to="/club/profile" 
+          className="block p-4 border-b border-border hover:bg-secondary/50 transition-colors group"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
               <span className="font-semibold text-accent">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">My Club</p>
+              <p className="font-medium text-foreground truncate">{clubName}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
+            <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-        </div>
+        </Link>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
@@ -218,9 +235,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </Button>
             </Link>
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-              <span className="text-sm font-medium text-muted-foreground">{initials.charAt(0)}</span>
-            </div>
+            <Link to="/club/profile">
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                <span className="text-sm font-medium text-muted-foreground">{initials.charAt(0)}</span>
+              </div>
+            </Link>
           </div>
         </header>
 
