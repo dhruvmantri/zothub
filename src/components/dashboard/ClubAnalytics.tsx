@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -14,39 +15,222 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { TrendingUp, TrendingDown, Eye, Users, Briefcase, Calendar } from "lucide-react";
+import { Eye, Briefcase, Calendar, Loader2, BarChart3 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const viewsData = [
-  { name: 'Week 1', views: 420, applications: 12 },
-  { name: 'Week 2', views: 580, applications: 18 },
-  { name: 'Week 3', views: 650, applications: 24 },
-  { name: 'Week 4', views: 890, applications: 35 },
-  { name: 'Week 5', views: 1050, applications: 42 },
-  { name: 'Week 6', views: 980, applications: 38 },
-];
+interface OpportunityStats {
+  id: string;
+  title: string;
+  views: number;
+  applicationCount: number;
+}
 
-const opportunityPerformance = [
-  { name: 'Technical Lead', views: 342, applications: 24 },
-  { name: 'Marketing Intern', views: 189, applications: 15 },
-  { name: 'Campus Outreach', views: 256, applications: 32 },
-  { name: 'Mobile App Project', views: 421, applications: 45 },
-];
+interface EventStats {
+  id: string;
+  title: string;
+  views: number;
+  rsvpCount: number;
+}
 
-const applicationStatus = [
-  { name: 'Pending', value: 12, color: 'hsl(38, 92%, 50%)' },
-  { name: 'Reviewed', value: 8, color: 'hsl(222, 47%, 15%)' },
-  { name: 'Accepted', value: 15, color: 'hsl(142, 76%, 36%)' },
-  { name: 'Rejected', value: 5, color: 'hsl(0, 84%, 60%)' },
-];
-
-const eventAttendance = [
-  { name: 'Hackathon', rsvps: 156, attended: 142 },
-  { name: 'Tech Talk', rsvps: 45, attended: 38 },
-  { name: 'Workshop', rsvps: 32, attended: 28 },
-  { name: 'General Meeting', rsvps: 120, attended: 98 },
-];
+interface ApplicationStatusData {
+  name: string;
+  value: number;
+  color: string;
+}
 
 export function ClubAnalytics() {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalViews, setTotalViews] = useState(0);
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [totalRsvps, setTotalRsvps] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [opportunityStats, setOpportunityStats] = useState<OpportunityStats[]>([]);
+  const [eventStats, setEventStats] = useState<EventStats[]>([]);
+  const [applicationStatusData, setApplicationStatusData] = useState<ApplicationStatusData[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetchAnalytics();
+    }
+  }, [user]);
+
+  const fetchAnalytics = async () => {
+    if (!user) return;
+
+    try {
+      // Get club profile
+      const { data: clubProfile, error: clubError } = await supabase
+        .from("club_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (clubError || !clubProfile) {
+        console.error("Error fetching club profile:", clubError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch opportunities with their stats
+      const { data: opportunities, error: oppError } = await supabase
+        .from("opportunities")
+        .select("id, title, views")
+        .eq("club_id", clubProfile.id);
+
+      if (oppError) {
+        console.error("Error fetching opportunities:", oppError);
+      }
+
+      // Fetch events with their stats
+      const { data: events, error: eventError } = await supabase
+        .from("events")
+        .select("id, title, views")
+        .eq("club_id", clubProfile.id);
+
+      if (eventError) {
+        console.error("Error fetching events:", eventError);
+      }
+
+      // Calculate opportunity stats with application counts
+      const oppIds = opportunities?.map(o => o.id) || [];
+      let applicationsByOpp: Record<string, number> = {};
+      let applicationsByStatus: Record<string, number> = {
+        pending: 0,
+        reviewed: 0,
+        accepted: 0,
+        rejected: 0
+      };
+
+      if (oppIds.length > 0) {
+        const { data: applications, error: appError } = await supabase
+          .from("applications")
+          .select("opportunity_id, status")
+          .in("opportunity_id", oppIds);
+
+        if (!appError && applications) {
+          applications.forEach(app => {
+            applicationsByOpp[app.opportunity_id] = (applicationsByOpp[app.opportunity_id] || 0) + 1;
+            const status = app.status || "pending";
+            applicationsByStatus[status] = (applicationsByStatus[status] || 0) + 1;
+          });
+        }
+      }
+
+      // Calculate event stats with RSVP counts
+      const eventIds = events?.map(e => e.id) || [];
+      let rsvpsByEvent: Record<string, number> = {};
+
+      if (eventIds.length > 0) {
+        const { data: rsvps, error: rsvpError } = await supabase
+          .from("rsvps")
+          .select("event_id")
+          .in("event_id", eventIds);
+
+        if (!rsvpError && rsvps) {
+          rsvps.forEach(rsvp => {
+            rsvpsByEvent[rsvp.event_id] = (rsvpsByEvent[rsvp.event_id] || 0) + 1;
+          });
+        }
+      }
+
+      // Build opportunity stats
+      const oppStatsData: OpportunityStats[] = (opportunities || []).map(opp => ({
+        id: opp.id,
+        title: opp.title,
+        views: opp.views || 0,
+        applicationCount: applicationsByOpp[opp.id] || 0
+      }));
+
+      // Build event stats
+      const eventStatsData: EventStats[] = (events || []).map(evt => ({
+        id: evt.id,
+        title: evt.title,
+        views: evt.views || 0,
+        rsvpCount: rsvpsByEvent[evt.id] || 0
+      }));
+
+      // Calculate totals
+      const totalOppViews = oppStatsData.reduce((sum, o) => sum + o.views, 0);
+      const totalEventViews = eventStatsData.reduce((sum, e) => sum + e.views, 0);
+      const totalApps = Object.values(applicationsByOpp).reduce((sum, count) => sum + count, 0);
+      const totalRsvpCount = Object.values(rsvpsByEvent).reduce((sum, count) => sum + count, 0);
+
+      setTotalViews(totalOppViews + totalEventViews);
+      setTotalApplications(totalApps);
+      setTotalRsvps(totalRsvpCount);
+      setConversionRate(totalOppViews > 0 ? (totalApps / totalOppViews) * 100 : 0);
+      setOpportunityStats(oppStatsData);
+      setEventStats(eventStatsData);
+
+      // Build application status pie chart data
+      setApplicationStatusData([
+        { name: 'Pending', value: applicationsByStatus.pending, color: 'hsl(38, 92%, 50%)' },
+        { name: 'Reviewed', value: applicationsByStatus.reviewed, color: 'hsl(220, 9%, 46%)' },
+        { name: 'Accepted', value: applicationsByStatus.accepted, color: 'hsl(142, 76%, 36%)' },
+        { name: 'Rejected', value: applicationsByStatus.rejected, color: 'hsl(0, 84%, 60%)' },
+      ]);
+
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Prepare chart data
+  const opportunityChartData = opportunityStats.slice(0, 5).map(opp => ({
+    name: opp.title.length > 15 ? opp.title.substring(0, 15) + '...' : opp.title,
+    views: opp.views,
+    applications: opp.applicationCount
+  }));
+
+  const eventChartData = eventStats.slice(0, 5).map(evt => ({
+    name: evt.title.length > 15 ? evt.title.substring(0, 15) + '...' : evt.title,
+    rsvps: evt.rsvpCount,
+    views: evt.views
+  }));
+
+  // Combine top performing items
+  const topPerforming = [
+    ...opportunityStats.map(o => ({
+      title: o.title,
+      type: 'opportunity' as const,
+      views: o.views,
+      conversions: o.applicationCount,
+      rate: o.views > 0 ? ((o.applicationCount / o.views) * 100).toFixed(1) + '%' : '0%'
+    })),
+    ...eventStats.map(e => ({
+      title: e.title,
+      type: 'event' as const,
+      views: e.views,
+      conversions: e.rsvpCount,
+      rate: e.views > 0 ? ((e.rsvpCount / e.views) * 100).toFixed(1) + '%' : '0%'
+    }))
+  ].sort((a, b) => b.views - a.views).slice(0, 4);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const hasData = opportunityStats.length > 0 || eventStats.length > 0;
+
+  if (!hasData) {
+    return (
+      <div className="text-center py-12 bg-card rounded-xl border border-border">
+        <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground">
+          No analytics data yet. Create opportunities and events to see your performance metrics.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
@@ -56,12 +240,9 @@ export function ClubAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Views</p>
-                <p className="text-3xl font-bold text-foreground">4,570</p>
+                <p className="text-3xl font-bold text-foreground">{totalViews.toLocaleString()}</p>
               </div>
-              <div className="flex items-center gap-1 text-success">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">+12%</span>
-              </div>
+              <Eye className="w-8 h-8 text-muted-foreground/30" />
             </div>
           </CardContent>
         </Card>
@@ -70,12 +251,9 @@ export function ClubAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Applications</p>
-                <p className="text-3xl font-bold text-foreground">169</p>
+                <p className="text-3xl font-bold text-foreground">{totalApplications}</p>
               </div>
-              <div className="flex items-center gap-1 text-success">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">+8%</span>
-              </div>
+              <Briefcase className="w-8 h-8 text-muted-foreground/30" />
             </div>
           </CardContent>
         </Card>
@@ -84,12 +262,9 @@ export function ClubAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Event RSVPs</p>
-                <p className="text-3xl font-bold text-foreground">353</p>
+                <p className="text-3xl font-bold text-foreground">{totalRsvps}</p>
               </div>
-              <div className="flex items-center gap-1 text-success">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">+15%</span>
-              </div>
+              <Calendar className="w-8 h-8 text-muted-foreground/30" />
             </div>
           </CardContent>
         </Card>
@@ -98,12 +273,9 @@ export function ClubAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Conversion Rate</p>
-                <p className="text-3xl font-bold text-foreground">3.7%</p>
+                <p className="text-3xl font-bold text-foreground">{conversionRate.toFixed(1)}%</p>
               </div>
-              <div className="flex items-center gap-1 text-destructive">
-                <TrendingDown className="w-4 h-4" />
-                <span className="text-sm font-medium">-2%</span>
-              </div>
+              <BarChart3 className="w-8 h-8 text-muted-foreground/30" />
             </div>
           </CardContent>
         </Card>
@@ -111,171 +283,116 @@ export function ClubAnalytics() {
 
       {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Views & Applications Over Time */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Views & Applications Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={viewsData}>
-                  <defs>
-                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(222, 47%, 15%)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(222, 47%, 15%)" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
-                  />
-                  <YAxis 
-                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(0, 0%, 100%)',
-                      border: '1px solid hsl(220, 13%, 91%)',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="views" 
-                    stroke="hsl(222, 47%, 15%)" 
-                    fillOpacity={1} 
-                    fill="url(#colorViews)" 
-                    strokeWidth={2}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="applications" 
-                    stroke="hsl(38, 92%, 50%)" 
-                    fillOpacity={1} 
-                    fill="url(#colorApps)" 
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-sm text-muted-foreground">Views</span>
+        {/* Opportunity Performance */}
+        {opportunityChartData.length > 0 && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">Opportunity Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={opportunityChartData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
+                    <XAxis 
+                      type="number"
+                      tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
+                      axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
+                    />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category"
+                      tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
+                      axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
+                      width={120}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(0, 0%, 100%)',
+                        border: '1px solid hsl(220, 13%, 91%)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                    <Bar dataKey="views" name="Views" fill="hsl(222, 47%, 15%)" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="applications" name="Applications" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-accent" />
-                <span className="text-sm text-muted-foreground">Applications</span>
+              <div className="flex justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                  <span className="text-sm text-muted-foreground">Views</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-accent" />
+                  <span className="text-sm text-muted-foreground">Applications</span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Application Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Application Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={applicationStatus}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {applicationStatus.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(0, 0%, 100%)',
-                      border: '1px solid hsl(220, 13%, 91%)',
-                      borderRadius: '8px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {applicationStatus.map((status) => (
-                <div key={status.name} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: status.color }} 
-                  />
-                  <span className="text-xs text-muted-foreground">{status.name}</span>
-                  <span className="text-xs font-medium ml-auto">{status.value}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {totalApplications > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Application Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={applicationStatusData.filter(d => d.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {applicationStatusData.filter(d => d.value > 0).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(0, 0%, 100%)',
+                        border: '1px solid hsl(220, 13%, 91%)',
+                        borderRadius: '8px'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {applicationStatusData.map((status) => (
+                  <div key={status.name} className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: status.color }} 
+                    />
+                    <span className="text-xs text-muted-foreground">{status.name}</span>
+                    <span className="text-xs font-medium ml-auto">{status.value}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Opportunity Performance */}
+      {/* Event RSVPs */}
+      {eventChartData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Opportunity Performance</CardTitle>
+            <CardTitle className="text-lg">Event RSVPs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={opportunityPerformance} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
-                  <XAxis 
-                    type="number"
-                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
-                  />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category"
-                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
-                    width={100}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(0, 0%, 100%)',
-                      border: '1px solid hsl(220, 13%, 91%)',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar dataKey="views" fill="hsl(222, 47%, 15%)" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="applications" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Event Attendance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Event Attendance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={eventAttendance}>
+                <BarChart data={eventChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
                   <XAxis 
                     dataKey="name"
@@ -293,64 +410,61 @@ export function ClubAnalytics() {
                       borderRadius: '8px'
                     }}
                   />
-                  <Bar dataKey="rsvps" name="RSVPs" fill="hsl(222, 47%, 15%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="attended" name="Attended" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" name="Views" fill="hsl(222, 47%, 15%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="rsvps" name="RSVPs" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-6 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-sm text-muted-foreground">RSVPs</span>
+                <span className="text-sm text-muted-foreground">Views</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-success" />
-                <span className="text-sm text-muted-foreground">Attended</span>
+                <span className="text-sm text-muted-foreground">RSVPs</span>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Top Performing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Top Performing Listings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[
-              { title: "Winter Hackathon 2025", type: "event", views: 523, conversions: 156, rate: "29.8%" },
-              { title: "Mobile App Project", type: "opportunity", views: 421, conversions: 45, rate: "10.7%" },
-              { title: "Technical Lead", type: "opportunity", views: 342, conversions: 24, rate: "7.0%" },
-              { title: "Campus Outreach Volunteer", type: "opportunity", views: 256, conversions: 32, rate: "12.5%" },
-            ].map((item, index) => (
-              <div 
-                key={index}
-                className="flex items-center gap-4 p-4 rounded-lg bg-secondary/30"
-              >
-                <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                  {item.type === "event" ? (
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <Briefcase className="w-4 h-4 text-muted-foreground" />
-                  )}
+      {topPerforming.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Top Performing Listings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {topPerforming.map((item, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-4 p-4 rounded-lg bg-secondary/30"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+                    {item.type === "event" ? (
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Briefcase className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{item.title}</p>
+                    <Badge variant="secondary" className="capitalize mt-1">{item.type}</Badge>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-foreground">{item.views} views</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.conversions} {item.type === "event" ? "RSVPs" : "apps"} ({item.rate})
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{item.title}</p>
-                  <Badge variant="muted" className="capitalize mt-1">{item.type}</Badge>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-foreground">{item.views} views</p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.conversions} {item.type === "event" ? "RSVPs" : "apps"} ({item.rate})
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
