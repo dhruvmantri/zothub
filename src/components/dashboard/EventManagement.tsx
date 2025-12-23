@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Plus, 
   Search, 
@@ -20,95 +30,72 @@ import {
   Clock,
   MapPin,
   Calendar,
-  Filter
+  Filter,
+  Loader2,
 } from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
 
 interface Event {
   id: string;
   title: string;
-  status: "upcoming" | "ongoing" | "past" | "draft";
-  date: string;
-  time: string;
-  location: string;
-  rsvps: number;
-  capacity: number;
+  description: string | null;
+  event_date: string;
+  location: string | null;
+  capacity: number | null;
+  banner_url: string | null;
+  is_active: boolean;
   views: number;
+  created_at: string;
+  rsvps_count: number;
 }
 
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Winter Hackathon 2025",
-    status: "upcoming",
-    date: "Jan 18, 2025",
-    time: "9:00 AM - 9:00 PM",
-    location: "Donald Bren Hall",
-    rsvps: 156,
-    capacity: 200,
-    views: 523
-  },
-  {
-    id: "2",
-    title: "Tech Talk: AI in Healthcare",
-    status: "upcoming",
-    date: "Jan 22, 2025",
-    time: "6:00 PM - 8:00 PM",
-    location: "ICS 174",
-    rsvps: 45,
-    capacity: 80,
-    views: 234
-  },
-  {
-    id: "3",
-    title: "Resume Workshop",
-    status: "upcoming",
-    date: "Jan 25, 2025",
-    time: "4:00 PM - 6:00 PM",
-    location: "Career Center",
-    rsvps: 32,
-    capacity: 50,
-    views: 189
-  },
-  {
-    id: "4",
-    title: "Fall General Meeting",
-    status: "past",
-    date: "Dec 1, 2024",
-    time: "5:00 PM - 6:30 PM",
-    location: "EH 1200",
-    rsvps: 120,
-    capacity: 150,
-    views: 412
-  },
-  {
-    id: "5",
-    title: "Spring Kickoff",
-    status: "draft",
-    date: "Feb 1, 2025",
-    time: "5:00 PM - 7:00 PM",
-    location: "TBD",
-    rsvps: 0,
-    capacity: 100,
-    views: 0
-  },
-];
+interface EventManagementProps {
+  events: Event[];
+  onDelete: (id: string) => Promise<boolean>;
+  isLoading?: boolean;
+}
 
-const statusColors = {
-  upcoming: "success",
-  ongoing: "accent",
-  past: "muted",
-  draft: "secondary"
-} as const;
-
-export function EventManagement() {
+export function EventManagement({ events, onDelete, isLoading }: EventManagementProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
-  const filteredEvents = mockEvents.filter(event => {
+  const getStatus = (event: Event) => {
+    if (!event.is_active) return "draft";
+    const eventDate = new Date(event.event_date);
+    if (isPast(eventDate)) return "past";
+    if (isToday(eventDate)) return "ongoing";
+    return "upcoming";
+  };
+
+  const statusColors: Record<string, "success" | "accent" | "muted" | "secondary"> = {
+    upcoming: "success",
+    ongoing: "accent",
+    past: "muted",
+    draft: "secondary",
+  };
+
+  const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || event.status === statusFilter;
+    const status = getStatus(event);
+    const matchesStatus = statusFilter === "all" || status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleDelete = async () => {
+    if (!eventToDelete) return;
+    await onDelete(eventToDelete.id);
+    setEventToDelete(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -149,99 +136,146 @@ export function EventManagement() {
       </div>
 
       {/* Events Grid */}
-      <div className="grid gap-4">
-        {filteredEvents.map((event) => (
-          <div 
-            key={event.id}
-            className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all"
-          >
-            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-              {/* Event Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-                  <Badge variant={statusColors[event.status]} className="capitalize shrink-0">
-                    {event.status}
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    {event.date}
+      {filteredEvents.length === 0 ? (
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+          <p className="text-muted-foreground">
+            {events.length === 0 ? "No events created yet" : "No events found"}
+          </p>
+          {events.length === 0 && (
+            <Link to="/club/events/new">
+              <Button className="mt-4 gap-2">
+                <Plus className="w-4 h-4" />
+                Create your first event
+              </Button>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredEvents.map((event) => {
+            const status = getStatus(event);
+            const capacityPercent = event.capacity 
+              ? Math.min((event.rsvps_count / event.capacity) * 100, 100) 
+              : 0;
+            
+            return (
+              <div 
+                key={event.id}
+                className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                  {/* Event Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+                      <Badge variant={statusColors[status]} className="capitalize shrink-0">
+                        {status}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4" />
+                        {format(new Date(event.event_date), "MMM d, yyyy")}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        {format(new Date(event.event_date), "h:mm a")}
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4" />
+                          {event.location}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" />
-                    {event.time}
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-foreground">{event.rsvps_count}</p>
+                      <p className="text-xs text-muted-foreground">RSVPs</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-foreground">{event.capacity || "∞"}</p>
+                      <p className="text-xs text-muted-foreground">Capacity</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-foreground">{event.views}</p>
+                      <p className="text-xs text-muted-foreground">Views</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" />
-                    {event.location}
-                  </div>
+
+                  {/* Progress */}
+                  {event.capacity && (
+                    <div className="lg:w-32">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>Capacity</span>
+                        <span>{Math.round(capacityPercent)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                        <div 
+                          className="h-full bg-accent rounded-full transition-all"
+                          style={{ width: `${capacityPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="shrink-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => navigate(`/events/${event.id}`)}
+                        className="gap-2"
+                      >
+                        <Eye className="w-4 h-4" /> View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => navigate(`/club/events/${event.id}/edit`)}
+                        className="gap-2"
+                      >
+                        <Edit className="w-4 h-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setEventToDelete(event)}
+                        className="gap-2 text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Stats */}
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{event.rsvps}</p>
-                  <p className="text-xs text-muted-foreground">RSVPs</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{event.capacity}</p>
-                  <p className="text-xs text-muted-foreground">Capacity</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{event.views}</p>
-                  <p className="text-xs text-muted-foreground">Views</p>
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="lg:w-32">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>Capacity</span>
-                  <span>{Math.round((event.rsvps / event.capacity) * 100)}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                  <div 
-                    className="h-full bg-accent rounded-full transition-all"
-                    style={{ width: `${Math.min((event.rsvps / event.capacity) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="gap-2">
-                    <Eye className="w-4 h-4" /> View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2">
-                    <Users className="w-4 h-4" /> View RSVPs
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2">
-                    <Edit className="w-4 h-4" /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 text-destructive">
-                    <Trash2 className="w-4 h-4" /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        ))}
-
-        {filteredEvents.length === 0 && (
-          <div className="text-center py-12 bg-card rounded-xl border border-border">
-            <p className="text-muted-foreground">No events found</p>
-          </div>
-        )}
-      </div>
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{eventToDelete?.title}"? 
+              This will also delete all associated RSVPs. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

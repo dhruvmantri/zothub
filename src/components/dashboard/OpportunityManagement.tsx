@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Plus, 
   Search, 
@@ -18,96 +28,72 @@ import {
   Eye,
   Users,
   Clock,
-  Filter
+  Filter,
+  Loader2,
+  Briefcase,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface Opportunity {
   id: string;
   title: string;
-  type: "leadership" | "project" | "internship" | "volunteer";
-  status: "active" | "closed" | "draft";
-  deadline: string;
+  type: string;
+  description: string | null;
+  requirements: string | null;
+  deadline: string | null;
+  is_active: boolean;
   views: number;
-  applications: number;
-  createdAt: string;
+  created_at: string;
+  applications_count: number;
 }
 
-const mockOpportunities: Opportunity[] = [
-  {
-    id: "1",
-    title: "Technical Lead - Web Development",
-    type: "leadership",
-    status: "active",
-    deadline: "Jan 15, 2025",
-    views: 342,
-    applications: 24,
-    createdAt: "Dec 1, 2024"
-  },
-  {
-    id: "2",
-    title: "Marketing Intern",
-    type: "internship",
-    status: "active",
-    deadline: "Jan 20, 2025",
-    views: 189,
-    applications: 15,
-    createdAt: "Dec 5, 2024"
-  },
-  {
-    id: "3",
-    title: "Campus Outreach Volunteer",
-    type: "volunteer",
-    status: "active",
-    deadline: "Jan 10, 2025",
-    views: 256,
-    applications: 32,
-    createdAt: "Dec 3, 2024"
-  },
-  {
-    id: "4",
-    title: "Mobile App Development Project",
-    type: "project",
-    status: "closed",
-    deadline: "Dec 15, 2024",
-    views: 421,
-    applications: 45,
-    createdAt: "Nov 20, 2024"
-  },
-  {
-    id: "5",
-    title: "Event Coordinator",
-    type: "leadership",
-    status: "draft",
-    deadline: "Jan 25, 2025",
-    views: 0,
-    applications: 0,
-    createdAt: "Dec 18, 2024"
-  },
-];
+interface OpportunityManagementProps {
+  opportunities: Opportunity[];
+  onDelete: (id: string) => Promise<boolean>;
+  isLoading?: boolean;
+}
 
-const typeColors = {
+const typeColors: Record<string, "accent" | "success" | "default" | "muted"> = {
   leadership: "accent",
   project: "success",
   internship: "default",
-  volunteer: "muted"
-} as const;
+  volunteer: "muted",
+  committee: "accent",
+  other: "muted",
+};
 
-const statusColors = {
-  active: "success",
-  closed: "muted",
-  draft: "secondary"
-} as const;
-
-export function OpportunityManagement() {
+export function OpportunityManagement({ opportunities, onDelete, isLoading }: OpportunityManagementProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
 
-  const filteredOpportunities = mockOpportunities.filter(opp => {
+  const getStatus = (opp: Opportunity) => {
+    if (!opp.is_active) return "draft";
+    if (opp.deadline && new Date(opp.deadline) < new Date()) return "closed";
+    return "active";
+  };
+
+  const filteredOpportunities = opportunities.filter(opp => {
     const matchesSearch = opp.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || opp.status === statusFilter;
+    const status = getStatus(opp);
+    const matchesStatus = statusFilter === "all" || status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleDelete = async () => {
+    if (!opportunityToDelete) return;
+    await onDelete(opportunityToDelete.id);
+    setOpportunityToDelete(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -148,99 +134,149 @@ export function OpportunityManagement() {
 
       {/* Opportunities Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Opportunity
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Type
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Status
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Deadline
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Stats
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredOpportunities.map((opportunity) => (
-                <tr key={opportunity.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-foreground">{opportunity.title}</p>
-                      <p className="text-xs text-muted-foreground">Created {opportunity.createdAt}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={typeColors[opportunity.type]} className="capitalize">
-                      {opportunity.type}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={statusColors[opportunity.status]} className="capitalize">
-                      {opportunity.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Clock className="w-3.5 h-3.5" />
-                      {opportunity.deadline}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" />
-                        {opportunity.views}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" />
-                        {opportunity.applications}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="w-4 h-4" /> View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Edit className="w-4 h-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive">
-                          <Trash2 className="w-4 h-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredOpportunities.length === 0 && (
+        {filteredOpportunities.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No opportunities found</p>
+            <Briefcase className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              {opportunities.length === 0 ? "No opportunities created yet" : "No opportunities found"}
+            </p>
+            {opportunities.length === 0 && (
+              <Link to="/club/opportunities/new">
+                <Button className="mt-4 gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create your first opportunity
+                </Button>
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Opportunity
+                  </th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Type
+                  </th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Status
+                  </th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Deadline
+                  </th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Stats
+                  </th>
+                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredOpportunities.map((opportunity) => {
+                  const status = getStatus(opportunity);
+                  return (
+                    <tr key={opportunity.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-foreground">{opportunity.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Created {format(new Date(opportunity.created_at), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={typeColors[opportunity.type] || "muted"} className="capitalize">
+                          {opportunity.type}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge 
+                          variant={status === "active" ? "success" : status === "closed" ? "muted" : "secondary"} 
+                          className="capitalize"
+                        >
+                          {status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {opportunity.deadline 
+                            ? format(new Date(opportunity.deadline), "MMM d, yyyy")
+                            : "Rolling"
+                          }
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5" />
+                            {opportunity.views}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />
+                            {opportunity.applications_count}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={() => navigate(`/opportunities/${opportunity.id}`)}
+                              className="gap-2"
+                            >
+                              <Eye className="w-4 h-4" /> View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => navigate(`/club/opportunities/${opportunity.id}/edit`)}
+                              className="gap-2"
+                            >
+                              <Edit className="w-4 h-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => setOpportunityToDelete(opportunity)}
+                              className="gap-2 text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!opportunityToDelete} onOpenChange={() => setOpportunityToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Opportunity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{opportunityToDelete?.title}"? 
+              This will also delete all associated applications. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
