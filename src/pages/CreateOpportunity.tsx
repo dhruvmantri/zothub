@@ -21,6 +21,7 @@ import {
   ApplicationQuestionsBuilder, 
   ApplicationQuestion 
 } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import {
   Briefcase,
   FileText,
@@ -54,22 +55,42 @@ export default function CreateOpportunity() {
   const [deadline, setDeadline] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
-
-    if (!title.trim()) {
-      toast.error("Please enter a title");
-      return;
-    }
-
-    if (!type) {
-      toast.error("Please select an opportunity type");
-      return;
-    }
+    setFieldErrors({});
 
     if (!user) {
       toast.error("You must be logged in");
+      return;
+    }
+
+    // Prepare questions for validation with sanitization
+    const questionsForValidation = applicationQuestions.map(q => ({
+      id: q.id,
+      type: q.type,
+      question: sanitizeText(q.question),
+      required: q.required,
+      options: q.options ? q.options.map(opt => sanitizeText(opt)) : null,
+      placeholder: q.placeholder || null,
+    }));
+
+    // Validate with Zod schema
+    const validationResult = validateInput(opportunitySchema, {
+      title: title.trim(),
+      type: type as "leadership" | "project" | "internship" | "volunteer" | "committee" | "other",
+      description: description.trim() || null,
+      requirements: requirements.trim() || null,
+      deadline: deadline || null,
+      is_active: asDraft ? false : isActive,
+      application_questions: questionsForValidation,
+    });
+
+    if (!validationResult.success) {
+      const errorResult = validationResult as { success: false; errors: Record<string, string> };
+      setFieldErrors(errorResult.errors);
+      toast.error(formatValidationErrors(errorResult.errors));
       return;
     }
 
@@ -94,25 +115,17 @@ export default function CreateOpportunity() {
         return;
       }
 
-      // Prepare questions for storage (convert to JSON-serializable format)
-      const questionsForDb = applicationQuestions.map(q => ({
-        id: q.id,
-        type: q.type,
-        question: q.question,
-        required: q.required,
-        options: q.options || null,
-        placeholder: q.placeholder || null,
-      }));
+      const validatedData = validationResult.data;
 
       const { error } = await supabase.from("opportunities").insert({
         club_id: clubProfile.id,
-        title: title.trim(),
-        type,
-        description: description.trim() || null,
-        requirements: requirements.trim() || null,
-        deadline: deadline ? new Date(deadline).toISOString() : null,
-        is_active: asDraft ? false : isActive,
-        application_questions: questionsForDb,
+        title: validatedData.title,
+        type: validatedData.type,
+        description: validatedData.description,
+        requirements: validatedData.requirements,
+        deadline: validatedData.deadline ? new Date(validatedData.deadline).toISOString() : null,
+        is_active: validatedData.is_active,
+        application_questions: validatedData.application_questions,
       });
 
       if (error) {

@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, Send, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { applicationSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 
 interface ApplicationQuestion {
   id: string;
@@ -119,18 +120,33 @@ export function ApplicationForm({
         return;
       }
 
-      // Format answers for storage
+      // Format answers for storage with sanitization
       const formattedAnswers = questions.map((q) => ({
         question_id: q.id,
-        question: q.question,
-        answer: answers[q.id] || "",
+        question: sanitizeText(q.question),
+        answer: typeof answers[q.id] === "string" 
+          ? sanitizeText(answers[q.id] as string)
+          : (answers[q.id] as string[] || []).map(a => sanitizeText(a)),
       }));
 
-      const { error } = await supabase.from("applications").insert({
+      // Validate the complete submission with Zod
+      const validationResult = validateInput(applicationSchema, {
         opportunity_id: opportunity.id,
-        student_id: profile.id,
         answers: formattedAnswers,
         resume_url: resumeUrl.trim() || null,
+      });
+
+      if (!validationResult.success) {
+        const errorResult = validationResult as { success: false; errors: Record<string, string> };
+        toast.error(formatValidationErrors(errorResult.errors));
+        return;
+      }
+
+      const { error } = await supabase.from("applications").insert({
+        opportunity_id: validationResult.data.opportunity_id,
+        student_id: profile.id,
+        answers: validationResult.data.answers,
+        resume_url: validationResult.data.resume_url,
         status: "pending",
       });
 
