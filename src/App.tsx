@@ -18,6 +18,7 @@ import CreateOpportunity from "./pages/CreateOpportunity";
 import CreateEvent from "./pages/CreateEvent";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentProfileSetup from "./pages/StudentProfileSetup";
+import ClubProfileSetup from "./pages/ClubProfileSetup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentProfileSetup />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/profile" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubProfileSetup />
                 </ProtectedRoute>
               } 
             />
