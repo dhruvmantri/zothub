@@ -183,6 +183,9 @@ export default function StudentDashboard() {
           <CardContent>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
+                <Link to="/student/profile">Edit Profile</Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link to="/opportunities">Browse Opportunities</Link>
               </Button>
               <Button variant="outline" asChild>
