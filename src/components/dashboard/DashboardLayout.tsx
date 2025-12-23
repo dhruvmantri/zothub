@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -15,24 +15,83 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const sidebarLinks = [
-  { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/club/opportunities", label: "Opportunities", icon: Briefcase },
-  { href: "/club/events", label: "Events", icon: Calendar },
-  { href: "/club/applications", label: "Applications", icon: Users, badge: 12 },
-  { href: "/club/messages", label: "Messages", icon: MessageSquare, badge: 3 },
-  { href: "/club/analytics", label: "Analytics", icon: TrendingUp },
-  { href: "/club/settings", label: "Settings", icon: Settings },
-];
-
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const { user } = useAuth();
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [applicationCount, setApplicationCount] = useState(0);
+
+  // Fetch unread message count
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchCounts = async () => {
+      // Unread messages
+      const { count: msgCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+        .eq("is_read", false);
+
+      setUnreadMessageCount(msgCount || 0);
+
+      // Pending applications for club's opportunities
+      const { data: clubProfile } = await supabase
+        .from("club_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (clubProfile) {
+        const { count: appCount } = await supabase
+          .from("applications")
+          .select("*, opportunities!inner(club_id)", { count: "exact", head: true })
+          .eq("opportunities.club_id", clubProfile.id)
+          .eq("status", "pending");
+
+        setApplicationCount(appCount || 0);
+      }
+    };
+
+    fetchCounts();
+
+    // Subscribe to real-time updates for messages
+    const channel = supabase
+      .channel("unread-messages-count")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          fetchCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const sidebarLinks = [
+    { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/club/opportunities", label: "Opportunities", icon: Briefcase },
+    { href: "/club/events", label: "Events", icon: Calendar },
+    { href: "/club/applications", label: "Applications", icon: Users, badge: applicationCount > 0 ? applicationCount : undefined },
+    { href: "/club/messages", label: "Messages", icon: MessageSquare, badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
+    { href: "/club/analytics", label: "Analytics", icon: TrendingUp },
+    { href: "/club/settings", label: "Settings", icon: Settings },
+  ];
 
   // Get initials from email
   const initials = user?.email?.substring(0, 2).toUpperCase() || "CL";
