@@ -232,6 +232,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          application_updates: boolean
+          created_at: string
+          deadline_reminders: boolean
+          event_reminders: boolean
+          id: string
+          new_messages: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_updates?: boolean
+          created_at?: string
+          deadline_reminders?: boolean
+          event_reminders?: boolean
+          id?: string
+          new_messages?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_updates?: boolean
+          created_at?: string
+          deadline_reminders?: boolean
+          event_reminders?: boolean
+          id?: string
+          new_messages?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

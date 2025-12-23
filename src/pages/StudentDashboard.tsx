@@ -65,6 +65,35 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+
+      // Subscribe to real-time notifications
+      const channel = supabase
+        .channel("student-notifications")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            // Refetch notification count on change
+            supabase
+              .from("notifications")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("is_read", false)
+              .then(({ data }) => {
+                setNotificationCount(data?.length || 0);
+              });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -220,7 +249,7 @@ export default function StudentDashboard() {
     { label: "Applications", value: applications.length, icon: FileText, color: "text-accent" },
     { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-primary", link: "/student/messages" },
     { label: "Upcoming Events", value: rsvps.length, icon: Calendar, color: "text-emerald-500" },
-    { label: "Notifications", value: notificationCount, icon: Bell, color: "text-amber-500" },
+    { label: "Notifications", value: notificationCount, icon: Bell, color: "text-amber-500", link: "/notifications" },
   ];
 
   if (isLoading) {
