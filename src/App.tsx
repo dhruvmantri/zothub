@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Opportunities from "./pages/Opportunities";
 import OpportunityDetail from "./pages/OpportunityDetail";
 import Events from "./pages/Events";
+import EventDetail from "./pages/EventDetail";
 import Clubs from "./pages/Clubs";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -33,7 +34,7 @@ const App = () => (
             <Route path="/opportunities" element={<Opportunities />} />
             <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/events" element={<Events />} />
-            <Route path="/clubs" element={<Clubs />} />
+            <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/clubs" element={<Clubs />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
