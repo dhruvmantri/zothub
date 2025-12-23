@@ -60,6 +60,13 @@ export type Database = {
             referencedRelation: "student_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "applications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       bookmarks: {
@@ -355,6 +362,13 @@ export type Database = {
             referencedRelation: "student_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "rsvps_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_profiles: {
@@ -437,7 +451,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      student_profiles_public: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          interests: string[] | null
+          major: string | null
+          skills: string[] | null
+          year: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          interests?: string[] | null
+          major?: string | null
+          skills?: string[] | null
+          year?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          interests?: string[] | null
+          major?: string | null
+          skills?: string[] | null
+          year?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
