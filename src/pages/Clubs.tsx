@@ -1,89 +1,74 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, ExternalLink, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Users, ExternalLink, X, Globe, Instagram, Linkedin } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-// Mock data for clubs
-const mockClubs = [
-  {
-    id: "1",
-    name: "Anteater Blockchain",
-    category: "Technology",
-    description: "Exploring blockchain technology and its applications through workshops, projects, and industry connections.",
-    members: 150,
-    logo: null,
-  },
-  {
-    id: "2",
-    name: "Design at UCI",
-    category: "Creative",
-    description: "A community of designers passionate about user experience, visual design, and creative problem-solving.",
-    members: 200,
-    logo: null,
-  },
-  {
-    id: "3",
-    name: "Data Science UCI",
-    category: "Technology",
-    description: "Empowering students to explore data science through hands-on projects, competitions, and research.",
-    members: 320,
-    logo: null,
-  },
-  {
-    id: "4",
-    name: "Circle K International",
-    category: "Service",
-    description: "The largest collegiate service organization dedicated to service, leadership, and fellowship.",
-    members: 180,
-    logo: null,
-  },
-  {
-    id: "5",
-    name: "Investment Club",
-    category: "Business",
-    description: "Learn about investing, personal finance, and wealth management through workshops and simulations.",
-    members: 250,
-    logo: null,
-  },
-  {
-    id: "6",
-    name: "Hack at UCI",
-    category: "Technology",
-    description: "Organizing hackathons and tech events to bring together innovators and creators.",
-    members: 400,
-    logo: null,
-  },
-  {
-    id: "7",
-    name: "Pre-Med Society",
-    category: "Health",
-    description: "Supporting pre-medical students with resources, mentorship, and clinical opportunities.",
-    members: 500,
-    logo: null,
-  },
-  {
-    id: "8",
-    name: "Entrepreneurship Club",
-    category: "Business",
-    description: "Fostering entrepreneurial spirit through speaker events, pitch competitions, and startup resources.",
-    members: 175,
-    logo: null,
-  },
-];
+interface Club {
+  id: string;
+  club_name: string;
+  category: string | null;
+  description: string | null;
+  logo_url: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  linkedin_url: string | null;
+}
 
-const categories = ["All", "Technology", "Business", "Creative", "Service", "Health"];
+const categories = ["All", "Technology", "Business", "Creative", "Service", "Health", "Academic", "Cultural", "Sports"];
 
 export default function ClubsPage() {
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const filteredClubs = mockClubs.filter((club) => {
-    const matchesSearch = club.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      club.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || club.category === selectedCategory;
+  useEffect(() => {
+    fetchClubs();
+  }, []);
+
+  const fetchClubs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("club_profiles")
+        .select(`
+          id,
+          club_name,
+          category,
+          description,
+          logo_url,
+          website_url,
+          instagram_url,
+          linkedin_url
+        `)
+        .order("club_name", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching clubs:", error);
+        toast.error("Failed to load clubs");
+        return;
+      }
+
+      setClubs(data || []);
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredClubs = clubs.filter((club) => {
+    const matchesSearch =
+      club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    const matchesCategory =
+      selectedCategory === "All" ||
+      club.category?.toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesCategory;
   });
 
@@ -148,78 +133,140 @@ export default function ClubsPage() {
 
         {/* Results */}
         <div className="container mx-auto px-4 py-8">
-          {/* Results count */}
-          <p className="text-sm text-muted-foreground mb-6">
-            Showing {filteredClubs.length} clubs
-          </p>
-
-          {/* Grid */}
-          {filteredClubs.length > 0 ? (
+          {isLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredClubs.map((club) => (
-                <div
-                  key={club.id}
-                  className="group p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50"
-                >
-                  {/* Club header */}
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-card border border-border/50">
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
-                      <span className="font-display text-xl font-bold text-muted-foreground">
-                        {club.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-display text-lg font-semibold text-foreground truncate group-hover:text-accent transition-colors">
-                        {club.name}
-                      </h3>
-                      <Badge variant="muted" className="mt-1">
-                        {club.category}
-                      </Badge>
+                    <Skeleton className="w-14 h-14 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-5 w-16" />
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                    {club.description}
-                  </p>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{club.members} members</span>
-                    </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to={`/clubs/${club.id}`}>
-                        View
-                        <ExternalLink className="w-3 h-3 ml-1" />
-                      </Link>
-                    </Button>
-                  </div>
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-2/3" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
-                <Users className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                No clubs found
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                Try adjusting your search or filters
+            <>
+              {/* Results count */}
+              <p className="text-sm text-muted-foreground mb-6">
+                Showing {filteredClubs.length} clubs
               </p>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("All");
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
+
+              {/* Grid */}
+              {filteredClubs.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredClubs.map((club) => (
+                    <div
+                      key={club.id}
+                      className="group p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50"
+                    >
+                      {/* Club header */}
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {club.logo_url ? (
+                            <img
+                              src={club.logo_url}
+                              alt={club.club_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="font-display text-xl font-bold text-muted-foreground">
+                              {club.club_name.charAt(0)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-display text-lg font-semibold text-foreground truncate group-hover:text-accent transition-colors">
+                            {club.club_name}
+                          </h3>
+                          {club.category && (
+                            <Badge variant="muted" className="mt-1">
+                              {club.category}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                        {club.description || "No description available"}
+                      </p>
+
+                      {/* Footer with links */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {club.website_url && (
+                            <a
+                              href={club.website_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                            >
+                              <Globe className="w-4 h-4 text-muted-foreground" />
+                            </a>
+                          )}
+                          {club.instagram_url && (
+                            <a
+                              href={club.instagram_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                            >
+                              <Instagram className="w-4 h-4 text-muted-foreground" />
+                            </a>
+                          )}
+                          {club.linkedin_url && (
+                            <a
+                              href={club.linkedin_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                            >
+                              <Linkedin className="w-4 h-4 text-muted-foreground" />
+                            </a>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/clubs/${club.id}`}>
+                            View
+                            <ExternalLink className="w-3 h-3 ml-1" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                    No clubs found
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    {clubs.length === 0
+                      ? "No clubs have registered yet. Check back later!"
+                      : "Try adjusting your search or filters"}
+                  </p>
+                  {clubs.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory("All");
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
