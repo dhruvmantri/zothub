@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, LogOut, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { href: "/opportunities", label: "Opportunities" },
@@ -13,6 +14,9 @@ const navLinks = [
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, role, signOut } = useAuth();
+
+  const dashboardLink = role === "club" ? "/club/dashboard" : "/student/dashboard";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
@@ -48,12 +52,29 @@ export function Navbar() {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" asChild>
-              <Link to="/login">Log in</Link>
-            </Button>
-            <Button variant="hero" asChild>
-              <Link to="/signup">Get Started</Link>
-            </Button>
+            {user ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to={dashboardLink} className="gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={signOut} className="gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Log in</Link>
+                </Button>
+                <Button variant="hero" asChild>
+                  <Link to="/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -89,12 +110,36 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
-                <Button variant="outline" asChild className="w-full">
-                  <Link to="/login">Log in</Link>
-                </Button>
-                <Button variant="hero" asChild className="w-full">
-                  <Link to="/signup">Get Started</Link>
-                </Button>
+                {user ? (
+                  <>
+                    <Button variant="outline" asChild className="w-full">
+                      <Link to={dashboardLink} onClick={() => setMobileMenuOpen(false)}>
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full" 
+                      onClick={() => {
+                        signOut();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" asChild className="w-full">
+                      <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+                    </Button>
+                    <Button variant="hero" asChild className="w-full">
+                      <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

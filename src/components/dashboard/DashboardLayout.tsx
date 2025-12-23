@@ -9,12 +9,12 @@ import {
   Settings,
   Bell,
   TrendingUp,
-  LogOut,
   ChevronLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,6 +32,10 @@ const sidebarLinks = [
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
+  const { user } = useAuth();
+
+  // Get initials from email
+  const initials = user?.email?.substring(0, 2).toUpperCase() || "CL";
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -51,11 +55,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-              <span className="font-semibold text-accent">AC</span>
+              <span className="font-semibold text-accent">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">ACM at UCI</p>
-              <p className="text-xs text-muted-foreground">Organization</p>
+              <p className="font-medium text-foreground truncate">My Club</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
         </div>
@@ -123,7 +127,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
             </Button>
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-              <span className="text-sm font-medium text-muted-foreground">A</span>
+              <span className="text-sm font-medium text-muted-foreground">{initials.charAt(0)}</span>
             </div>
           </div>
         </header>

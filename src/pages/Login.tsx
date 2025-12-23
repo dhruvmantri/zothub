@@ -1,19 +1,42 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, user, role } = useAuth();
+  const { toast } = useToast();
+  
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Get the intended destination or default based on role
+  const from = location.state?.from?.pathname;
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && role) {
+      if (from) {
+        navigate(from);
+      } else if (role === "club") {
+        navigate("/club/dashboard");
+      } else {
+        navigate("/student/dashboard");
+      }
+    }
+  }, [user, role, navigate, from]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -30,13 +53,35 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      // TODO: Implement actual login with Supabase
-      console.log("Login:", formData);
-      navigate("/");
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    
+    const { error } = await signIn(formData.email, formData.password);
+
+    if (error) {
+      let errorMessage = error.message;
+      
+      // Handle common errors with friendly messages
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please try again.";
+      }
+      
+      toast({
+        title: "Login failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
     }
+
+    toast({
+      title: "Welcome back!",
+      description: "You've successfully logged in.",
+    });
   };
 
   return (
@@ -88,6 +133,7 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className={errors.email ? "border-destructive" : ""}
+                disabled={isSubmitting}
               />
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email}</p>
@@ -112,6 +158,7 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className={cn("pr-10", errors.password ? "border-destructive" : "")}
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
@@ -126,8 +173,15 @@ export default function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" variant="hero" size="lg" className="w-full">
-              Log in
+            <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Log in"
+              )}
             </Button>
           </form>
 
