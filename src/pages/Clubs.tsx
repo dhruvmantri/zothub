@@ -34,19 +34,8 @@ export default function ClubsPage() {
 
   const fetchClubs = async () => {
     try {
-      const { data, error } = await supabase
-        .from("club_profiles")
-        .select(`
-          id,
-          club_name,
-          category,
-          description,
-          logo_url,
-          website_url,
-          instagram_url,
-          linkedin_url
-        `)
-        .order("club_name", { ascending: true });
+      // Use the public function that excludes email addresses
+      const { data, error } = await supabase.rpc("get_all_clubs_public");
 
       if (error) {
         console.error("Error fetching clubs:", error);

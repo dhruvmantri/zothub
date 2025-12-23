@@ -440,6 +440,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_clubs_public: {
+        Args: never
+        Returns: {
+          banner_url: string
+          category: string
+          club_name: string
+          created_at: string
+          description: string
+          discord_url: string
+          id: string
+          instagram_url: string
+          linkedin_url: string
+          logo_url: string
+          updated_at: string
+          website_url: string
+        }[]
+      }
+      get_club_public_profile: {
+        Args: { club_profile_id: string }
+        Returns: {
+          banner_url: string
+          category: string
+          club_name: string
+          created_at: string
+          description: string
+          discord_url: string
+          id: string
+          instagram_url: string
+          linkedin_url: string
+          logo_url: string
+          updated_at: string
+          website_url: string
+        }[]
+      }
       get_student_public_profile: {
         Args: { profile_id: string }
         Returns: {
