@@ -3,7 +3,7 @@ import { z } from "zod";
 // ============= Common Validators =============
 
 // URL validation with optional empty string
-const optionalUrlSchema = z.string().optional().refine(
+const optionalUrlSchema = z.string().optional().nullable().refine(
   (val) => !val || val.trim() === "" || z.string().url().safeParse(val).success,
   { message: "Please enter a valid URL" }
 ).transform(val => val?.trim() || null);
