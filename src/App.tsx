@@ -16,6 +16,8 @@ import Signup from "./pages/Signup";
 import ClubDashboard from "./pages/ClubDashboard";
 import CreateOpportunity from "./pages/CreateOpportunity";
 import CreateEvent from "./pages/CreateEvent";
+import EditOpportunity from "./pages/EditOpportunity";
+import EditEvent from "./pages/EditEvent";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentProfileSetup from "./pages/StudentProfileSetup";
 import ClubProfileSetup from "./pages/ClubProfileSetup";
@@ -67,7 +69,23 @@ const App = () => (
               } 
             />
             <Route 
-              path="/student/dashboard" 
+              path="/club/opportunities/:id/edit" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <EditOpportunity />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/events/:id/edit" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <EditEvent />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/dashboard"
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentDashboard />
