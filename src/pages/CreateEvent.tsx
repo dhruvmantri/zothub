@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import {
   Calendar,
   MapPin,
@@ -36,22 +37,32 @@ export default function CreateEvent() {
   const [capacity, setCapacity] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
-
-    if (!title.trim()) {
-      toast.error("Please enter an event title");
-      return;
-    }
-
-    if (!eventDate) {
-      toast.error("Please select an event date and time");
-      return;
-    }
+    setFieldErrors({});
 
     if (!user) {
       toast.error("You must be logged in");
+      return;
+    }
+
+    // Validate with Zod schema
+    const validationResult = validateInput(eventSchema, {
+      title: title.trim(),
+      description: description.trim() || null,
+      event_date: eventDate,
+      location: location.trim() || null,
+      capacity: capacity ? parseInt(capacity, 10) : null,
+      banner_url: bannerUrl.trim() || null,
+      is_active: asDraft ? false : isActive,
+    });
+
+    if (!validationResult.success) {
+      const errorResult = validationResult as { success: false; errors: Record<string, string> };
+      setFieldErrors(errorResult.errors);
+      toast.error(formatValidationErrors(errorResult.errors));
       return;
     }
 
@@ -76,15 +87,17 @@ export default function CreateEvent() {
         return;
       }
 
+      const validatedData = validationResult.data;
+
       const { error } = await supabase.from("events").insert({
         club_id: clubProfile.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        event_date: new Date(eventDate).toISOString(),
-        location: location.trim() || null,
-        capacity: capacity ? parseInt(capacity, 10) : null,
-        banner_url: bannerUrl.trim() || null,
-        is_active: asDraft ? false : isActive,
+        title: validatedData.title,
+        description: validatedData.description,
+        event_date: new Date(validatedData.event_date).toISOString(),
+        location: validatedData.location,
+        capacity: validatedData.capacity,
+        banner_url: validatedData.banner_url,
+        is_active: validatedData.is_active,
       });
 
       if (error) {

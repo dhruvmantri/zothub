@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -15,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { studentProfileSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { 
   Sparkles, 
   User, 
@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
-const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate", "PhD"];
+const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate", "PhD"] as const;
 
 const SKILL_SUGGESTIONS = [
   "JavaScript", "TypeScript", "React", "Python", "Java", "C++", 
@@ -114,21 +114,47 @@ export default function StudentProfileSetup() {
   const handleSave = async () => {
     if (!user) return;
     
+    // Sanitize skills and interests
+    const sanitizedSkills = skills.map(s => sanitizeText(s)).filter(s => s.length > 0);
+    const sanitizedInterests = interests.map(i => sanitizeText(i)).filter(i => i.length > 0);
+
+    // Validate with Zod schema
+    const validationResult = validateInput(studentProfileSchema, {
+      full_name: fullName.trim() || null,
+      major: major.trim() || null,
+      year: year || null,
+      graduation_date: graduationDate || null,
+      skills: sanitizedSkills.length > 0 ? sanitizedSkills : null,
+      interests: sanitizedInterests.length > 0 ? sanitizedInterests : null,
+      resume_url: resumeUrl.trim() || null,
+      linkedin_url: linkedinUrl.trim() || null,
+      github_url: githubUrl.trim() || null,
+      portfolio_url: portfolioUrl.trim() || null,
+    });
+
+    if (!validationResult.success) {
+      const errorResult = validationResult as { success: false; errors: Record<string, string> };
+      toast.error(formatValidationErrors(errorResult.errors));
+      return;
+    }
+    
     setIsSaving(true);
     try {
+      const validatedData = validationResult.data;
+
       const { error } = await supabase
         .from("student_profiles")
         .update({
-          full_name: fullName || null,
-          major: major || null,
-          year: year || null,
-          graduation_date: graduationDate || null,
-          skills: skills.length > 0 ? skills : null,
-          interests: interests.length > 0 ? interests : null,
-          resume_url: resumeUrl || null,
-          linkedin_url: linkedinUrl || null,
-          github_url: githubUrl || null,
-          portfolio_url: portfolioUrl || null,
+          full_name: validatedData.full_name,
+          major: validatedData.major,
+          year: validatedData.year,
+          graduation_date: validatedData.graduation_date,
+          skills: validatedData.skills,
+          interests: validatedData.interests,
+          resume_url: validatedData.resume_url,
+          linkedin_url: validatedData.linkedin_url,
+          github_url: validatedData.github_url,
+          portfolio_url: validatedData.portfolio_url,
         })
         .eq("user_id", user.id);
 

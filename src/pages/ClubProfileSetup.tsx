@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { clubProfileSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { 
   Sparkles, 
   Building2, 
@@ -121,26 +122,42 @@ export default function ClubProfileSetup() {
 
   const handleSave = async () => {
     if (!user) return;
-    
-    if (!clubName.trim()) {
-      toast.error("Club name is required");
+
+    // Validate with Zod schema
+    const validationResult = validateInput(clubProfileSchema, {
+      club_name: clubName.trim(),
+      description: description.trim() || null,
+      category: category || null,
+      logo_url: logoUrl.trim() || null,
+      banner_url: bannerUrl.trim() || null,
+      website_url: websiteUrl.trim() || null,
+      linkedin_url: linkedinUrl.trim() || null,
+      instagram_url: instagramUrl.trim() || null,
+      discord_url: discordUrl.trim() || null,
+    });
+
+    if (!validationResult.success) {
+      const errorResult = validationResult as { success: false; errors: Record<string, string> };
+      toast.error(formatValidationErrors(errorResult.errors));
       return;
     }
     
     setIsSaving(true);
     try {
+      const validatedData = validationResult.data;
+
       const { error } = await supabase
         .from("club_profiles")
         .update({
-          club_name: clubName.trim(),
-          description: description || null,
-          category: category || null,
-          logo_url: logoUrl || null,
-          banner_url: bannerUrl || null,
-          website_url: websiteUrl || null,
-          linkedin_url: linkedinUrl || null,
-          instagram_url: instagramUrl || null,
-          discord_url: discordUrl || null,
+          club_name: validatedData.club_name,
+          description: validatedData.description,
+          category: validatedData.category,
+          logo_url: validatedData.logo_url,
+          banner_url: validatedData.banner_url,
+          website_url: validatedData.website_url,
+          linkedin_url: validatedData.linkedin_url,
+          instagram_url: validatedData.instagram_url,
+          discord_url: validatedData.discord_url,
         })
         .eq("user_id", user.id);
 
