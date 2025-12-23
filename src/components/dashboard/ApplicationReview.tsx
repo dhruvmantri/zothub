@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -24,126 +23,222 @@ import {
   ExternalLink,
   Check,
   X,
-  Clock,
-  MoreHorizontal,
   User,
   Mail,
   GraduationCap,
-  Calendar
+  Calendar,
+  Loader2,
+  Inbox
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+interface ApplicationQuestion {
+  id: string;
+  question: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+}
+
+interface ApplicationAnswer {
+  questionId: string;
+  answer: string | string[];
+}
 
 interface Application {
   id: string;
-  applicantName: string;
-  applicantEmail: string;
-  major: string;
-  year: string;
-  opportunityTitle: string;
-  status: "pending" | "reviewed" | "accepted" | "rejected";
-  submittedAt: string;
-  resumeUrl?: string;
-  responses: { question: string; answer: string }[];
+  status: string;
+  created_at: string;
+  resume_url: string | null;
+  answers: ApplicationAnswer[];
+  opportunity: {
+    id: string;
+    title: string;
+    application_questions: ApplicationQuestion[];
+  };
+  student: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    major: string | null;
+    year: string | null;
+  };
 }
-
-const mockApplications: Application[] = [
-  {
-    id: "1",
-    applicantName: "Sarah Chen",
-    applicantEmail: "schen@uci.edu",
-    major: "Computer Science",
-    year: "Junior",
-    opportunityTitle: "Technical Lead - Web Development",
-    status: "pending",
-    submittedAt: "Dec 20, 2024",
-    resumeUrl: "#",
-    responses: [
-      { question: "Why are you interested in this role?", answer: "I'm passionate about web development and have been building projects using React and Node.js for the past 2 years. I believe my experience in leading a team project last quarter has prepared me well for this leadership role." },
-      { question: "Describe a challenging project you've worked on.", answer: "I developed a full-stack e-commerce platform for a local business. The challenge was implementing real-time inventory management while ensuring the system could handle high traffic during sales events." },
-    ]
-  },
-  {
-    id: "2",
-    applicantName: "Michael Nguyen",
-    applicantEmail: "mnguyen@uci.edu",
-    major: "Software Engineering",
-    year: "Senior",
-    opportunityTitle: "Technical Lead - Web Development",
-    status: "pending",
-    submittedAt: "Dec 19, 2024",
-    resumeUrl: "#",
-    responses: [
-      { question: "Why are you interested in this role?", answer: "As a senior with internship experience at a tech company, I want to give back to the UCI community by mentoring junior developers while continuing to grow my technical skills." },
-      { question: "Describe a challenging project you've worked on.", answer: "During my internship, I worked on migrating a legacy system to a microservices architecture. This required careful planning and coordination with multiple teams." },
-    ]
-  },
-  {
-    id: "3",
-    applicantName: "Emily Park",
-    applicantEmail: "epark@uci.edu",
-    major: "Informatics",
-    year: "Sophomore",
-    opportunityTitle: "Marketing Intern",
-    status: "reviewed",
-    submittedAt: "Dec 18, 2024",
-    resumeUrl: "#",
-    responses: [
-      { question: "What marketing experience do you have?", answer: "I managed social media for my high school's student council and increased engagement by 150%. I'm also proficient in Canva and Figma." },
-      { question: "Share a creative campaign idea.", answer: "A 'Day in the Life' video series featuring different club members would humanize the organization and attract new members through authentic storytelling." },
-    ]
-  },
-  {
-    id: "4",
-    applicantName: "David Kim",
-    applicantEmail: "dkim@uci.edu",
-    major: "Business Administration",
-    year: "Junior",
-    opportunityTitle: "Event Coordinator",
-    status: "accepted",
-    submittedAt: "Dec 15, 2024",
-    resumeUrl: "#",
-    responses: [
-      { question: "Describe your event planning experience.", answer: "I've organized multiple networking events for the Business Student Association, including our annual career fair with 500+ attendees." },
-      { question: "How would you handle a last-minute venue change?", answer: "I would immediately notify all stakeholders, create a backup plan, and ensure clear communication through multiple channels." },
-    ]
-  },
-  {
-    id: "5",
-    applicantName: "Lisa Wang",
-    applicantEmail: "lwang@uci.edu",
-    major: "Computer Science",
-    year: "Freshman",
-    opportunityTitle: "Campus Outreach Volunteer",
-    status: "rejected",
-    submittedAt: "Dec 14, 2024",
-    responses: [
-      { question: "Why do you want to volunteer?", answer: "I want to get involved on campus and meet new people while contributing to the tech community." },
-      { question: "How many hours can you commit weekly?", answer: "I can commit around 3-4 hours per week." },
-    ]
-  },
-];
 
 const statusColors = {
   pending: "accent",
   reviewed: "default",
-  accepted: "success",
+  accepted: "default",
   rejected: "destructive"
 } as const;
 
 export function ApplicationReview() {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const filteredApplications = mockApplications.filter(app => {
+  useEffect(() => {
+    if (user) {
+      fetchApplications();
+    }
+  }, [user]);
+
+  const fetchApplications = async () => {
+    if (!user) return;
+
+    try {
+      // First get the club profile
+      const { data: clubProfile, error: clubError } = await supabase
+        .from("club_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (clubError || !clubProfile) {
+        console.error("Error fetching club profile:", clubError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch applications for this club's opportunities
+      const { data, error } = await supabase
+        .from("applications")
+        .select(`
+          id,
+          status,
+          created_at,
+          resume_url,
+          answers,
+          opportunity:opportunities!inner (
+            id,
+            title,
+            application_questions,
+            club_id
+          ),
+          student:student_profiles!inner (
+            id,
+            full_name,
+            email,
+            major,
+            year
+          )
+        `)
+        .eq("opportunity.club_id", clubProfile.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching applications:", error);
+        toast.error("Failed to load applications");
+        return;
+      }
+
+      // Transform the data
+      const transformedApplications: Application[] = (data || []).map((app: any) => ({
+        id: app.id,
+        status: app.status || "pending",
+        created_at: app.created_at,
+        resume_url: app.resume_url,
+        answers: app.answers || [],
+        opportunity: {
+          id: app.opportunity.id,
+          title: app.opportunity.title,
+          application_questions: app.opportunity.application_questions || []
+        },
+        student: {
+          id: app.student.id,
+          full_name: app.student.full_name,
+          email: app.student.email,
+          major: app.student.major,
+          year: app.student.year
+        }
+      }));
+
+      setApplications(transformedApplications);
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error("An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateApplicationStatus = async (applicationId: string, newStatus: string) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: newStatus })
+        .eq("id", applicationId);
+
+      if (error) {
+        console.error("Error updating application:", error);
+        toast.error("Failed to update application");
+        return;
+      }
+
+      // Update local state
+      setApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId ? { ...app, status: newStatus } : app
+        )
+      );
+
+      // Update selected application if it's the one being updated
+      if (selectedApplication?.id === applicationId) {
+        setSelectedApplication(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+
+      toast.success(`Application ${newStatus}`);
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error("An error occurred");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const getQuestionText = (questionId: string, questions: ApplicationQuestion[]): string => {
+    const question = questions.find(q => q.id === questionId);
+    return question?.question || "Unknown question";
+  };
+
+  const formatAnswer = (answer: string | string[]): string => {
+    if (Array.isArray(answer)) {
+      return answer.join(", ");
+    }
+    return answer;
+  };
+
+  const getInitials = (name: string | null): string => {
+    if (!name) return "?";
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const filteredApplications = applications.filter(app => {
     const matchesSearch = 
-      app.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.opportunityTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      (app.student.full_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      app.opportunity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.student.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const pendingCount = mockApplications.filter(a => a.status === "pending").length;
+  const pendingCount = applications.filter(a => a.status === "pending").length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -190,38 +285,45 @@ export function ApplicationReview() {
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
                   <span className="text-lg font-semibold text-muted-foreground">
-                    {application.applicantName.split(' ').map(n => n[0]).join('')}
+                    {getInitials(application.student.full_name)}
                   </span>
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground truncate">{application.applicantName}</h3>
-                    <Badge variant={statusColors[application.status]} className="capitalize shrink-0">
+                    <h3 className="font-semibold text-foreground truncate">
+                      {application.student.full_name || application.student.email}
+                    </h3>
+                    <Badge 
+                      variant={statusColors[application.status as keyof typeof statusColors] || "default"} 
+                      className="capitalize shrink-0"
+                    >
                       {application.status}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">
-                    {application.major} • {application.year}
+                    {application.student.major || "No major"} • {application.student.year || "Year not set"}
                   </p>
                 </div>
               </div>
 
               {/* Opportunity */}
               <div className="md:w-64">
-                <p className="text-sm font-medium text-foreground truncate">{application.opportunityTitle}</p>
-                <p className="text-xs text-muted-foreground">Applied {application.submittedAt}</p>
+                <p className="text-sm font-medium text-foreground truncate">{application.opportunity.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  Applied {format(new Date(application.created_at), "MMM d, yyyy")}
+                </p>
               </div>
 
               {/* Quick Actions */}
               <div className="flex items-center gap-2">
-                {application.resumeUrl && (
+                {application.resume_url && (
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="gap-1.5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Open resume
+                      window.open(application.resume_url!, "_blank");
                     }}
                   >
                     <FileText className="w-4 h-4" />
@@ -234,9 +336,10 @@ export function ApplicationReview() {
                       variant="outline" 
                       size="icon"
                       className="h-8 w-8 text-success hover:bg-success/10"
+                      disabled={isUpdating}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Accept
+                        updateApplicationStatus(application.id, "accepted");
                       }}
                     >
                       <Check className="w-4 h-4" />
@@ -245,9 +348,10 @@ export function ApplicationReview() {
                       variant="outline" 
                       size="icon"
                       className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                      disabled={isUpdating}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Reject
+                        updateApplicationStatus(application.id, "rejected");
                       }}
                     >
                       <X className="w-4 h-4" />
@@ -261,7 +365,13 @@ export function ApplicationReview() {
 
         {filteredApplications.length === 0 && (
           <div className="text-center py-12 bg-card rounded-xl border border-border">
-            <p className="text-muted-foreground">No applications found</p>
+            <Inbox className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              {applications.length === 0 
+                ? "No applications yet. Applications will appear here when students apply to your opportunities."
+                : "No applications match your search criteria."
+              }
+            </p>
           </div>
         )}
       </div>
@@ -275,13 +385,15 @@ export function ApplicationReview() {
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
                     <span className="text-xl font-semibold text-muted-foreground">
-                      {selectedApplication.applicantName.split(' ').map(n => n[0]).join('')}
+                      {getInitials(selectedApplication.student.full_name)}
                     </span>
                   </div>
                   <div>
-                    <DialogTitle className="text-xl">{selectedApplication.applicantName}</DialogTitle>
+                    <DialogTitle className="text-xl">
+                      {selectedApplication.student.full_name || selectedApplication.student.email}
+                    </DialogTitle>
                     <DialogDescription>
-                      Applied for {selectedApplication.opportunityTitle}
+                      Applied for {selectedApplication.opportunity.title}
                     </DialogDescription>
                   </div>
                 </div>
@@ -292,26 +404,30 @@ export function ApplicationReview() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedApplication.applicantEmail}</span>
+                    <span>{selectedApplication.student.email}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedApplication.major}</span>
+                    <span>{selectedApplication.student.major || "No major"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedApplication.year}</span>
+                    <span>{selectedApplication.student.year || "Year not set"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span>Applied {selectedApplication.submittedAt}</span>
+                    <span>Applied {format(new Date(selectedApplication.created_at), "MMM d, yyyy")}</span>
                   </div>
                 </div>
 
                 {/* Resume Link */}
-                {selectedApplication.resumeUrl && (
+                {selectedApplication.resume_url && (
                   <div>
-                    <Button variant="outline" className="gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="gap-2"
+                      onClick={() => window.open(selectedApplication.resume_url!, "_blank")}
+                    >
                       <FileText className="w-4 h-4" />
                       View Resume
                       <ExternalLink className="w-3 h-3" />
@@ -322,21 +438,30 @@ export function ApplicationReview() {
                 {/* Responses */}
                 <div className="space-y-4">
                   <h4 className="font-semibold text-foreground">Application Responses</h4>
-                  {selectedApplication.responses.map((response, index) => (
-                    <div key={index} className="space-y-2">
-                      <p className="text-sm font-medium text-foreground">{response.question}</p>
-                      <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
-                        {response.answer}
-                      </p>
-                    </div>
-                  ))}
+                  {selectedApplication.answers.length > 0 ? (
+                    selectedApplication.answers.map((response, index) => (
+                      <div key={index} className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {getQuestionText(response.questionId, selectedApplication.opportunity.application_questions)}
+                        </p>
+                        <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                          {formatAnswer(response.answer)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No custom responses provided.</p>
+                  )}
                 </div>
 
-                {/* Status and Notes */}
+                {/* Status */}
                 <div className="space-y-2">
                   <h4 className="font-semibold text-foreground">Status</h4>
                   <div className="flex items-center gap-2">
-                    <Badge variant={statusColors[selectedApplication.status]} className="capitalize">
+                    <Badge 
+                      variant={statusColors[selectedApplication.status as keyof typeof statusColors] || "default"} 
+                      className="capitalize"
+                    >
                       {selectedApplication.status}
                     </Badge>
                   </div>
@@ -346,12 +471,21 @@ export function ApplicationReview() {
               <DialogFooter className="gap-2">
                 {selectedApplication.status === "pending" && (
                   <>
-                    <Button variant="outline" className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10">
-                      <X className="w-4 h-4" />
+                    <Button 
+                      variant="outline" 
+                      className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                      disabled={isUpdating}
+                      onClick={() => updateApplicationStatus(selectedApplication.id, "rejected")}
+                    >
+                      {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                       Reject
                     </Button>
-                    <Button className="gap-2">
-                      <Check className="w-4 h-4" />
+                    <Button 
+                      className="gap-2"
+                      disabled={isUpdating}
+                      onClick={() => updateApplicationStatus(selectedApplication.id, "accepted")}
+                    >
+                      {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                       Accept
                     </Button>
                   </>
