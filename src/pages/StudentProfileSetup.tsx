@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FileUpload } from "@/components/ui/file-upload";
 import { 
   Select,
   SelectContent,
@@ -21,7 +22,6 @@ import {
   GraduationCap, 
   Code, 
   LinkIcon, 
-  FileText,
   Linkedin,
   Github,
   Globe,
@@ -441,20 +441,18 @@ export default function StudentProfileSetup() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="resumeUrl" className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Resume URL
-                </Label>
-                <Input
-                  id="resumeUrl"
-                  type="url"
-                  placeholder="https://drive.google.com/your-resume"
-                  value={resumeUrl}
-                  onChange={(e) => setResumeUrl(e.target.value)}
+                <Label>Resume</Label>
+                <FileUpload
+                  bucket="student-resumes"
+                  folder={user?.id || ""}
+                  accept=".pdf,.doc,.docx"
+                  maxSizeMB={10}
+                  currentUrl={resumeUrl}
+                  onUploadComplete={(url) => setResumeUrl(url)}
+                  onRemove={() => setResumeUrl("")}
+                  variant="file"
+                  placeholder="Upload your resume (PDF, DOC, DOCX)"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Share a link to your resume (Google Drive, Dropbox, etc.)
-                </p>
               </div>
 
               <div className="space-y-2">

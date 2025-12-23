@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileUpload } from "@/components/ui/file-upload";
 import { 
   Select,
   SelectContent,
@@ -14,11 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { clubProfileSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
+import { clubProfileSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import { 
   Sparkles, 
   Building2, 
-  FileText, 
   LinkIcon, 
   Image,
   Globe,
@@ -280,66 +280,36 @@ export default function ClubProfileSetup() {
               </CardTitle>
               <CardDescription>Add visuals to make your profile stand out</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">Logo URL <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-                <Input
-                  id="logoUrl"
-                  type="url"
-                  placeholder="https://example.com/your-logo.png"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
+                <Label>Club Logo <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
+                <FileUpload
+                  bucket="club-assets"
+                  folder={user?.id || ""}
+                  accept="image/*"
+                  maxSizeMB={2}
+                  currentUrl={logoUrl}
+                  onUploadComplete={(url) => setLogoUrl(url)}
+                  onRemove={() => setLogoUrl("")}
+                  variant="image"
+                  placeholder="Upload your club logo (square format recommended)"
                 />
-                <p className="text-xs text-muted-foreground">
-                  A direct link to your club's logo image (square format recommended)
-                </p>
               </div>
 
-              {logoUrl && (
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-lg border border-border overflow-hidden bg-muted">
-                    <img 
-                      src={logoUrl} 
-                      alt="Logo preview" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground">Logo preview</span>
-                </div>
-              )}
-
               <div className="space-y-2">
-                <Label htmlFor="bannerUrl">Banner URL <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-                <Input
-                  id="bannerUrl"
-                  type="url"
-                  placeholder="https://example.com/your-banner.jpg"
-                  value={bannerUrl}
-                  onChange={(e) => setBannerUrl(e.target.value)}
+                <Label>Banner Image <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
+                <FileUpload
+                  bucket="club-assets"
+                  folder={user?.id || ""}
+                  accept="image/*"
+                  maxSizeMB={5}
+                  currentUrl={bannerUrl}
+                  onUploadComplete={(url) => setBannerUrl(url)}
+                  onRemove={() => setBannerUrl("")}
+                  variant="image"
+                  placeholder="Upload a banner image (1200x400 recommended)"
                 />
-                <p className="text-xs text-muted-foreground">
-                  A wide banner image for your profile header (1200x400 recommended)
-                </p>
               </div>
-
-              {bannerUrl && (
-                <div className="space-y-2">
-                  <div className="w-full h-32 rounded-lg border border-border overflow-hidden bg-muted">
-                    <img 
-                      src={bannerUrl} 
-                      alt="Banner preview" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground">Banner preview</span>
-                </div>
-              )}
             </CardContent>
           </Card>
 
