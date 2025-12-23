@@ -124,13 +124,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [user]);
 
   const sidebarLinks = [
-    { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/club/opportunities", label: "Opportunities", icon: Briefcase },
-    { href: "/club/events", label: "Events", icon: Calendar },
-    { href: "/club/applications", label: "Applications", icon: Users, badge: applicationCount > 0 ? applicationCount : undefined },
+    { href: "/club/dashboard?tab=opportunities", label: "Opportunities", icon: Briefcase, tab: "opportunities" },
+    { href: "/club/dashboard?tab=events", label: "Events", icon: Calendar, tab: "events" },
+    { href: "/club/dashboard?tab=applications", label: "Applications", icon: Users, badge: applicationCount > 0 ? applicationCount : undefined, tab: "applications" },
     { href: "/club/messages", label: "Messages", icon: MessageSquare, badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
-    { href: "/club/analytics", label: "Analytics", icon: TrendingUp },
-    { href: "/club/settings", label: "Settings", icon: Settings },
+    { href: "/club/dashboard?tab=team", label: "Team", icon: Users, tab: "team" },
+    { href: "/club/dashboard?tab=analytics", label: "Analytics", icon: TrendingUp, tab: "analytics" },
   ];
 
   // Get initials from email
@@ -170,8 +169,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
           {sidebarLinks.map((link) => {
-            const isActive = location.pathname === link.href || 
-              (link.href !== "/club/dashboard" && location.pathname.startsWith(link.href));
+            const currentTab = new URLSearchParams(location.search).get("tab") || "opportunities";
+            const isActive = link.tab 
+              ? location.pathname === "/club/dashboard" && currentTab === link.tab
+              : location.pathname === link.href || location.pathname.startsWith(link.href);
             
             return (
               <Link
