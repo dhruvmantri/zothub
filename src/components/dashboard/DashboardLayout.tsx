@@ -26,8 +26,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user } = useAuth();
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [applicationCount, setApplicationCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  // Fetch unread message count
+  // Fetch counts
   useEffect(() => {
     if (!user) return;
 
@@ -40,6 +41,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         .eq("is_read", false);
 
       setUnreadMessageCount(msgCount || 0);
+
+      // Unread notifications
+      const { count: notifCount } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      setNotificationCount(notifCount || 0);
 
       // Pending applications for club's opportunities
       const { data: clubProfile } = await supabase
@@ -61,8 +71,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
     fetchCounts();
 
-    // Subscribe to real-time updates for messages
-    const channel = supabase
+    // Subscribe to real-time updates for messages and notifications
+    const messagesChannel = supabase
       .channel("unread-messages-count")
       .on(
         "postgres_changes",
@@ -78,8 +88,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )
       .subscribe();
 
+    const notificationsChannel = supabase
+      .channel("unread-notifications-count")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchCounts();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, [user]);
 
@@ -181,10 +208,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex-1" />
           
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
-            </Button>
+            <Link to="/notifications">
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                {notificationCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent text-accent-foreground text-[10px] font-medium rounded-full flex items-center justify-center">
+                    {notificationCount > 9 ? "9+" : notificationCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
               <span className="text-sm font-medium text-muted-foreground">{initials.charAt(0)}</span>
             </div>
