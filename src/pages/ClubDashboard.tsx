@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,13 @@ import { TeamManagement } from "@/components/dashboard/TeamManagement";
 import { useClubData } from "@/hooks/useClubData";
 
 export default function ClubDashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get("tab") || "opportunities";
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+
   const {
     opportunities,
     events,
@@ -90,7 +97,7 @@ export default function ClubDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="opportunities" className="space-y-6">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-secondary/50 p-1">
             <TabsTrigger value="opportunities" className="gap-2">
               <Briefcase className="w-4 h-4" />
