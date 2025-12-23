@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, ArrowLeft, GraduationCap, Building2, Eye, EyeOff } from "lucide-react";
+import { Sparkles, ArrowLeft, GraduationCap, Building2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 type UserRole = "student" | "club";
 
@@ -12,10 +14,13 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialRole = searchParams.get("role") as UserRole | null;
+  const { signUp, user, role } = useAuth();
+  const { toast } = useToast();
   
   const [step, setStep] = useState<"role" | "details">(initialRole ? "details" : "role");
-  const [role, setRole] = useState<UserRole | null>(initialRole);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,8 +28,19 @@ export default function SignupPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleRoleSelect = (selectedRole: UserRole) => {
-    setRole(selectedRole);
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && role) {
+      if (role === "club") {
+        navigate("/club/dashboard");
+      } else {
+        navigate("/student/dashboard");
+      }
+    }
+  }, [user, role, navigate]);
+
+  const handleRoleSelect = (role: UserRole) => {
+    setSelectedRole(role);
     setStep("details");
   };
 
@@ -51,12 +67,41 @@ export default function SignupPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      // TODO: Implement actual signup with Supabase
-      console.log("Signup:", { ...formData, role });
-      navigate("/");
+    if (!validateForm() || !selectedRole) return;
+
+    setIsSubmitting(true);
+    
+    const { error } = await signUp(formData.email, formData.password, selectedRole);
+
+    if (error) {
+      let errorMessage = error.message;
+      
+      // Handle common errors with friendly messages
+      if (error.message.includes("already registered")) {
+        errorMessage = "This email is already registered. Please log in instead.";
+      }
+      
+      toast({
+        title: "Signup failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    toast({
+      title: "Account created!",
+      description: "Welcome to ZotHub. Let's set up your profile.",
+    });
+
+    // Redirect based on role
+    if (selectedRole === "club") {
+      navigate("/club/dashboard");
+    } else {
+      navigate("/student/dashboard");
     }
   };
 
@@ -145,7 +190,7 @@ export default function SignupPage() {
                 Create your account
               </h1>
               <p className="text-muted-foreground mb-8">
-                Sign up as a {role === "student" ? "student" : "club representative"}
+                Sign up as a {selectedRole === "student" ? "student" : "club representative"}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -158,6 +203,7 @@ export default function SignupPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={errors.email ? "border-destructive" : ""}
+                    disabled={isSubmitting}
                   />
                   {errors.email && (
                     <p className="text-sm text-destructive">{errors.email}</p>
@@ -174,6 +220,7 @@ export default function SignupPage() {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className={cn("pr-10", errors.password ? "border-destructive" : "")}
+                      disabled={isSubmitting}
                     />
                     <button
                       type="button"
@@ -197,14 +244,22 @@ export default function SignupPage() {
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     className={errors.confirmPassword ? "border-destructive" : ""}
+                    disabled={isSubmitting}
                   />
                   {errors.confirmPassword && (
                     <p className="text-sm text-destructive">{errors.confirmPassword}</p>
                   )}
                 </div>
 
-                <Button type="submit" variant="hero" size="lg" className="w-full">
-                  Create Account
+                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
                 </Button>
               </form>
 
