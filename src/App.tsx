@@ -19,6 +19,8 @@ import CreateEvent from "./pages/CreateEvent";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentProfileSetup from "./pages/StudentProfileSetup";
 import ClubProfileSetup from "./pages/ClubProfileSetup";
+import ClubMessages from "./pages/ClubMessages";
+import StudentMessages from "./pages/StudentMessages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +86,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubProfileSetup />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/messages" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubMessages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/messages" 
+              element={
+                <ProtectedRoute allowedRoles={["student"]}>
+                  <StudentMessages />
                 </ProtectedRoute>
               } 
             />

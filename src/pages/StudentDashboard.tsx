@@ -16,7 +16,8 @@ import {
   XCircle,
   Building2,
   Loader2,
-  Inbox
+  Inbox,
+  MessageSquare
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -59,6 +60,7 @@ export default function StudentDashboard() {
   const [rsvps, setRsvps] = useState<RsvpData[]>([]);
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -86,7 +88,7 @@ export default function StudentDashboard() {
       setStudentProfileId(studentProfile.id);
 
       // Fetch all data in parallel
-      const [applicationsRes, rsvpsRes, bookmarksRes, notificationsRes] = await Promise.all([
+      const [applicationsRes, rsvpsRes, bookmarksRes, notificationsRes, messagesRes] = await Promise.all([
         // Fetch applications
         supabase
           .from("applications")
@@ -135,6 +137,13 @@ export default function StudentDashboard() {
           .from("notifications")
           .select("id")
           .eq("user_id", user.id)
+          .eq("is_read", false),
+
+        // Fetch unread messages count
+        supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("receiver_id", user.id)
           .eq("is_read", false)
       ]);
 
@@ -180,6 +189,10 @@ export default function StudentDashboard() {
         setNotificationCount(notificationsRes.data?.length || 0);
       }
 
+      if (!messagesRes.error) {
+        setUnreadMessageCount(messagesRes.count || 0);
+      }
+
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -205,7 +218,7 @@ export default function StudentDashboard() {
   // Calculate stats
   const stats = [
     { label: "Applications", value: applications.length, icon: FileText, color: "text-accent" },
-    { label: "Saved Items", value: bookmarkCount, icon: Bookmark, color: "text-primary" },
+    { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-primary", link: "/student/messages" },
     { label: "Upcoming Events", value: rsvps.length, icon: Calendar, color: "text-emerald-500" },
     { label: "Notifications", value: notificationCount, icon: Bell, color: "text-amber-500" },
   ];
@@ -254,8 +267,8 @@ export default function StudentDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label}>
+          {stats.map((stat) => {
+            const content = (
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg bg-secondary ${stat.color}`}>
@@ -267,8 +280,18 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          ))}
+            );
+
+            return (
+              <Card key={stat.label} className={(stat as any).link ? "hover:bg-secondary/50 transition-colors cursor-pointer" : ""}>
+                {(stat as any).link ? (
+                  <Link to={(stat as any).link}>{content}</Link>
+                ) : (
+                  content
+                )}
+              </Card>
+            );
+          })}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
