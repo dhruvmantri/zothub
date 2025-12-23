@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Opportunities from "./pages/Opportunities";
+import OpportunityDetail from "./pages/OpportunityDetail";
 import Events from "./pages/Events";
 import Clubs from "./pages/Clubs";
 import Login from "./pages/Login";
@@ -30,7 +31,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/opportunities" element={<Opportunities />} />
+            <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/clubs" element={<Clubs />} />
             <Route path="/clubs" element={<Clubs />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
