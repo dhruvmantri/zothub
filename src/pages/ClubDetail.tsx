@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContactClubDialog } from "@/components/ContactClubDialog";
 import { 
   Globe, 
   Linkedin, 
@@ -15,12 +17,16 @@ import {
   Briefcase,
   ArrowLeft,
   Users,
-  Clock
+  Clock,
+  Heart,
+  Mail
 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface Club {
   id: string;
+  user_id: string;
   club_name: string;
   category: string | null;
   description: string | null;
@@ -48,12 +54,23 @@ interface Event {
   location: string | null;
 }
 
+interface TeamMember {
+  id: string;
+  name: string | null;
+  role: string;
+}
+
 const ClubDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const { user, role } = useAuth();
   const [club, setClub] = useState<Club | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchClubData = async () => {
@@ -61,10 +78,10 @@ const ClubDetail = () => {
 
       setIsLoading(true);
       try {
-        // Fetch club profile
+        // Fetch club profile (including user_id for messaging)
         const { data: clubData, error: clubError } = await supabase
           .from("club_profiles")
-          .select("*")
+          .select("id, user_id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url")
           .eq("id", id)
           .single();
 
@@ -91,6 +108,16 @@ const ClubDetail = () => {
           .order("event_date", { ascending: true });
 
         if (!eventsError) setEvents(eventsData || []);
+
+        // Fetch active team members (public visibility)
+        const { data: teamData, error: teamError } = await supabase
+          .from("club_team_members")
+          .select("id, name, role")
+          .eq("club_id", id)
+          .eq("status", "active");
+
+        if (!teamError) setTeamMembers(teamData || []);
+
       } catch (error) {
         console.error("Error fetching club data:", error);
       } finally {
@@ -100,6 +127,63 @@ const ClubDetail = () => {
 
     fetchClubData();
   }, [id]);
+
+  // Check if user is following this club
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!user || !id) return;
+
+      const { data } = await supabase
+        .from("bookmarks")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("club_id", id)
+        .maybeSingle();
+
+      setIsFollowing(!!data);
+    };
+
+    checkFollowStatus();
+  }, [user, id]);
+
+  const handleFollowToggle = async () => {
+    if (!user) {
+      toast.error("Please log in to follow clubs");
+      return;
+    }
+
+    if (!id) return;
+
+    setIsFollowLoading(true);
+    try {
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from("bookmarks")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("club_id", id);
+
+        if (error) throw error;
+        setIsFollowing(false);
+        toast.success("Unfollowed club");
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from("bookmarks")
+          .insert({ user_id: user.id, club_id: id });
+
+        if (error) throw error;
+        setIsFollowing(true);
+        toast.success("Following club!");
+      }
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+      toast.error("Failed to update follow status");
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -136,6 +220,8 @@ const ClubDetail = () => {
     );
   }
 
+  const hasSocialLinks = club.website_url || club.linkedin_url || club.instagram_url || club.discord_url;
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -159,7 +245,7 @@ const ClubDetail = () => {
         )}
 
         {/* Club header */}
-        <div className="flex flex-col md:flex-row gap-6 mb-8">
+        <div className="flex flex-col md:flex-row gap-6 mb-6">
           {club.logo_url && (
             <div className="w-24 h-24 rounded-xl overflow-hidden bg-muted flex-shrink-0">
               <img
@@ -182,8 +268,45 @@ const ClubDetail = () => {
           </div>
         </div>
 
-        {/* Social links */}
+        {/* Activity Stats */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50">
+            <Briefcase className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {opportunities.length} Open {opportunities.length === 1 ? "Opportunity" : "Opportunities"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {events.length} Upcoming {events.length === 1 ? "Event" : "Events"}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
         <div className="flex flex-wrap gap-3 mb-8">
+          {/* Follow button - only for students */}
+          {user && role === "student" && (
+            <Button
+              variant={isFollowing ? "secondary" : "default"}
+              onClick={handleFollowToggle}
+              disabled={isFollowLoading}
+            >
+              <Heart className={`mr-2 h-4 w-4 ${isFollowing ? "fill-current" : ""}`} />
+              {isFollowing ? "Following" : "Follow"}
+            </Button>
+          )}
+
+          {/* Contact button - only for students */}
+          {user && role === "student" && (
+            <Button variant="outline" onClick={() => setContactDialogOpen(true)}>
+              <Mail className="mr-2 h-4 w-4" />
+              Contact Club
+            </Button>
+          )}
+
+          {/* Social links */}
           {club.website_url && (
             <Button variant="outline" size="sm" asChild>
               <a href={club.website_url} target="_blank" rel="noopener noreferrer">
@@ -217,6 +340,34 @@ const ClubDetail = () => {
             </Button>
           )}
         </div>
+
+        {/* Team Members Section */}
+        {teamMembers.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold">Team</h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {teamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/50"
+                >
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {member.name?.charAt(0) || "?"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{member.name || "Team Member"}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Opportunities and Events */}
         <div className="grid gap-8 lg:grid-cols-2">
@@ -310,6 +461,16 @@ const ClubDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Contact Dialog */}
+      {club && (
+        <ContactClubDialog
+          open={contactDialogOpen}
+          onOpenChange={setContactDialogOpen}
+          clubName={club.club_name}
+          clubUserId={club.user_id}
+        />
+      )}
     </Layout>
   );
 };

@@ -1,13 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, X, Globe, Instagram, Linkedin } from "lucide-react";
+import { 
+  Search, 
+  Users, 
+  X, 
+  Globe, 
+  Instagram, 
+  Linkedin,
+  Briefcase,
+  Calendar,
+  ArrowUpDown
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Club {
   id: string;
@@ -18,15 +34,20 @@ interface Club {
   website_url: string | null;
   instagram_url: string | null;
   linkedin_url: string | null;
+  opportunity_count: number;
+  event_count: number;
 }
 
 const categories = ["All", "Technology", "Business", "Creative", "Service", "Health", "Academic", "Cultural", "Sports"];
+
+type SortOption = "name-asc" | "name-desc" | "most-active";
 
 export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortBy, setSortBy] = useState<SortOption>("name-asc");
 
   useEffect(() => {
     fetchClubs();
@@ -34,16 +55,52 @@ export default function ClubsPage() {
 
   const fetchClubs = async () => {
     try {
-      // Use the public function that excludes email addresses
-      const { data, error } = await supabase.rpc("get_all_clubs_public");
+      // Get all clubs
+      const { data: clubsData, error: clubsError } = await supabase.rpc("get_all_clubs_public");
 
-      if (error) {
-        console.error("Error fetching clubs:", error);
+      if (clubsError) {
+        console.error("Error fetching clubs:", clubsError);
         toast.error("Failed to load clubs");
         return;
       }
 
-      setClubs(data || []);
+      // Get opportunity counts per club
+      const { data: oppCounts, error: oppError } = await supabase
+        .from("opportunities")
+        .select("club_id")
+        .eq("is_active", true);
+
+      // Get event counts per club (upcoming only)
+      const { data: eventCounts, error: eventError } = await supabase
+        .from("events")
+        .select("club_id")
+        .eq("is_active", true)
+        .gte("event_date", new Date().toISOString());
+
+      // Count opportunities per club
+      const oppCountMap: Record<string, number> = {};
+      if (!oppError && oppCounts) {
+        oppCounts.forEach((opp) => {
+          oppCountMap[opp.club_id] = (oppCountMap[opp.club_id] || 0) + 1;
+        });
+      }
+
+      // Count events per club
+      const eventCountMap: Record<string, number> = {};
+      if (!eventError && eventCounts) {
+        eventCounts.forEach((event) => {
+          eventCountMap[event.club_id] = (eventCountMap[event.club_id] || 0) + 1;
+        });
+      }
+
+      // Merge counts into clubs
+      const clubsWithCounts: Club[] = (clubsData || []).map((club: any) => ({
+        ...club,
+        opportunity_count: oppCountMap[club.id] || 0,
+        event_count: eventCountMap[club.id] || 0,
+      }));
+
+      setClubs(clubsWithCounts);
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -51,15 +108,36 @@ export default function ClubsPage() {
     }
   };
 
-  const filteredClubs = clubs.filter((club) => {
-    const matchesSearch =
-      club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    const matchesCategory =
-      selectedCategory === "All" ||
-      club.category?.toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCategory;
-  });
+  const filteredAndSortedClubs = useMemo(() => {
+    let result = clubs.filter((club) => {
+      const matchesSearch =
+        club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      const matchesCategory =
+        selectedCategory === "All" ||
+        club.category?.toLowerCase() === selectedCategory.toLowerCase();
+      return matchesSearch && matchesCategory;
+    });
+
+    // Sort
+    switch (sortBy) {
+      case "name-asc":
+        result.sort((a, b) => a.club_name.localeCompare(b.club_name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.club_name.localeCompare(a.club_name));
+        break;
+      case "most-active":
+        result.sort((a, b) => {
+          const aActivity = a.opportunity_count + a.event_count;
+          const bActivity = b.opportunity_count + b.event_count;
+          return bActivity - aActivity;
+        });
+        break;
+    }
+
+    return result;
+  }, [clubs, searchQuery, selectedCategory, sortBy]);
 
   return (
     <Layout>
@@ -99,6 +177,19 @@ export default function ClubsPage() {
                   </button>
                 )}
               </div>
+
+              {/* Sort dropdown */}
+              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Name A-Z</SelectItem>
+                  <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  <SelectItem value="most-active">Most Active</SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* Category filters */}
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
@@ -142,57 +233,71 @@ export default function ClubsPage() {
             <>
               {/* Results count */}
               <p className="text-sm text-muted-foreground mb-6">
-                Showing {filteredClubs.length} clubs
+                Showing {filteredAndSortedClubs.length} clubs
               </p>
 
               {/* Grid */}
-              {filteredClubs.length > 0 ? (
+              {filteredAndSortedClubs.length > 0 ? (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredClubs.map((club) => (
-                    <div
+                  {filteredAndSortedClubs.map((club) => (
+                    <Link
                       key={club.id}
-                      className="group p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50"
+                      to={`/clubs/${club.id}`}
+                      className="group block"
                     >
-                      {/* Club header */}
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {club.logo_url ? (
-                            <img
-                              src={club.logo_url}
-                              alt={club.club_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="font-display text-xl font-bold text-muted-foreground">
-                              {club.club_name.charAt(0)}
-                            </span>
-                          )}
+                      <div className="p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50 h-full">
+                        {/* Club header */}
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {club.logo_url ? (
+                              <img
+                                src={club.logo_url}
+                                alt={club.club_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="font-display text-xl font-bold text-muted-foreground">
+                                {club.club_name.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-display text-lg font-semibold text-foreground truncate group-hover:text-accent transition-colors">
+                              {club.club_name}
+                            </h3>
+                            {club.category && (
+                              <Badge variant="muted" className="mt-1">
+                                {club.category}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-display text-lg font-semibold text-foreground truncate group-hover:text-accent transition-colors">
-                            {club.club_name}
-                          </h3>
-                          {club.category && (
-                            <Badge variant="muted" className="mt-1">
-                              {club.category}
-                            </Badge>
-                          )}
+
+                        {/* Description */}
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                          {club.description || "No description available"}
+                        </p>
+
+                        {/* Stats */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5" />
+                            {club.opportunity_count} {club.opportunity_count === 1 ? "opportunity" : "opportunities"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {club.event_count} {club.event_count === 1 ? "event" : "events"}
+                          </span>
                         </div>
-                      </div>
 
-                      {/* Description */}
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                        {club.description || "No description available"}
-                      </p>
-
-                      {/* Footer with links */}
-                      <div className="flex items-center justify-between">
+                        {/* Footer with links */}
                         <div className="flex items-center gap-2">
                           {club.website_url && (
                             <a
                               href={club.website_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
                             >
                               <Globe className="w-4 h-4 text-muted-foreground" />
@@ -203,6 +308,7 @@ export default function ClubsPage() {
                               href={club.instagram_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
                             >
                               <Instagram className="w-4 h-4 text-muted-foreground" />
@@ -213,20 +319,15 @@ export default function ClubsPage() {
                               href={club.linkedin_url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
                             >
                               <Linkedin className="w-4 h-4 text-muted-foreground" />
                             </a>
                           )}
                         </div>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/clubs/${club.id}`}>
-                            View
-                            <ExternalLink className="w-3 h-3 ml-1" />
-                          </Link>
-                        </Button>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
@@ -243,15 +344,15 @@ export default function ClubsPage() {
                       : "Try adjusting your search or filters"}
                   </p>
                   {clubs.length > 0 && (
-                    <Button
-                      variant="outline"
+                    <button
                       onClick={() => {
                         setSearchQuery("");
                         setSelectedCategory("All");
                       }}
+                      className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
                     >
                       Clear filters
-                    </Button>
+                    </button>
                   )}
                 </div>
               )}

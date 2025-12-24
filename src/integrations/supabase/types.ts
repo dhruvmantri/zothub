@@ -64,6 +64,7 @@ export type Database = {
       }
       bookmarks: {
         Row: {
+          club_id: string | null
           created_at: string
           event_id: string | null
           id: string
@@ -71,6 +72,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          club_id?: string | null
           created_at?: string
           event_id?: string | null
           id?: string
@@ -78,6 +80,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          club_id?: string | null
           created_at?: string
           event_id?: string | null
           id?: string
@@ -85,6 +88,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookmarks_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookmarks_event_id_fkey"
             columns: ["event_id"]
