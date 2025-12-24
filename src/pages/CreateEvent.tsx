@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
@@ -240,37 +241,25 @@ export default function CreateEvent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bannerUrl" className="flex items-center gap-2">
+                <Label className="flex items-center gap-2">
                   <Image className="w-4 h-4" />
-                  Banner Image URL
+                  Banner Image
                 </Label>
-                <Input
-                  id="bannerUrl"
-                  type="url"
-                  placeholder="https://example.com/event-banner.jpg"
-                  value={bannerUrl}
-                  onChange={(e) => setBannerUrl(e.target.value)}
+                <FileUpload
+                  bucket="club-assets"
+                  folder="event-banners"
+                  accept="image/*"
+                  maxSizeMB={5}
+                  currentUrl={bannerUrl}
+                  onUploadComplete={(url) => setBannerUrl(url)}
+                  onRemove={() => setBannerUrl("")}
+                  variant="image"
+                  placeholder="Click to upload event banner"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Add a banner image to make your event stand out
+                  Add a banner image to make your event stand out (max 5MB)
                 </p>
               </div>
-
-              {bannerUrl && (
-                <div className="mt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Preview:</p>
-                  <div className="rounded-lg overflow-hidden border border-border max-w-md">
-                    <img 
-                      src={bannerUrl} 
-                      alt="Event banner preview" 
-                      className="w-full h-32 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
