@@ -11,6 +11,7 @@ import OpportunityDetail from "./pages/OpportunityDetail";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Clubs from "./pages/Clubs";
+import ClubDetail from "./pages/ClubDetail";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ClubDashboard from "./pages/ClubDashboard";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/clubs" element={<Clubs />} />
+            <Route path="/clubs/:id" element={<ClubDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route 
