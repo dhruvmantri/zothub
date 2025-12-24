@@ -524,6 +524,11 @@ export type Database = {
     }
     Functions: {
       archive_past_events: { Args: never; Returns: undefined }
+      club_can_view_student: {
+        Args: { student_profile_id: string }
+        Returns: boolean
+      }
+      club_owns_opportunity: { Args: { opp_id: string }; Returns: boolean }
       get_all_clubs_public: {
         Args: never
         Returns: {
@@ -577,6 +582,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_own_student_profile: { Args: { profile_id: string }; Returns: boolean }
     }
     Enums: {
       user_role: "student" | "club"
