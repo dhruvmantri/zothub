@@ -17,7 +17,6 @@ import {
 import { toast } from "sonner";
 import { studentProfileSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { 
-  Sparkles, 
   User, 
   GraduationCap, 
   Code, 
@@ -27,11 +26,11 @@ import {
   Globe,
   X,
   Plus,
-  ArrowLeft,
   Save,
   Loader2
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { StudentLayout } from "@/components/student/StudentLayout";
 
 const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate", "PhD"] as const;
 
@@ -200,36 +199,17 @@ export default function StudentProfileSetup() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <StudentLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
-          </Link>
-          
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/student/dashboard">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Link>
-          </Button>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+    <StudentLayout>
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             Complete Your Profile
@@ -500,26 +480,26 @@ export default function StudentProfileSetup() {
           </Card>
 
           {/* Save Button */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" asChild>
-              <Link to="/student/dashboard">Cancel</Link>
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Profile
-                </>
-              )}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="w-full"
+            size="lg"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Profile
+              </>
+            )}
+          </Button>
         </div>
-      </main>
-    </div>
+      </div>
+    </StudentLayout>
   );
 }

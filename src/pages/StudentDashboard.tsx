@@ -6,11 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { 
   Calendar, 
-  Bookmark, 
   FileText, 
   Bell, 
-  LogOut,
-  Sparkles,
   Clock,
   CheckCircle2,
   XCircle,
@@ -19,10 +16,10 @@ import {
   Inbox,
   MessageSquare,
   Users,
-  Rss
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
+import { StudentLayout } from "@/components/student/StudentLayout";
 
 interface ApplicationData {
   id: string;
@@ -48,14 +45,8 @@ interface RsvpData {
   };
 }
 
-interface BookmarkData {
-  id: string;
-  opportunity_id: string | null;
-  event_id: string | null;
-}
-
 export default function StudentDashboard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationData[]>([]);
@@ -261,37 +252,17 @@ export default function StudentDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <StudentLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
-          </Link>
-          
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
+    <StudentLayout>
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             Welcome back! 👋
@@ -429,36 +400,7 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Quick Actions */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
-                <Link to="/student/feed" className="gap-2">
-                  <Rss className="w-4 h-4" />
-                  My Feed
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/student/profile">Edit Profile</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/opportunities">Browse Opportunities</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/events">Explore Events</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/clubs">Discover Clubs</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+      </div>
+    </StudentLayout>
   );
 }
