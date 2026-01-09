@@ -1,20 +1,16 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Sparkles,
-  LogOut,
   Loader2,
-  LayoutDashboard,
   Rss
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { FollowedClubsList } from "@/components/feed/FollowedClubsList";
 import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { toast } from "sonner";
+import { StudentLayout } from "@/components/student/StudentLayout";
 
 interface FollowedClub {
   id: string;
@@ -40,7 +36,7 @@ interface FeedItem {
 }
 
 export default function StudentFeed() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [followedClubs, setFollowedClubs] = useState<FollowedClub[]>([]);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -218,42 +214,17 @@ export default function StudentFeed() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <StudentLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
-          </Link>
-          
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/student/dashboard" className="gap-2">
-                <LayoutDashboard className="w-4 h-4" />
-                Dashboard
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+    <StudentLayout>
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         {/* Page Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
@@ -325,7 +296,7 @@ export default function StudentFeed() {
             )}
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </StudentLayout>
   );
 }
