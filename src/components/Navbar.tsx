@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Sparkles, LogOut, LayoutDashboard, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -54,6 +54,14 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
+                {role === "student" && (
+                  <Button variant="ghost" asChild>
+                    <Link to="/student/feed" className="gap-2">
+                      <Rss className="w-4 h-4" />
+                      My Feed
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="ghost" asChild>
                   <Link to={dashboardLink} className="gap-2">
                     <LayoutDashboard className="w-4 h-4" />
@@ -112,6 +120,14 @@ export function Navbar() {
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
                 {user ? (
                   <>
+                    {role === "student" && (
+                      <Button variant="outline" asChild className="w-full">
+                        <Link to="/student/feed" onClick={() => setMobileMenuOpen(false)}>
+                          <Rss className="w-4 h-4 mr-2" />
+                          My Feed
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" asChild className="w-full">
                       <Link to={dashboardLink} onClick={() => setMobileMenuOpen(false)}>
                         <LayoutDashboard className="w-4 h-4 mr-2" />

@@ -20,6 +20,7 @@ import CreateEvent from "./pages/CreateEvent";
 import EditOpportunity from "./pages/EditOpportunity";
 import EditEvent from "./pages/EditEvent";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentFeed from "./pages/StudentFeed";
 import StudentProfileSetup from "./pages/StudentProfileSetup";
 import ClubProfileSetup from "./pages/ClubProfileSetup";
 import ClubMessages from "./pages/ClubMessages";
@@ -91,6 +92,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/feed"
+              element={
+                <ProtectedRoute allowedRoles={["student"]}>
+                  <StudentFeed />
                 </ProtectedRoute>
               } 
             />
