@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { requireSession } from "@/lib/requireSession";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -63,6 +64,7 @@ interface TeamMember {
 const ClubDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user, role } = useAuth();
+  const navigate = useNavigate();
   const [club, setClub] = useState<Club | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -149,6 +151,7 @@ const ClubDetail = () => {
   const handleFollowToggle = async () => {
     if (!user) {
       toast.error("Please log in to follow clubs");
+      navigate("/login", { state: { from: `/clubs/${id}` } });
       return;
     }
 
@@ -156,6 +159,9 @@ const ClubDetail = () => {
 
     setIsFollowLoading(true);
     try {
+      // Ensure we have a valid session before making writes
+      await requireSession();
+
       if (isFollowing) {
         // Unfollow
         const { error } = await supabase
@@ -177,9 +183,14 @@ const ClubDetail = () => {
         setIsFollowing(true);
         toast.success("Following club!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling follow:", error);
-      toast.error("Failed to update follow status");
+      if (error.message?.includes("Session expired")) {
+        toast.error("Session expired. Please log in again.");
+        navigate("/login", { state: { from: `/clubs/${id}` } });
+      } else {
+        toast.error("Failed to update follow status");
+      }
     } finally {
       setIsFollowLoading(false);
     }
