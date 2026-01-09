@@ -17,7 +17,9 @@ import {
   Building2,
   Loader2,
   Inbox,
-  MessageSquare
+  MessageSquare,
+  Users,
+  Rss
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -59,6 +61,7 @@ export default function StudentDashboard() {
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [rsvps, setRsvps] = useState<RsvpData[]>([]);
   const [bookmarkCount, setBookmarkCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
@@ -158,7 +161,7 @@ export default function StudentDashboard() {
         // Fetch bookmark count
         supabase
           .from("bookmarks")
-          .select("id, opportunity_id, event_id")
+          .select("id, opportunity_id, event_id, club_id")
           .eq("user_id", user.id),
         
         // Fetch unread notifications count
@@ -211,7 +214,11 @@ export default function StudentDashboard() {
       }
 
       if (!bookmarksRes.error) {
-        setBookmarkCount(bookmarksRes.data?.length || 0);
+        const bookmarks = bookmarksRes.data || [];
+        setBookmarkCount(bookmarks.length);
+        // Count club follows separately
+        const clubFollows = bookmarks.filter((b: any) => b.club_id !== null);
+        setFollowingCount(clubFollows.length);
       }
 
       if (!notificationsRes.error) {
@@ -247,8 +254,8 @@ export default function StudentDashboard() {
   // Calculate stats
   const stats = [
     { label: "Applications", value: applications.length, icon: FileText, color: "text-accent" },
-    { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-primary", link: "/student/messages" },
-    { label: "Upcoming Events", value: rsvps.length, icon: Calendar, color: "text-emerald-500" },
+    { label: "Following", value: followingCount, icon: Users, color: "text-primary", link: "/student/feed" },
+    { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-emerald-500", link: "/student/messages" },
     { label: "Notifications", value: notificationCount, icon: Bell, color: "text-amber-500", link: "/notifications" },
   ];
 
@@ -431,6 +438,12 @@ export default function StudentDashboard() {
           <CardContent>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
+                <Link to="/student/feed" className="gap-2">
+                  <Rss className="w-4 h-4" />
+                  My Feed
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link to="/student/profile">Edit Profile</Link>
               </Button>
               <Button variant="outline" asChild>
