@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { requireSession } from "@/lib/requireSession";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Layout } from "@/components/Layout";
+import { SmartLayout } from "@/components/SmartLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,7 +198,7 @@ const ClubDetail = () => {
 
   if (isLoading) {
     return (
-      <Layout>
+      <SmartLayout>
         <div className="container mx-auto px-4 py-8">
           <Skeleton className="h-48 w-full mb-6 rounded-xl" />
           <Skeleton className="h-8 w-1/3 mb-4" />
@@ -208,13 +208,13 @@ const ClubDetail = () => {
             <Skeleton className="h-32" />
           </div>
         </div>
-      </Layout>
+      </SmartLayout>
     );
   }
 
   if (!club) {
     return (
-      <Layout>
+      <SmartLayout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-bold mb-4">Club not found</h1>
           <p className="text-muted-foreground mb-6">
@@ -227,14 +227,14 @@ const ClubDetail = () => {
             </Link>
           </Button>
         </div>
-      </Layout>
+      </SmartLayout>
     );
   }
 
   const hasSocialLinks = club.website_url || club.linkedin_url || club.instagram_url || club.discord_url;
 
   return (
-    <Layout>
+    <SmartLayout>
       <div className="container mx-auto px-4 py-8">
         {/* Back button */}
         <Button variant="ghost" asChild className="mb-6">
@@ -482,7 +482,7 @@ const ClubDetail = () => {
           clubUserId={club.user_id}
         />
       )}
-    </Layout>
+    </SmartLayout>
   );
 };
 
