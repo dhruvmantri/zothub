@@ -13,7 +13,9 @@ import {
 import {
   Sparkles,
   LayoutDashboard,
-  Compass,
+  Briefcase,
+  Calendar,
+  Building2,
   Rss,
   MessageSquare,
   Bell,
@@ -32,7 +34,9 @@ interface ClubTopNavProps {
 
 const navLinks = [
   { href: "/club/feed", label: "Feed", icon: Rss },
-  { href: "/club/explore", label: "Explore", icon: Compass },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/clubs", label: "Clubs", icon: Building2 },
   { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 
@@ -45,7 +49,7 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
       return location.pathname === "/club/dashboard" || 
              location.pathname.startsWith("/club/dashboard/");
     }
-    return location.pathname === href || location.pathname.startsWith(href + "/");
+    return location.pathname === href;
   };
 
   const userInitial = user?.email?.charAt(0).toUpperCase() || "C";
