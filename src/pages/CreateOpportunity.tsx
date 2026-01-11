@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ClubLayout } from "@/components/club/ClubLayout";
 import { 
   ApplicationQuestionsBuilder, 
   ApplicationQuestion 
@@ -145,7 +145,7 @@ export default function CreateOpportunity() {
   };
 
   return (
-    <DashboardLayout>
+    <ClubLayout>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -328,6 +328,6 @@ export default function CreateOpportunity() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
+    </ClubLayout>
   );
 }

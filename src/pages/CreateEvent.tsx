@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import {
   Calendar,
@@ -118,7 +118,7 @@ export default function CreateEvent() {
   };
 
   return (
-    <DashboardLayout>
+    <ClubLayout>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -319,6 +319,6 @@ export default function CreateEvent() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
+    </ClubLayout>
   );
 }
