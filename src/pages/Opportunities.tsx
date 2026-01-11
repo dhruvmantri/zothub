@@ -9,7 +9,7 @@ import { Search, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatDeadline, normalizeOpportunityType } from "@/lib/formatters";
 
 interface Opportunity {
   id: string;
@@ -152,21 +152,6 @@ export default function OpportunitiesPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const formatDeadline = (deadline: string | null) => {
-    if (!deadline) return "Rolling";
-    try {
-      return format(new Date(deadline), "MMM d, yyyy");
-    } catch {
-      return "Rolling";
-    }
-  };
-
-  const getOpportunityType = (type: string): "leadership" | "project" | "internship" | "volunteer" => {
-    const validTypes = ["leadership", "project", "internship", "volunteer"];
-    return validTypes.includes(type.toLowerCase()) 
-      ? (type.toLowerCase() as "leadership" | "project" | "internship" | "volunteer")
-      : "volunteer";
-  };
 
   return (
     <SmartLayout>
@@ -263,7 +248,7 @@ export default function OpportunitiesPage() {
                       title={opportunity.title}
                       clubName={opportunity.club_profiles?.club_name || "Unknown Club"}
                       clubLogo={opportunity.club_profiles?.logo_url || undefined}
-                      type={getOpportunityType(opportunity.type)}
+                      type={normalizeOpportunityType(opportunity.type)}
                       deadline={formatDeadline(opportunity.deadline)}
                       description={opportunity.description || "No description provided"}
                       applicants={opportunity.applications?.length || 0}
