@@ -8,7 +8,8 @@ import { Search, Calendar, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { format, isAfter, isBefore, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { formatDate, formatTime } from "@/lib/formatters";
 
 interface Event {
   id: string;
@@ -169,21 +170,6 @@ export default function EventsPage() {
     return matchesSearch && matchesDate;
   });
 
-  const formatEventDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "MMM d, yyyy");
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatEventTime = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "h:mm a");
-    } catch {
-      return "";
-    }
-  };
 
   return (
     <SmartLayout>
@@ -280,8 +266,8 @@ export default function EventsPage() {
                       title={event.title}
                       clubName={event.club_profiles?.club_name || "Unknown Club"}
                       clubLogo={event.club_profiles?.logo_url || undefined}
-                      date={formatEventDate(event.event_date)}
-                      time={formatEventTime(event.event_date)}
+                      date={formatDate(event.event_date)}
+                      time={formatTime(event.event_date)}
                       location={event.location || "TBD"}
                       bannerImage={event.banner_url || undefined}
                       attendees={event.rsvps?.length || 0}

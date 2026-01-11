@@ -1,12 +1,10 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
-  LayoutDashboard, 
   Briefcase, 
   Calendar, 
   Users, 
   MessageSquare, 
-  Settings,
   Bell,
   TrendingUp,
   ChevronLeft,
@@ -16,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigationCounts } from "@/hooks/useNavigationCounts";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardLayoutProps {
@@ -25,53 +24,28 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const { user } = useAuth();
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const { unreadMessageCount, notificationCount } = useNavigationCounts();
   const [applicationCount, setApplicationCount] = useState(0);
-  const [notificationCount, setNotificationCount] = useState(0);
   const [clubName, setClubName] = useState("My Club");
 
-  // Fetch counts
+  // Fetch club-specific data (application count and club name)
   useEffect(() => {
     if (!user) return;
 
-    const fetchCounts = async () => {
-      // Unread messages
-      const { count: msgCount } = await supabase
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("receiver_id", user.id)
-        .eq("is_read", false);
-
-      setUnreadMessageCount(msgCount || 0);
-
-      // Unread notifications
-      const { count: notifCount } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
-
-      setNotificationCount(notifCount || 0);
-
-      // Pending applications for club's opportunities
+    const fetchClubData = async () => {
+      // Get club profile
       const { data: clubProfile } = await supabase
         .from("club_profiles")
-        .select("id")
+        .select("id, club_name")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (clubProfile) {
-        // Fetch club name
-        const { data: fullProfile } = await supabase
-          .from("club_profiles")
-          .select("club_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (fullProfile?.club_name) {
-          setClubName(fullProfile.club_name);
+        if (clubProfile.club_name) {
+          setClubName(clubProfile.club_name);
         }
 
+        // Pending applications count
         const { count: appCount } = await supabase
           .from("applications")
           .select("*, opportunities!inner(club_id)", { count: "exact", head: true })
@@ -82,45 +56,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       }
     };
 
-    fetchCounts();
-
-    // Subscribe to real-time updates for messages and notifications
-    const messagesChannel = supabase
-      .channel("unread-messages-count")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `receiver_id=eq.${user.id}`,
-        },
-        () => {
-          fetchCounts();
-        }
-      )
-      .subscribe();
-
-    const notificationsChannel = supabase
-      .channel("unread-notifications-count")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchCounts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(notificationsChannel);
-    };
+    fetchClubData();
   }, [user]);
 
   const sidebarLinks = [
