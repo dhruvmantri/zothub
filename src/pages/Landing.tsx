@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Layout } from "@/components/Layout";
+import { SmartLayout } from "@/components/SmartLayout";
 import { 
   ArrowRight, 
   Users, 
@@ -46,7 +46,7 @@ const stats = [
 
 export default function Landing() {
   return (
-    <Layout>
+    <SmartLayout>
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-hero">
         {/* Background Pattern */}
@@ -272,6 +272,6 @@ export default function Landing() {
           </div>
         </div>
       </footer>
-    </Layout>
+    </SmartLayout>
   );
 }
