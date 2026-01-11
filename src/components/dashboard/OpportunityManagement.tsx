@@ -29,11 +29,11 @@ import {
   Users,
   Clock,
   Filter,
-  Loader2,
   Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { DashboardOpportunity } from "@/types";
+import { PageLoader } from "@/components/ui/page-loader";
 
 interface OpportunityManagementProps {
   opportunities: DashboardOpportunity[];
@@ -76,11 +76,7 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

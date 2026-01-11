@@ -31,10 +31,10 @@ import {
   MapPin,
   Calendar,
   Filter,
-  Loader2,
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import type { DashboardEvent } from "@/types";
+import { PageLoader } from "@/components/ui/page-loader";
 
 interface EventManagementProps {
   events: DashboardEvent[];
@@ -77,11 +77,7 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

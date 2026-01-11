@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "./Layout";
 import { StudentLayout } from "./student/StudentLayout";
-import { Loader2 } from "lucide-react";
+import { PageLoader } from "./ui/page-loader";
 
 interface SmartLayoutProps {
   children: ReactNode;
@@ -23,7 +23,7 @@ export function SmartLayout({ children }: SmartLayoutProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <PageLoader size="md" />
       </div>
     );
   }
