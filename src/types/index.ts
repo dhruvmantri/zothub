@@ -112,6 +112,26 @@ export interface ClubWithCounts extends ClubProfile {
   event_count: number;
 }
 
+// ============= Dashboard Types =============
+
+export interface DashboardOpportunity extends Omit<Opportunity, 'club_id' | 'updated_at'> {
+  applications_count: number;
+}
+
+export interface DashboardEvent extends Omit<Event, 'club_id' | 'updated_at'> {
+  rsvps_count: number;
+}
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  status: string;
+  invited_at: string;
+  joined_at: string | null;
+}
+
 // ============= UI Types =============
 
 export type OpportunityType = "leadership" | "project" | "internship" | "volunteer" | "committee" | "other";

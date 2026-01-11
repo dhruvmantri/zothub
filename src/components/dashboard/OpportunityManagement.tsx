@@ -33,22 +33,10 @@ import {
   Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";
-
-interface Opportunity {
-  id: string;
-  title: string;
-  type: string;
-  description: string | null;
-  requirements: string | null;
-  deadline: string | null;
-  is_active: boolean;
-  views: number;
-  created_at: string;
-  applications_count: number;
-}
+import type { DashboardOpportunity } from "@/types";
 
 interface OpportunityManagementProps {
-  opportunities: Opportunity[];
+  opportunities: DashboardOpportunity[];
   onDelete: (id: string) => Promise<boolean>;
   isLoading?: boolean;
 }
@@ -66,9 +54,9 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [opportunityToDelete, setOpportunityToDelete] = useState<Opportunity | null>(null);
+  const [opportunityToDelete, setOpportunityToDelete] = useState<DashboardOpportunity | null>(null);
 
-  const getStatus = (opp: Opportunity) => {
+  const getStatus = (opp: DashboardOpportunity) => {
     if (!opp.is_active) return "draft";
     if (opp.deadline && new Date(opp.deadline) < new Date()) return "closed";
     return "active";

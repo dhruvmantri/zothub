@@ -2,49 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-
-interface Opportunity {
-  id: string;
-  title: string;
-  type: string;
-  description: string | null;
-  requirements: string | null;
-  deadline: string | null;
-  is_active: boolean;
-  views: number;
-  created_at: string;
-  applications_count: number;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  description: string | null;
-  event_date: string;
-  location: string | null;
-  capacity: number | null;
-  banner_url: string | null;
-  is_active: boolean;
-  views: number;
-  created_at: string;
-  rsvps_count: number;
-}
-
-interface TeamMember {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  status: string;
-  invited_at: string;
-  joined_at: string | null;
-}
+import type { DashboardOpportunity, DashboardEvent, TeamMember } from "@/types";
 
 export function useClubData() {
   const { user } = useAuth();
   const [clubId, setClubId] = useState<string | null>(null);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [opportunities, setOpportunities] = useState<DashboardOpportunity[]>([]);
+  const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
