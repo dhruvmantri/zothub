@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SmartLayout } from "@/components/SmartLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,7 @@ export default function OpportunitiesPage() {
 
 
   return (
-    <SmartLayout>
+    <RoleBasedLayout>
       <div className="min-h-screen">
         {/* Header */}
         <div className="bg-secondary/30 border-b border-border/50">
@@ -220,6 +220,6 @@ export default function OpportunitiesPage() {
           )}
         </div>
       </div>
-    </SmartLayout>
+    </RoleBasedLayout>
   );
 }

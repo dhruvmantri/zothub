@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { SmartLayout } from "@/components/SmartLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -270,7 +270,7 @@ export default function OpportunityDetail() {
 
   if (isLoading) {
     return (
-      <SmartLayout>
+      <RoleBasedLayout>
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <Skeleton className="h-8 w-32 mb-6" />
           <div className="space-y-6">
@@ -283,13 +283,13 @@ export default function OpportunityDetail() {
             <Skeleton className="h-60 w-full" />
           </div>
         </div>
-      </SmartLayout>
+      </RoleBasedLayout>
     );
   }
 
   if (!opportunity) {
     return (
-      <SmartLayout>
+      <RoleBasedLayout>
         <div className="container mx-auto px-4 py-16 text-center">
           <h2 className="font-display text-2xl font-bold text-foreground mb-4">
             Opportunity not found
@@ -298,12 +298,12 @@ export default function OpportunityDetail() {
             <Link to="/opportunities">Browse Opportunities</Link>
           </Button>
         </div>
-      </SmartLayout>
+      </RoleBasedLayout>
     );
   }
 
   return (
-    <SmartLayout>
+    <RoleBasedLayout>
       <div className="min-h-screen bg-background">
         {/* Header */}
         <div className="bg-secondary/30 border-b border-border/50">
@@ -573,6 +573,6 @@ export default function OpportunityDetail() {
           onSuccess={handleApplicationSuccess}
         />
       )}
-    </SmartLayout>
+    </RoleBasedLayout>
   );
 }

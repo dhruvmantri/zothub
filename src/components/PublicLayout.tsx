@@ -1,12 +1,12 @@
 import { ReactNode } from "react";
 import { Navbar } from "./Navbar";
 
-interface LayoutProps {
+interface PublicLayoutProps {
   children: ReactNode;
   showNavbar?: boolean;
 }
 
-export function Layout({ children, showNavbar = true }: LayoutProps) {
+export function PublicLayout({ children, showNavbar = true }: PublicLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {showNavbar && <Navbar />}

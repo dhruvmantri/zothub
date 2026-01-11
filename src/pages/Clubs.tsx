@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { SmartLayout } from "@/components/SmartLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -140,7 +140,7 @@ export default function ClubsPage() {
   }, [clubs, searchQuery, selectedCategory, sortBy]);
 
   return (
-    <SmartLayout>
+    <RoleBasedLayout>
       <div className="min-h-screen">
         {/* Header */}
         <div className="bg-secondary/30 border-b border-border/50">
@@ -360,6 +360,6 @@ export default function ClubsPage() {
           )}
         </div>
       </div>
-    </SmartLayout>
+    </RoleBasedLayout>
   );
 }
