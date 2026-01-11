@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Briefcase, Calendar, Users, User } from "lucide-react";
+import { LayoutDashboard, Compass, Rss, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "/club/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/club/opportunities", label: "Opps", icon: Briefcase },
-  { href: "/club/events", label: "Events", icon: Calendar },
-  { href: "/club/applications", label: "Apps", icon: Users },
+  { href: "/club/feed", label: "Feed", icon: Rss },
+  { href: "/club/explore", label: "Explore", icon: Compass },
+  { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/club/messages", label: "Messages", icon: MessageSquare },
   { href: "/club/profile", label: "Profile", icon: User },
 ];
 
@@ -15,12 +15,10 @@ export function ClubBottomNav() {
 
   const isActive = (href: string) => {
     if (href === "/club/dashboard") {
-      return location.pathname === "/club/dashboard";
+      return location.pathname === "/club/dashboard" || 
+             location.pathname.startsWith("/club/dashboard/");
     }
-    if (href === "/club/profile") {
-      return location.pathname === "/club/profile";
-    }
-    return location.pathname.startsWith(href);
+    return location.pathname === href || location.pathname.startsWith(href + "/");
   };
 
   return (

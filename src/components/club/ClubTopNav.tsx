@@ -13,13 +13,13 @@ import {
 import {
   Sparkles,
   LayoutDashboard,
-  Briefcase,
-  Calendar,
-  Users,
+  Compass,
+  Rss,
   MessageSquare,
   Bell,
   User,
   TrendingUp,
+  Users,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,10 +31,9 @@ interface ClubTopNavProps {
 }
 
 const navLinks = [
-  { href: "/club/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/club/opportunities", label: "Opportunities", icon: Briefcase },
-  { href: "/club/events", label: "Events", icon: Calendar },
-  { href: "/club/applications", label: "Applications", icon: Users },
+  { href: "/club/feed", label: "Feed", icon: Rss },
+  { href: "/club/explore", label: "Explore", icon: Compass },
+  { href: "/club/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 
 export function ClubTopNav({ unreadMessageCount, notificationCount, applicationCount }: ClubTopNavProps) {
@@ -43,9 +42,10 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
 
   const isActive = (href: string) => {
     if (href === "/club/dashboard") {
-      return location.pathname === "/club/dashboard";
+      return location.pathname === "/club/dashboard" || 
+             location.pathname.startsWith("/club/dashboard/");
     }
-    return location.pathname.startsWith(href);
+    return location.pathname === href || location.pathname.startsWith(href + "/");
   };
 
   const userInitial = user?.email?.charAt(0).toUpperCase() || "C";
@@ -78,7 +78,7 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
                 >
                   <link.icon className="w-4 h-4" />
                   {link.label}
-                  {link.href === "/club/applications" && applicationCount > 0 && (
+                  {link.href === "/club/dashboard" && applicationCount > 0 && (
                     <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
                       {applicationCount > 9 ? "9+" : applicationCount}
                     </Badge>
@@ -147,13 +147,13 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                  <Link to="/club/team" className="flex items-center gap-2">
+                  <Link to="/club/dashboard/team" className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Team
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/club/analytics" className="flex items-center gap-2">
+                  <Link to="/club/dashboard/analytics" className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
                     Analytics
                   </Link>
