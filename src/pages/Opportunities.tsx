@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Layout } from "@/components/Layout";
+import { SmartLayout } from "@/components/SmartLayout";
 import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,7 +169,7 @@ export default function OpportunitiesPage() {
   };
 
   return (
-    <Layout>
+    <SmartLayout>
       <div className="min-h-screen">
         {/* Header */}
         <div className="bg-secondary/30 border-b border-border/50">
@@ -302,6 +302,6 @@ export default function OpportunitiesPage() {
           )}
         </div>
       </div>
-    </Layout>
+    </SmartLayout>
   );
 }
