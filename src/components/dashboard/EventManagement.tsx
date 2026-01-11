@@ -34,23 +34,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
-
-interface Event {
-  id: string;
-  title: string;
-  description: string | null;
-  event_date: string;
-  location: string | null;
-  capacity: number | null;
-  banner_url: string | null;
-  is_active: boolean;
-  views: number;
-  created_at: string;
-  rsvps_count: number;
-}
+import type { DashboardEvent } from "@/types";
 
 interface EventManagementProps {
-  events: Event[];
+  events: DashboardEvent[];
   onDelete: (id: string) => Promise<boolean>;
   isLoading?: boolean;
 }
@@ -59,9 +46,9 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<DashboardEvent | null>(null);
 
-  const getStatus = (event: Event) => {
+  const getStatus = (event: DashboardEvent) => {
     if (!event.is_active) return "draft";
     const eventDate = new Date(event.event_date);
     if (isPast(eventDate)) return "past";
