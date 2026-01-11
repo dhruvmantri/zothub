@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileLookup, ProfileInfo } from "./useProfileLookup";
+
+export type { ProfileInfo };
 
 export interface Message {
   id: string;
@@ -21,75 +24,14 @@ export interface Conversation {
   isClub: boolean;
 }
 
-interface ProfileInfo {
-  id: string;
-  name: string;
-  avatar?: string;
-  isClub: boolean;
-  userId: string;
-}
-
 export function useMessages() {
   const { user, role } = useAuth();
+  const { fetchProfileInfo } = useProfileLookup();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [profileCache, setProfileCache] = useState<Map<string, ProfileInfo>>(new Map());
-
-  // Fetch profile info for a user ID
-  const fetchProfileInfo = useCallback(async (userId: string): Promise<ProfileInfo | null> => {
-    // Check cache first
-    if (profileCache.has(userId)) {
-      return profileCache.get(userId)!;
-    }
-
-    try {
-      // Try club profile first
-      const { data: clubProfile } = await supabase
-        .from("club_profiles")
-        .select("id, club_name, logo_url, user_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (clubProfile) {
-        const info: ProfileInfo = {
-          id: clubProfile.id,
-          name: clubProfile.club_name,
-          avatar: clubProfile.logo_url || undefined,
-          isClub: true,
-          userId: clubProfile.user_id,
-        };
-        setProfileCache(prev => new Map(prev).set(userId, info));
-        return info;
-      }
-
-      // Try student profile
-      const { data: studentProfile } = await supabase
-        .from("student_profiles")
-        .select("id, full_name, avatar_url, user_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (studentProfile) {
-        const info: ProfileInfo = {
-          id: studentProfile.id,
-          name: studentProfile.full_name || "Student",
-          avatar: studentProfile.avatar_url || undefined,
-          isClub: false,
-          userId: studentProfile.user_id,
-        };
-        setProfileCache(prev => new Map(prev).set(userId, info));
-        return info;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      return null;
-    }
-  }, [profileCache]);
 
   // Fetch all conversations
   const fetchConversations = useCallback(async () => {

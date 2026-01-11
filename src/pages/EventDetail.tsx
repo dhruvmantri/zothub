@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { SmartLayout } from "@/components/SmartLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -238,7 +238,7 @@ export default function EventDetail() {
 
   if (loading) {
     return (
-      <SmartLayout>
+      <RoleBasedLayout>
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <Skeleton className="h-8 w-32 mb-6" />
           <Skeleton className="h-64 w-full rounded-lg mb-6" />
@@ -246,23 +246,23 @@ export default function EventDetail() {
           <Skeleton className="h-4 w-1/2 mb-8" />
           <Skeleton className="h-32 w-full" />
         </div>
-      </SmartLayout>
+      </RoleBasedLayout>
     );
   }
 
   if (!event) {
     return (
-      <SmartLayout>
+      <RoleBasedLayout>
         <div className="container mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Event Not Found</h1>
           <Button onClick={() => navigate("/events")}>Back to Events</Button>
         </div>
-      </SmartLayout>
+      </RoleBasedLayout>
     );
   }
 
   return (
-    <SmartLayout>
+    <RoleBasedLayout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button
           variant="ghost"
@@ -421,6 +421,6 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
-    </SmartLayout>
+    </RoleBasedLayout>
   );
 }

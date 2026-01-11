@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SmartLayout } from "@/components/SmartLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { EventCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +106,7 @@ export default function EventsPage() {
 
 
   return (
-    <SmartLayout>
+    <RoleBasedLayout>
       <div className="min-h-screen">
         {/* Header */}
         <div className="bg-secondary/30 border-b border-border/50">
@@ -241,6 +241,6 @@ export default function EventsPage() {
           )}
         </div>
       </div>
-    </SmartLayout>
+    </RoleBasedLayout>
   );
 }
