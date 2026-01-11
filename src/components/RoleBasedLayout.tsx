@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PublicLayout } from "./PublicLayout";
 import { StudentLayout } from "./student/StudentLayout";
+import { ClubLayout } from "./club/ClubLayout";
 import { PageLoader } from "./ui/page-loader";
 
 interface RoleBasedLayoutProps {
@@ -11,7 +12,7 @@ interface RoleBasedLayoutProps {
 /**
  * RoleBasedLayout chooses the appropriate layout based on user role:
  * - Logged-in students → StudentLayout (consistent student navigation)
- * - Logged-in clubs → PublicLayout (club-specific navigation)
+ * - Logged-in clubs → ClubLayout (club-specific navigation)
  * - Not logged in → PublicLayout (shows login/signup buttons)
  * 
  * IMPORTANT: Waits for auth to fully load before deciding which layout to render.
@@ -33,6 +34,11 @@ export function RoleBasedLayout({ children }: RoleBasedLayoutProps) {
     return <StudentLayout>{children}</StudentLayout>;
   }
 
-  // For clubs or non-logged-in users, use the standard PublicLayout
+  // If user is a logged-in club, use ClubLayout for consistent nav
+  if (user && role === "club") {
+    return <ClubLayout>{children}</ClubLayout>;
+  }
+
+  // For non-logged-in users, use the standard PublicLayout
   return <PublicLayout>{children}</PublicLayout>;
 }

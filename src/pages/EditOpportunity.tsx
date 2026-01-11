@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ClubLayout } from "@/components/club/ClubLayout";
 import { 
   ApplicationQuestionsBuilder, 
   ApplicationQuestion 
@@ -168,16 +168,16 @@ export default function EditOpportunity() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <ClubLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </ClubLayout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <ClubLayout>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -360,6 +360,6 @@ export default function EditOpportunity() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
+    </ClubLayout>
   );
 }

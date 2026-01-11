@@ -14,7 +14,6 @@ import Clubs from "./pages/Clubs";
 import ClubDetail from "./pages/ClubDetail";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import ClubDashboard from "./pages/ClubDashboard";
 import CreateOpportunity from "./pages/CreateOpportunity";
 import CreateEvent from "./pages/CreateEvent";
 import EditOpportunity from "./pages/EditOpportunity";
@@ -27,6 +26,13 @@ import ClubMessages from "./pages/ClubMessages";
 import StudentMessages from "./pages/StudentMessages";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+// New club route pages
+import ClubHome from "./pages/club/ClubHome";
+import ClubOpportunities from "./pages/club/ClubOpportunities";
+import ClubEvents from "./pages/club/ClubEvents";
+import ClubApplications from "./pages/club/ClubApplications";
+import ClubTeam from "./pages/club/ClubTeam";
+import ClubAnalytics from "./pages/club/ClubAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -51,7 +57,47 @@ const App = () => (
               path="/club/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
-                  <ClubDashboard />
+                  <ClubHome />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/opportunities" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubOpportunities />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/events" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubEvents />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/applications" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubApplications />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/team" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubTeam />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/club/analytics" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubAnalytics />
                 </ProtectedRoute>
               } 
             />

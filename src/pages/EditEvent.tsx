@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import {
   Calendar,
@@ -137,16 +137,16 @@ export default function EditEvent() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <ClubLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </ClubLayout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <ClubLayout>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -359,6 +359,6 @@ export default function EditEvent() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
+    </ClubLayout>
   );
 }
