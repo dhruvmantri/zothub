@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Calendar, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { formatDate, formatTime } from "@/lib/formatters";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 interface Event {
   id: string;
@@ -30,19 +30,15 @@ interface Event {
 const dateFilters = ["All", "This Week", "This Month", "Upcoming"];
 
 export default function EventsPage() {
-  const { user } = useAuth();
+  const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDateFilter, setSelectedDateFilter] = useState("All");
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchEvents();
-    if (user) {
-      fetchBookmarks();
-    }
-  }, [user]);
+  }, []);
 
   const fetchEvents = async () => {
     try {
@@ -82,68 +78,6 @@ export default function EventsPage() {
     }
   };
 
-  const fetchBookmarks = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("event_id")
-        .eq("user_id", user.id)
-        .not("event_id", "is", null);
-
-      if (error) {
-        console.error("Error fetching bookmarks:", error);
-        return;
-      }
-
-      const ids = new Set(data?.map((b) => b.event_id).filter(Boolean) as string[]);
-      setBookmarkedIds(ids);
-    } catch (err) {
-      console.error("Error:", err);
-    }
-  };
-
-  const toggleBookmark = async (id: string) => {
-    if (!user) {
-      toast.error("Please log in to bookmark events");
-      return;
-    }
-
-    const isBookmarked = bookmarkedIds.has(id);
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("event_id", id);
-
-        if (error) throw error;
-
-        setBookmarkedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({
-          user_id: user.id,
-          event_id: id,
-        });
-
-        if (error) throw error;
-
-        setBookmarkedIds((prev) => new Set(prev).add(id));
-        toast.success("Event bookmarked");
-      }
-    } catch (err) {
-      console.error("Error toggling bookmark:", err);
-      toast.error("Failed to update bookmark");
-    }
-  };
 
   const filterEventsByDate = (event: Event) => {
     const eventDate = new Date(event.event_date);
@@ -272,7 +206,7 @@ export default function EventsPage() {
                       bannerImage={event.banner_url || undefined}
                       attendees={event.rsvps?.length || 0}
                       capacity={event.capacity || undefined}
-                      isBookmarked={bookmarkedIds.has(event.id)}
+                      isBookmarked={isBookmarked(event.id)}
                       onBookmark={() => toggleBookmark(event.id)}
                     />
                   ))}
