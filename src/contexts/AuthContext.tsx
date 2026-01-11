@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   signUp: (email: string, password: string, role: "student" | "club") => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: (intendedRole?: "student" | "club") => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -84,11 +85,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(null);
       } else if (data) {
         setRole(data.role as UserRole);
+      } else {
+        // No role found - this might be a new Google OAuth user
+        // Check if there's an intended role stored
+        await handleNewOAuthUser(userId);
       }
     } catch (err) {
       console.error("Error fetching role:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleNewOAuthUser = async (userId: string) => {
+    const intendedRole = localStorage.getItem("zothub_intended_role") as "student" | "club" | null;
+    
+    if (!intendedRole) {
+      // No intended role - user needs to select one
+      setRole(null);
+      return;
+    }
+
+    try {
+      // Get user email from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = user?.email;
+
+      if (!email) {
+        console.error("No email found for user");
+        return;
+      }
+
+      // Validate UCI email
+      if (!email.endsWith("@uci.edu")) {
+        console.error("Non-UCI email attempted to sign up");
+        await supabase.auth.signOut();
+        return;
+      }
+
+      // Insert user role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: intendedRole });
+
+      if (roleError) {
+        console.error("Error inserting role:", roleError);
+        return;
+      }
+
+      // Create initial profile based on role
+      if (intendedRole === "student") {
+        await supabase
+          .from("student_profiles")
+          .insert({ 
+            user_id: userId, 
+            email: email,
+            full_name: user?.user_metadata?.full_name || null,
+            avatar_url: user?.user_metadata?.avatar_url || null
+          });
+      } else {
+        await supabase
+          .from("club_profiles")
+          .insert({ 
+            user_id: userId, 
+            email: email,
+            club_name: "My Club"
+          });
+      }
+
+      setRole(intendedRole);
+      localStorage.removeItem("zothub_intended_role");
+    } catch (err) {
+      console.error("Error handling new OAuth user:", err);
     }
   };
 
@@ -169,13 +237,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (intendedRole?: "student" | "club") => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            hd: "uci.edu", // Restrict to UCI Google Workspace domain
+          },
+          ...(intendedRole && {
+            scopes: "email profile",
+          }),
+        },
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      // Store intended role in localStorage for post-OAuth handling
+      if (intendedRole) {
+        localStorage.setItem("zothub_intended_role", intendedRole);
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setRole(null);
+    localStorage.removeItem("zothub_intended_role");
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, isLoading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, isLoading, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );
