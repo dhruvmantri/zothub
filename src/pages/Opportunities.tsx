@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { SmartLayout } from "@/components/SmartLayout";
 import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, X, Loader2 } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDeadline, normalizeOpportunityType } from "@/lib/formatters";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 interface Opportunity {
   id: string;
@@ -28,19 +27,15 @@ interface Opportunity {
 const categories = ["All", "Leadership", "Project", "Internship", "Volunteer", "Committee", "Other"];
 
 export default function OpportunitiesPage() {
-  const { user } = useAuth();
+  const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchOpportunities();
-    if (user) {
-      fetchBookmarks();
-    }
-  }, [user]);
+  }, []);
 
   const fetchOpportunities = async () => {
     try {
@@ -78,68 +73,6 @@ export default function OpportunitiesPage() {
     }
   };
 
-  const fetchBookmarks = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("opportunity_id")
-        .eq("user_id", user.id)
-        .not("opportunity_id", "is", null);
-
-      if (error) {
-        console.error("Error fetching bookmarks:", error);
-        return;
-      }
-
-      const ids = new Set(data?.map((b) => b.opportunity_id).filter(Boolean) as string[]);
-      setBookmarkedIds(ids);
-    } catch (err) {
-      console.error("Error:", err);
-    }
-  };
-
-  const toggleBookmark = async (id: string) => {
-    if (!user) {
-      toast.error("Please log in to bookmark opportunities");
-      return;
-    }
-
-    const isBookmarked = bookmarkedIds.has(id);
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("opportunity_id", id);
-
-        if (error) throw error;
-
-        setBookmarkedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({
-          user_id: user.id,
-          opportunity_id: id,
-        });
-
-        if (error) throw error;
-
-        setBookmarkedIds((prev) => new Set(prev).add(id));
-        toast.success("Opportunity bookmarked");
-      }
-    } catch (err) {
-      console.error("Error toggling bookmark:", err);
-      toast.error("Failed to update bookmark");
-    }
-  };
 
   const filteredOpportunities = opportunities.filter((opp) => {
     const clubName = opp.club_profiles?.club_name || "";
@@ -252,7 +185,7 @@ export default function OpportunitiesPage() {
                       deadline={formatDeadline(opportunity.deadline)}
                       description={opportunity.description || "No description provided"}
                       applicants={opportunity.applications?.length || 0}
-                      isBookmarked={bookmarkedIds.has(opportunity.id)}
+                      isBookmarked={isBookmarked(opportunity.id)}
                       onBookmark={() => toggleBookmark(opportunity.id)}
                     />
                   ))}
