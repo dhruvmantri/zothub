@@ -94,8 +94,8 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         notificationCount={notificationCount}
       />
       
-      {/* Main content with padding for bottom nav on mobile */}
-      <main className="pb-20 md:pb-0">
+      {/* Main content with padding for fixed header and bottom nav on mobile */}
+      <main className="pt-16 pb-20 md:pb-0">
         {children}
       </main>
 
