@@ -29,7 +29,6 @@ import NotFound from "./pages/NotFound";
 // New club route pages
 import ClubHome from "./pages/club/ClubHome";
 import ClubFeed from "./pages/club/ClubFeed";
-import ClubExplore from "./pages/club/ClubExplore";
 
 const queryClient = new QueryClient();
 
@@ -58,15 +57,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/club/explore" 
-              element={
-                <ProtectedRoute allowedRoles={["club"]}>
-                  <ClubExplore />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
+            <Route
               path="/club/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
