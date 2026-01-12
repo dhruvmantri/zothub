@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
 
 /* Cache bust: 2026-01-12-v1 */
 
@@ -19,7 +20,7 @@
     --popover-foreground: 0 0% 10%;
 
     /* Primary - Violet */
-    --primary: 262 83% 66%;
+    --primary: 233 67% 60%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Soft gray */
@@ -31,7 +32,7 @@
     --muted-foreground: 0 0% 45%;
 
     /* Accent - Coral */
-    --accent: 25 95% 53%;
+    --accent: 13 67% 60%;
     --accent-foreground: 0 0% 100%;
 
     /* Status colors */
