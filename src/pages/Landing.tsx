@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
+import { Logo } from "@/components/Logo";
 import { 
   ArrowRight, 
   Users, 
@@ -216,14 +217,7 @@ export default function Landing() {
       <footer className="py-10 border-t border-border">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-primary-foreground" />
-              </div>
-              <span className="font-semibold text-foreground">
-                Zot<span className="text-primary">Hub</span>
-              </span>
-            </div>
+            <Logo className="h-7" linkTo="/" />
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/opportunities" className="hover:text-foreground transition-colors">
                 Opportunities

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Logo } from "@/components/Logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Zap,
   Rss,
   Briefcase,
   Calendar,
@@ -54,14 +54,7 @@ export function StudentTopNav({ unreadMessageCount, notificationCount }: Student
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-foreground hidden sm:inline">
-              Zot<span className="text-primary">Hub</span>
-            </span>
-          </Link>
+          <Logo className="h-7" />
 
           {/* Center Navigation */}
           <nav className="hidden md:flex items-center gap-1">
