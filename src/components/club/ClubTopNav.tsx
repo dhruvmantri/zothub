@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sparkles,
+  Zap,
   LayoutDashboard,
   Briefcase,
   Calendar,
@@ -55,16 +56,16 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
   const userInitial = user?.email?.charAt(0).toUpperCase() || "C";
 
   return (
-    <header className="border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 fixed top-0 left-0 right-0 z-50">
+    <header className="border-b border-border bg-background/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <Zap className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-xl text-foreground hidden sm:inline">
-              Zot<span className="text-accent">Hub</span>
+            <span className="font-semibold text-foreground hidden sm:inline">
+              Zot<span className="text-primary">Hub</span>
             </span>
           </Link>
 
@@ -76,14 +77,14 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "gap-2",
+                    "gap-2 h-8",
                     isActive(link.href) && "bg-secondary text-foreground"
                   )}
                 >
                   <link.icon className="w-4 h-4" />
                   {link.label}
                   {link.href === "/club/dashboard" && applicationCount > 0 && (
-                    <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
+                    <Badge variant="destructive" className="ml-1 px-1 py-0 text-[10px] h-4">
                       {applicationCount > 9 ? "9+" : applicationCount}
                     </Badge>
                   )}
@@ -93,22 +94,24 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
           </nav>
 
           {/* Right Section */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+
             {/* Messages */}
             <Link to="/club/messages">
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "relative",
+                  "relative h-9 w-9",
                   location.pathname === "/club/messages" && "bg-secondary"
                 )}
               >
-                <MessageSquare className="w-5 h-5" />
+                <MessageSquare className="w-4 h-4" />
                 {unreadMessageCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
                   >
                     {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                   </Badge>
@@ -122,15 +125,15 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "relative",
+                  "relative h-9 w-9",
                   location.pathname === "/notifications" && "bg-secondary"
                 )}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4" />
                 {notificationCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
                   >
                     {notificationCount > 9 ? "9+" : notificationCount}
                   </Badge>
@@ -141,9 +144,9 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
+                  <Avatar className="w-7 h-7">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {userInitial}
                     </AvatarFallback>
                   </Avatar>

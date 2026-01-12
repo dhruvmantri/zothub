@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Users, Clock, Bookmark } from "lucide-react";
+import { Clock, MapPin, Users, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface OpportunityCardProps {
@@ -18,9 +17,9 @@ export interface OpportunityCardProps {
 }
 
 const typeColors = {
-  leadership: "accent",
+  leadership: "default",
   project: "success",
-  internship: "default",
+  internship: "secondary",
   volunteer: "muted"
 } as const;
 
@@ -37,34 +36,34 @@ export function OpportunityCard({
   onBookmark
 }: OpportunityCardProps) {
   return (
-    <div className="group relative p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50">
+    <div className="group relative p-5 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
       {/* Bookmark button */}
       <button
         onClick={onBookmark}
-        className="absolute top-4 right-4 p-2 rounded-lg hover:bg-secondary transition-colors"
+        className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-secondary transition-colors"
       >
         <Bookmark 
           className={cn(
             "w-4 h-4 transition-colors",
-            isBookmarked ? "fill-accent text-accent" : "text-muted-foreground"
+            isBookmarked ? "fill-primary text-primary" : "text-muted-foreground"
           )} 
         />
       </button>
 
       {/* Club info */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
+        <div className="w-9 h-9 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
           {clubLogo ? (
             <img src={clubLogo} alt={clubName} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-sm font-semibold text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               {clubName.charAt(0)}
             </span>
           )}
         </div>
         <div>
           <p className="text-sm font-medium text-foreground">{clubName}</p>
-          <Badge variant={typeColors[type]} className="mt-1 capitalize">
+          <Badge variant={typeColors[type]} className="mt-1 capitalize text-[10px] px-2 py-0">
             {type}
           </Badge>
         </div>
@@ -72,7 +71,7 @@ export function OpportunityCard({
 
       {/* Title and description */}
       <Link to={`/opportunities/${id}`}>
-        <h3 className="font-display text-lg font-semibold text-foreground mb-2 group-hover:text-accent transition-colors line-clamp-2">
+        <h3 className="text-base font-medium text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
           {title}
         </h3>
       </Link>
@@ -127,83 +126,83 @@ export function EventCard({
   onBookmark
 }: EventCardProps) {
   return (
-    <div className="group relative rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50 overflow-hidden">
+    <div className="group relative rounded-lg bg-card border border-border hover:border-primary/30 transition-colors overflow-hidden">
       {/* Banner */}
-      <div className="relative h-40 bg-secondary overflow-hidden">
+      <div className="relative h-36 bg-secondary overflow-hidden">
         {bannerImage ? (
           <img 
             src={bannerImage} 
             alt={title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20" />
+          <div className="w-full h-full bg-gradient-to-br from-primary/10 to-accent/10" />
         )}
         
         {/* Bookmark button */}
         <button
           onClick={onBookmark}
-          className="absolute top-3 right-3 p-2 rounded-lg bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"
+          className="absolute top-3 right-3 p-1.5 rounded-md bg-background/90 hover:bg-background transition-colors"
         >
           <Bookmark 
             className={cn(
               "w-4 h-4 transition-colors",
-              isBookmarked ? "fill-accent text-accent" : "text-foreground"
+              isBookmarked ? "fill-primary text-primary" : "text-foreground"
             )} 
           />
         </button>
 
         {/* Date badge */}
-        <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-background/90 backdrop-blur-sm">
-          <p className="text-xs font-semibold text-foreground">{date}</p>
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-background/90 text-xs font-medium text-foreground">
+          {date}
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="p-4">
         {/* Club info */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 rounded-md bg-secondary flex items-center justify-center overflow-hidden">
             {clubLogo ? (
               <img src={clubLogo} alt={clubName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-xs font-semibold text-muted-foreground">
+              <span className="text-[10px] font-medium text-muted-foreground">
                 {clubName.charAt(0)}
               </span>
             )}
           </div>
-          <p className="text-xs font-medium text-muted-foreground">{clubName}</p>
+          <p className="text-xs text-muted-foreground">{clubName}</p>
         </div>
 
         {/* Title */}
         <Link to={`/events/${id}`}>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3 group-hover:text-accent transition-colors line-clamp-2">
+          <h3 className="text-base font-medium text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-2">
             {title}
           </h3>
         </Link>
 
         {/* Meta info */}
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="space-y-1.5 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
+            <Clock className="w-3.5 h-3.5" />
             <span>{time}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
+            <MapPin className="w-3.5 h-3.5" />
             <span className="line-clamp-1">{location}</span>
           </div>
         </div>
 
         {/* Attendees */}
         {attendees !== undefined && capacity !== undefined && (
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between text-sm">
+          <div className="mt-4 pt-3 border-t border-border">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
                 {attendees}/{capacity} attending
               </span>
-              <div className="h-2 w-24 rounded-full bg-secondary overflow-hidden">
+              <div className="h-1.5 w-20 rounded-full bg-secondary overflow-hidden">
                 <div 
-                  className="h-full bg-accent rounded-full transition-all"
+                  className="h-full bg-primary rounded-full transition-all"
                   style={{ width: `${Math.min((attendees / capacity) * 100, 100)}%` }}
                 />
               </div>
