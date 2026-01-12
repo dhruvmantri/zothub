@@ -339,7 +339,7 @@ export default function SignupPage() {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex flex-1 bg-hero relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-bl from-primary/90 to-primary relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="text-center max-w-md">
             <h2 className="font-display text-3xl font-bold text-primary-foreground mb-4">
@@ -351,8 +351,8 @@ export default function SignupPage() {
           </div>
         </div>
         {/* Decorative elements */}
-        <div className="absolute top-20 right-20 w-32 h-32 bg-accent/20 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-32 left-20 w-48 h-48 bg-accent/10 rounded-full blur-2xl" />
+        <div className="absolute top-20 right-20 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-32 left-20 w-48 h-48 bg-accent/20 rounded-full blur-2xl" />
       </div>
     </div>
   );

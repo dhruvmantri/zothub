@@ -363,7 +363,7 @@ const ClubDetail = () => {
               {teamMembers.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/50"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border"
                 >
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                     <span className="text-sm font-medium text-muted-foreground">
