@@ -1,7 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
-
-/* Cache bust: 2026-01-12-v1 */
 
 @tailwind base;
 @tailwind components;
@@ -9,65 +6,7 @@
 
 @layer base {
   :root {
-    /* Notion-minimal color system with Violet + Coral accents */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-
-    /* Primary - Violet */
-    --primary: 233 67% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary - Soft gray */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
-
-    /* Muted */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    /* Accent - Coral */
-    --accent: 13 67% 60%;
-    --accent-foreground: 0 0% 100%;
-
-    /* Status colors */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-
-    /* Borders and inputs */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 262 83% 66%;
-
-    --radius: 0.5rem;
-
-    /* Shadows - minimal */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
-    --shadow-md: 0 2px 4px -1px rgb(0 0 0 / 0.04);
-    --shadow-lg: 0 4px 6px -2px rgb(0 0 0 / 0.03);
-    --shadow-card: 0 1px 3px rgb(0 0 0 / 0.02), 0 1px 2px rgb(0 0 0 / 0.02);
-    --shadow-card-hover: 0 2px 8px rgb(0 0 0 / 0.04);
-
-    /* Sidebar */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 262 83% 66%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 262 83% 66%;
-  }
-
-  .dark {
+    /* Dark mode only - Primary #5565dd, Accent #dd7255 */
     --background: 0 0% 4%;
     --foreground: 0 0% 98%;
 
@@ -77,9 +16,9 @@
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
 
-    /* Primary - Violet (lighter for dark mode) */
-    --primary: 262 83% 72%;
-    --primary-foreground: 0 0% 4%;
+    /* Primary - #5565dd */
+    --primary: 233 67% 60%;
+    --primary-foreground: 0 0% 100%;
 
     /* Secondary */
     --secondary: 0 0% 12%;
@@ -89,9 +28,9 @@
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 55%;
 
-    /* Accent - Coral (lighter for dark mode) */
-    --accent: 27 96% 61%;
-    --accent-foreground: 0 0% 4%;
+    /* Accent - #dd7255 */
+    --accent: 13 67% 60%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 55%;
     --destructive-foreground: 0 0% 98%;
@@ -101,19 +40,25 @@
 
     --border: 0 0% 16%;
     --input: 0 0% 16%;
-    --ring: 262 83% 72%;
+    --ring: 233 67% 60%;
 
+    --radius: 0.5rem;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.1);
+    --shadow-md: 0 2px 4px -1px rgb(0 0 0 / 0.15);
+    --shadow-lg: 0 4px 6px -2px rgb(0 0 0 / 0.1);
     --shadow-card: 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-card-hover: 0 4px 12px rgb(0 0 0 / 0.4);
 
+    /* Sidebar */
     --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 262 83% 72%;
-    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-primary: 233 67% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 16%;
-    --sidebar-ring: 262 83% 72%;
+    --sidebar-ring: 233 67% 60%;
   }
 }
 
@@ -143,14 +88,7 @@
   }
 }
 
-/* Smooth transitions for theme switching */
-@layer base {
-  * {
-    @apply transition-colors duration-150;
-  }
-}
-
-/* Custom scrollbar - minimal */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
