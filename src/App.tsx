@@ -27,6 +27,7 @@ import ClubMessages from "./pages/ClubMessages";
 import StudentMessages from "./pages/StudentMessages";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
 // New club route pages
 import ClubHome from "./pages/club/ClubHome";
 import ClubFeed from "./pages/club/ClubFeed";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/clubs/:id" element={<ClubDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route 
               path="/club/feed" 
               element={

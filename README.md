@@ -1,73 +1,214 @@
-# Welcome to your Lovable project
+# ZotHub
 
-## Project info
+**Your gateway to UCI campus life** - Discover opportunities, connect with clubs, and make the most of your UCI experience.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## About ZotHub
 
-## How can I edit this code?
+ZotHub is a comprehensive web platform built for the University of California, Irvine (UCI) campus community. It serves as a centralized hub that connects students with campus clubs, events, and opportunities.
 
-There are several ways of editing your application.
+### For Students
+- 🔍 **Discover Opportunities** - Browse leadership roles, projects, internships, and volunteer positions
+- 📅 **Never Miss Events** - RSVP to workshops, socials, and get automated reminders
+- 💬 **Connect with Clubs** - Message clubs directly and stay updated on their activities
+- 📊 **Track Applications** - Monitor your application status with real-time updates
+- 🔖 **Bookmark & Save** - Save opportunities, events, and clubs for later
+- 📈 **Personalized Feed** - Get updates from clubs you follow
 
-**Use Lovable**
+### For Clubs
+- 📢 **Post Opportunities** - Share leadership roles, projects, and positions
+- 🎉 **Create Events** - Manage events, RSVPs, and attendance
+- 📝 **Review Applications** - Custom application forms with question builder
+- 👥 **Team Management** - Invite and manage team members
+- 📊 **Analytics Dashboard** - Track views, applications, and engagement
+- 💬 **Messaging** - Communicate with interested students
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+This project is built with modern web technologies:
 
-**Use your preferred IDE**
+- **Frontend Framework**: React 18.3.1 with TypeScript
+- **Build Tool**: Vite 5.4.19 with SWC for fast compilation
+- **Styling**: Tailwind CSS 3.4.17 with custom design system
+- **UI Components**: shadcn/ui (Radix UI primitives)
+- **Routing**: React Router DOM 6.30.1
+- **State Management**:
+  - React Context (Authentication)
+  - TanStack Query v5 (Server state & caching)
+- **Backend**: Supabase (PostgreSQL + Real-time + Auth)
+- **Authentication**: Supabase Auth with Google OAuth (@uci.edu domain)
+- **Animations**: Framer Motion
+- **Form Handling**: React Hook Form with Zod validation
+- **Icons**: Lucide React
+- **Theme**: next-themes (Dark/Light mode support)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
 
-Follow these steps:
+- Node.js 18+ and npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- A Supabase account and project - [Create one here](https://supabase.com)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Clone the repository**
+   \`\`\`bash
+   git clone <YOUR_GIT_URL>
+   cd zothub
+   \`\`\`
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. **Install dependencies**
+   \`\`\`bash
+   npm install
+   \`\`\`
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+3. **Set up environment variables**
 
-**Edit a file directly in GitHub**
+   Create a \`.env\` file in the root directory:
+   \`\`\`bash
+   cp .env.example .env
+   \`\`\`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+   Then fill in your Supabase credentials:
+   \`\`\`env
+   VITE_SUPABASE_PROJECT_ID=your_project_id
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   \`\`\`
 
-**Use GitHub Codespaces**
+4. **Set up the database**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+   Run the migrations in the \`supabase/migrations/\` directory in your Supabase project.
 
-## What technologies are used for this project?
+5. **Start the development server**
+   \`\`\`bash
+   npm run dev
+   \`\`\`
 
-This project is built with:
+   The app will be available at \`http://localhost:8080\`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Available Scripts
 
-## How can I deploy this project?
+- \`npm run dev\` - Start development server with hot reload
+- \`npm run build\` - Build for production
+- \`npm run build:dev\` - Build in development mode
+- \`npm run preview\` - Preview production build locally
+- \`npm run lint\` - Run ESLint to check code quality
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Project Structure
 
-## Can I connect a custom domain to my Lovable project?
+\`\`\`
+zothub/
+├── src/
+│   ├── components/       # Reusable React components
+│   │   ├── ui/          # shadcn/ui components (52 components)
+│   │   ├── cards/       # Card components for opportunities, events
+│   │   ├── dashboard/   # Club dashboard components
+│   │   └── ...
+│   ├── pages/           # Page components (24 pages)
+│   │   ├── club/        # Club-specific pages
+│   │   ├── student/     # Student-specific pages (via components)
+│   │   └── ...
+│   ├── contexts/        # React Context providers
+│   ├── hooks/           # Custom React hooks (8 hooks)
+│   ├── integrations/    # Third-party integrations
+│   │   └── supabase/   # Supabase client and types
+│   ├── types/           # TypeScript type definitions
+│   ├── lib/             # Utility functions
+│   ├── App.tsx          # Main app with routing
+│   └── main.tsx         # App entry point
+├── supabase/
+│   └── migrations/      # Database migration files
+├── public/              # Static assets
+└── package.json         # Dependencies and scripts
+\`\`\`
 
-Yes, you can!
+## Key Features Implementation
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Authentication
+- UCI email-only signup (@uci.edu domain restriction)
+- Google OAuth integration (restricted to UCI workspace)
+- Role-based access control (Student vs Club)
+- Protected routes with automatic redirects
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Real-time Features
+- Live notifications using Supabase subscriptions
+- Real-time messaging between students and clubs
+- Instant RSVP updates for events
+- Live application status updates
+
+### Data Management
+- Efficient server state caching with TanStack Query
+- Optimistic UI updates for better UX
+- Automatic data refetching and invalidation
+- Error handling and retry logic
+
+## Database Schema
+
+The application uses the following main tables:
+- \`user_roles\` - User role assignment (student/club)
+- \`student_profiles\` - Student profile information
+- \`club_profiles\` - Club profile information
+- \`opportunities\` - Posted opportunities
+- \`events\` - Campus events
+- \`applications\` - Student applications
+- \`rsvps\` - Event RSVPs
+- \`messages\` - Direct messages
+- \`notifications\` - User notifications
+- \`bookmarks\` - Saved items
+- \`club_team_members\` - Club team management
+
+## Contributing
+
+1. Create a feature branch from \`main\`
+2. Make your changes
+3. Test thoroughly
+4. Submit a pull request
+
+## Deployment
+
+### Using Lovable (Recommended)
+
+Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on **Share → Publish**.
+
+### Manual Deployment
+
+1. Build the project:
+   \`\`\`bash
+   npm run build
+   \`\`\`
+
+2. Deploy the \`dist\` folder to your hosting provider (Vercel, Netlify, etc.)
+
+3. Set up environment variables in your hosting provider's dashboard
+
+4. Configure OAuth redirect URLs in your Supabase project settings
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| \`VITE_SUPABASE_PROJECT_ID\` | Your Supabase project ID | \`abc123xyz\` |
+| \`VITE_SUPABASE_PUBLISHABLE_KEY\` | Supabase anonymous/public key | \`eyJhbGc...\` |
+| \`VITE_SUPABASE_URL\` | Your Supabase project URL | \`https://abc.supabase.co\` |
+
+## Security
+
+- ⚠️ **Never commit \`.env\` files** to version control
+- ✅ Supabase Row Level Security (RLS) policies are enforced
+- ✅ Email domain validation for UCI users only
+- ✅ Role-based access control for routes and data
+- ✅ Input validation using Zod schemas
+
+## License
+
+This project is proprietary software for UCI campus use.
+
+## Support
+
+For issues or questions:
+- Create an issue in this repository
+- Contact the development team
+
+---
+
+**Built with ❤️ for UCI Anteaters** 🐜🔱
