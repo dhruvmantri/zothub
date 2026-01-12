@@ -315,7 +315,7 @@ export default function SignupPage() {
                   )}
                 </div>
 
-                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isSubmitting}>
+                <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
