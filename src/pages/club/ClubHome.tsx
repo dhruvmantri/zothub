@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageTransition, SlideUp } from "@/components/ui/page-transition";
 
 // Import dashboard sub-components
 import { OpportunityManagement } from "@/components/dashboard/OpportunityManagement";
@@ -148,9 +149,9 @@ export default function ClubHome() {
       
       default:
         return (
-          <div className="container mx-auto px-4 py-6 space-y-8">
+          <PageTransition className="container mx-auto px-4 py-6 space-y-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <SlideUp className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">Dashboard</h1>
                 <p className="text-muted-foreground mt-1">
@@ -167,14 +168,14 @@ export default function ClubHome() {
                 <Link to="/club/events/new">
                   <Button className="gap-2">
                     <Plus className="w-4 h-4" />
-                    New Event
-                  </Button>
-                </Link>
-              </div>
+                  New Event
+                </Button>
+              </Link>
             </div>
+          </SlideUp>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Quick Stats */}
+          <SlideUp delay={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatsCard
                 title="Total Views"
                 value={totalViews.toLocaleString()}
@@ -190,14 +191,14 @@ export default function ClubHome() {
                 value={activeOpportunities.toString()}
                 icon={Briefcase}
               />
-              <StatsCard
-                title="Upcoming Events"
-                value={upcomingEvents.toString()}
-                icon={Calendar}
-              />
-            </div>
+            <StatsCard
+              title="Upcoming Events"
+              value={upcomingEvents.toString()}
+              icon={Calendar}
+            />
+          </SlideUp>
 
-            {/* Quick Access Cards */}
+          {/* Quick Access Cards */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Recent Opportunities */}
               <Card>
@@ -283,7 +284,7 @@ export default function ClubHome() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+          </PageTransition>
         );
     }
   };
