@@ -306,7 +306,7 @@ export default function OpportunityDetail() {
     <RoleBasedLayout>
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <div className="bg-secondary/30 border-b border-border/50">
+        <div className="bg-secondary/50 border-b border-border">
           <div className="container mx-auto px-4 py-8 max-w-4xl">
             <Button variant="ghost" size="sm" asChild className="mb-6">
               <Link to="/opportunities">

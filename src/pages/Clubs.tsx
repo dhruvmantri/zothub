@@ -143,7 +143,7 @@ export default function ClubsPage() {
     <RoleBasedLayout>
       <div className="min-h-screen">
         {/* Header */}
-        <div className="bg-secondary/30 border-b border-border/50">
+        <div className="bg-secondary/50 border-b border-border">
           <div className="container mx-auto px-4 py-12">
             <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
               Clubs & Organizations
@@ -155,7 +155,7 @@ export default function ClubsPage() {
         </div>
 
         {/* Filters */}
-        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
+        <div className="sticky top-16 z-40 bg-background border-b border-border">
           <div className="container mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
@@ -216,7 +216,7 @@ export default function ClubsPage() {
           {isLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-card border border-border/50">
+                <div key={i} className="p-6 rounded-2xl bg-card border border-border">
                   <div className="flex items-start gap-4 mb-4">
                     <Skeleton className="w-14 h-14 rounded-xl" />
                     <div className="flex-1 space-y-2">
@@ -245,7 +245,7 @@ export default function ClubsPage() {
                       to={`/clubs/${club.id}`}
                       className="group block"
                     >
-                      <div className="p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border/50 h-full">
+                      <div className="p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border h-full">
                         {/* Club header */}
                         <div className="flex items-start gap-4 mb-4">
                           <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">

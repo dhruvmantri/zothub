@@ -90,7 +90,7 @@ export default function OpportunitiesPage() {
     <RoleBasedLayout>
       <div className="min-h-screen">
         {/* Header */}
-        <div className="bg-secondary/30 border-b border-border/50">
+        <div className="bg-secondary/50 border-b border-border">
           <div className="container mx-auto px-4 py-12">
             <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
               Opportunities
@@ -102,7 +102,7 @@ export default function OpportunitiesPage() {
         </div>
 
         {/* Filters */}
-        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
+        <div className="sticky top-16 z-40 bg-background border-b border-border">
           <div className="container mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
@@ -150,7 +150,7 @@ export default function OpportunitiesPage() {
           {isLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-card border border-border/50">
+                <div key={i} className="p-6 rounded-2xl bg-card border border-border">
                   <div className="flex items-center gap-3 mb-4">
                     <Skeleton className="w-10 h-10 rounded-lg" />
                     <div className="space-y-2">
