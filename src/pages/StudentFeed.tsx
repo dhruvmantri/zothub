@@ -11,6 +11,7 @@ import { FollowedClubsList } from "@/components/feed/FollowedClubsList";
 import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { toast } from "sonner";
 import { StudentLayout } from "@/components/student/StudentLayout";
+import { PageTransition, SlideUp } from "@/components/ui/page-transition";
 
 interface FollowedClub {
   id: string;
@@ -224,9 +225,9 @@ export default function StudentFeed() {
 
   return (
     <StudentLayout>
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <PageTransition className="container mx-auto px-4 py-8 max-w-3xl">
         {/* Page Header */}
-        <div className="mb-6">
+        <SlideUp className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-primary/10">
               <Rss className="w-6 h-6 text-primary" />
@@ -238,10 +239,10 @@ export default function StudentFeed() {
           <p className="text-muted-foreground">
             {followedClubs.length > 0 
               ? `Updates from ${followedClubs.length} club${followedClubs.length !== 1 ? 's' : ''} you follow`
-              : "Follow clubs to see their updates here"
-            }
-          </p>
-        </div>
+            : "Follow clubs to see their updates here"
+          }
+        </p>
+        </SlideUp>
 
         {/* Followed Clubs */}
         <FollowedClubsList 
@@ -296,7 +297,7 @@ export default function StudentFeed() {
             )}
           </>
         )}
-      </div>
+      </PageTransition>
     </StudentLayout>
   );
 }
