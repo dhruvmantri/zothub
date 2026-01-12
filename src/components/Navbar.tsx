@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Menu, X, Zap, LogOut, LayoutDashboard, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,7 +52,6 @@ export function Navbar() {
 
           {/* Right Section */}
           <div className="hidden md:flex items-center gap-2">
-            <ThemeToggle />
             {user ? (
               <>
                 {role === "student" && (
@@ -89,7 +87,6 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />
             <button
               className="p-2 rounded-md hover:bg-secondary"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

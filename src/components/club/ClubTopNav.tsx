@@ -3,7 +3,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,8 +94,6 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
 
           {/* Right Section */}
           <div className="flex items-center gap-1">
-            <ThemeToggle />
-
             {/* Messages */}
             <Link to="/club/messages">
               <Button
