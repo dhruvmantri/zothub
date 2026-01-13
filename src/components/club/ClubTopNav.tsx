@@ -59,7 +59,7 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
-          <Logo className="h-7" />
+          <Logo />
 
           {/* Center Navigation */}
           <nav className="hidden md:flex items-center gap-1">

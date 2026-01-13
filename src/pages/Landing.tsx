@@ -217,7 +217,7 @@ export default function Landing() {
       <footer className="py-10 border-t border-border">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <Logo className="h-7" linkTo="/" />
+            <Logo />
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/opportunities" className="hover:text-foreground transition-colors">
                 Opportunities
