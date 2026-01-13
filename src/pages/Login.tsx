@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -123,14 +124,9 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           {/* Logo */}
-          <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-2xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
-          </Link>
+          <div className="flex justify-center mb-8">
+            <Logo />
+          </div>
 
           <h1 className="font-display text-2xl font-bold text-center text-foreground mb-2">
             Log in to ZotHub
