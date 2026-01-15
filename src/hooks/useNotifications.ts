@@ -17,6 +17,7 @@ export interface NotificationPreferences {
   event_reminders: boolean;
   new_messages: boolean;
   deadline_reminders: boolean;
+  team_invitations: boolean;
 }
 
 export function useNotifications() {
@@ -29,6 +30,7 @@ export function useNotifications() {
     event_reminders: true,
     new_messages: true,
     deadline_reminders: true,
+    team_invitations: true,
   });
 
   const fetchNotifications = useCallback(async () => {
@@ -71,6 +73,7 @@ export function useNotifications() {
           event_reminders: data.event_reminders,
           new_messages: data.new_messages,
           deadline_reminders: data.deadline_reminders,
+          team_invitations: data.team_invitations ?? true,
         });
       }
     } catch (error) {
@@ -234,6 +237,56 @@ export function useNotifications() {
     }
   };
 
+  // Accept a team invitation
+  const acceptInvitation = async (teamMemberId: string, notificationId: string) => {
+    if (!user) return false;
+
+    try {
+      // Update team member status
+      const { error: updateError } = await supabase
+        .from("club_team_members")
+        .update({ 
+          status: "active", 
+          joined_at: new Date().toISOString(),
+          user_id: user.id 
+        })
+        .eq("id", teamMemberId);
+
+      if (updateError) throw updateError;
+
+      // Delete the notification
+      await deleteNotification(notificationId);
+
+      return true;
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      return false;
+    }
+  };
+
+  // Decline a team invitation
+  const declineInvitation = async (teamMemberId: string, notificationId: string) => {
+    if (!user) return false;
+
+    try {
+      // Delete the team member record
+      const { error: deleteError } = await supabase
+        .from("club_team_members")
+        .delete()
+        .eq("id", teamMemberId);
+
+      if (deleteError) throw deleteError;
+
+      // Delete the notification
+      await deleteNotification(notificationId);
+
+      return true;
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      return false;
+    }
+  };
+
   return {
     notifications,
     unreadCount,
@@ -245,6 +298,8 @@ export function useNotifications() {
     deleteNotification,
     clearAllNotifications,
     updatePreferences,
+    acceptInvitation,
+    declineInvitation,
     refetch: fetchNotifications,
   };
 }

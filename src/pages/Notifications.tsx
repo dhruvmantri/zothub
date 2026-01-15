@@ -15,6 +15,7 @@ import {
   Clock,
   X,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,10 +61,13 @@ export default function Notifications() {
     deleteNotification,
     clearAllNotifications,
     updatePreferences,
+    acceptInvitation,
+    declineInvitation,
   } = useNotifications();
 
   const [showPreferences, setShowPreferences] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [processingInvitations, setProcessingInvitations] = useState<Set<string>>(new Set());
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -75,6 +79,8 @@ export default function Notifications() {
         return <Calendar className="w-5 h-5 text-emerald-500" />;
       case "deadline_reminder":
         return <Clock className="w-5 h-5 text-amber-500" />;
+      case "team_invitation":
+        return <Users className="w-5 h-5 text-purple-500" />;
       default:
         return <Bell className="w-5 h-5 text-muted-foreground" />;
     }
@@ -122,6 +128,42 @@ export default function Notifications() {
     const newPreferences = { ...preferences, [key]: value };
     await updatePreferences(newPreferences);
     toast.success("Preferences updated");
+  };
+
+  const handleAcceptInvitation = async (notification: Notification) => {
+    if (!notification.related_id) return;
+    
+    setProcessingInvitations(prev => new Set(prev).add(notification.id));
+    const success = await acceptInvitation(notification.related_id, notification.id);
+    setProcessingInvitations(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notification.id);
+      return newSet;
+    });
+    
+    if (success) {
+      toast.success("Invitation accepted! You are now a team member.");
+    } else {
+      toast.error("Failed to accept invitation");
+    }
+  };
+
+  const handleDeclineInvitation = async (notification: Notification) => {
+    if (!notification.related_id) return;
+    
+    setProcessingInvitations(prev => new Set(prev).add(notification.id));
+    const success = await declineInvitation(notification.related_id, notification.id);
+    setProcessingInvitations(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notification.id);
+      return newSet;
+    });
+    
+    if (success) {
+      toast.success("Invitation declined");
+    } else {
+      toast.error("Failed to decline invitation");
+    }
   };
 
   const filteredNotifications = filter === "unread"
@@ -218,6 +260,20 @@ export default function Notifications() {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Team Invitations</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Notify when invited to join a club team
+                  </p>
+                </div>
+                <Switch
+                  checked={preferences.team_invitations}
+                  onCheckedChange={(checked) =>
+                    handlePreferenceChange("team_invitations", checked)
+                  }
+                />
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -280,6 +336,8 @@ export default function Notifications() {
             <div className="divide-y divide-border">
               {filteredNotifications.map((notification) => {
                 const link = getNotificationLink(notification);
+                const isTeamInvitation = notification.type === "team_invitation";
+                const isProcessing = processingInvitations.has(notification.id);
 
                 return (
                   <div
@@ -294,7 +352,7 @@ export default function Notifications() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      {link ? (
+                      {link && !isTeamInvitation ? (
                         <Link
                           to={link}
                           onClick={() => !notification.is_read && markAsRead(notification.id)}
@@ -330,40 +388,72 @@ export default function Notifications() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </p>
+
+                      {/* Team invitation action buttons */}
+                      {isTeamInvitation && notification.related_id && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => handleAcceptInvitation(notification)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4 mr-1" />
+                                Accept
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeclineInvitation(notification)}
+                            disabled={isProcessing}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {notification.is_read ? (
+                    {/* Action buttons - hide for team invitations since they have their own buttons */}
+                    {!isTeamInvitation && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {notification.is_read ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleMarkAsUnread(notification)}
+                            title="Mark as unread"
+                          >
+                            <Bell className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleMarkAsRead(notification)}
+                            title="Mark as read"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleMarkAsUnread(notification)}
-                          title="Mark as unread"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(notification.id)}
+                          title="Delete"
                         >
-                          <Bell className="w-4 h-4" />
+                          <X className="w-4 h-4" />
                         </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleMarkAsRead(notification)}
-                          title="Mark as read"
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(notification.id)}
-                        title="Delete"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
