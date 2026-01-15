@@ -300,6 +300,7 @@ export type Database = {
           event_reminders: boolean
           id: string
           new_messages: boolean
+          team_invitations: boolean | null
           updated_at: string
           user_id: string
         }
@@ -310,6 +311,7 @@ export type Database = {
           event_reminders?: boolean
           id?: string
           new_messages?: boolean
+          team_invitations?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -320,6 +322,7 @@ export type Database = {
           event_reminders?: boolean
           id?: string
           new_messages?: boolean
+          team_invitations?: boolean | null
           updated_at?: string
           user_id?: string
         }

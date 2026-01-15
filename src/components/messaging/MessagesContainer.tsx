@@ -20,6 +20,7 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
     isSending,
     selectConversation,
     sendMessage,
+    deleteMessage,
     user,
   } = useMessages();
 
@@ -110,6 +111,7 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
           messages={messages}
           currentUserId={user?.id || ""}
           conversation={currentConversation || null}
+          onDeleteMessage={deleteMessage}
         />
 
         {/* Composer */}

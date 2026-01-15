@@ -195,6 +195,53 @@ export function useMessages() {
     }
   }, [user, fetchProfileInfo]);
 
+  // Delete a message
+  const deleteMessage = useCallback(async (messageId: string) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("sender_id", user.id);
+
+      if (error) {
+        console.error("Error deleting message:", error);
+        return false;
+      }
+
+      // Remove from local messages
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+
+      // Update conversation list if this was the last message
+      if (selectedConversation) {
+        const remainingMessages = messages.filter(m => m.id !== messageId);
+        if (remainingMessages.length > 0) {
+          const lastMsg = remainingMessages[remainingMessages.length - 1];
+          setConversations(prev =>
+            prev.map(c =>
+              c.participantId === selectedConversation
+                ? { ...c, lastMessage: lastMsg.content, lastMessageTime: lastMsg.created_at }
+                : c
+            )
+          );
+        } else {
+          // No messages left in this conversation
+          setConversations(prev =>
+            prev.filter(c => c.participantId !== selectedConversation)
+          );
+          setSelectedConversation(null);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      return false;
+    }
+  }, [user, selectedConversation, messages]);
+
   // Get total unread count
   const getTotalUnreadCount = useCallback(() => {
     return conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
@@ -289,6 +336,7 @@ export function useMessages() {
     isSending,
     selectConversation,
     sendMessage,
+    deleteMessage,
     getTotalUnreadCount,
     fetchConversations,
     user,

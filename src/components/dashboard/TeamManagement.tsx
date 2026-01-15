@@ -65,10 +65,15 @@ interface TeamManagementProps {
   onRemoveMember: (id: string) => Promise<boolean>;
 }
 
-const ROLES = [
-  { value: "admin", label: "Admin" },
-  { value: "officer", label: "Officer" },
-  { value: "member", label: "Member" },
+const ROLE_SUGGESTIONS = [
+  "President",
+  "Vice President", 
+  "Treasurer",
+  "Secretary",
+  "Officer",
+  "Director",
+  "Chair",
+  "Member",
 ];
 
 const statusColors = {
@@ -84,26 +89,29 @@ export function TeamManagement({
   onRemoveMember 
 }: TeamManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
+  const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
+  const [customRole, setCustomRole] = useState("");
   
   // Form state
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("member");
+  const [role, setRole] = useState("Member");
 
   const handleAddMember = async () => {
-    if (!email.trim()) return;
+    if (!email.trim() || !role.trim()) return;
     
     setIsSubmitting(true);
-    const success = await onAddMember(email.trim(), name.trim(), role);
+    const success = await onAddMember(email.trim(), name.trim(), role.trim());
     setIsSubmitting(false);
     
     if (success) {
       setIsAddDialogOpen(false);
       setEmail("");
       setName("");
-      setRole("member");
+      setRole("Member");
     }
   };
 
@@ -112,6 +120,23 @@ export function TeamManagement({
     
     await onRemoveMember(memberToDelete.id);
     setMemberToDelete(null);
+  };
+
+  const handleUpdateRole = async () => {
+    if (!memberToEdit || !customRole.trim()) return;
+    
+    setIsSubmitting(true);
+    await onUpdateMember(memberToEdit.id, { role: customRole.trim() });
+    setIsSubmitting(false);
+    setIsRoleDialogOpen(false);
+    setMemberToEdit(null);
+    setCustomRole("");
+  };
+
+  const openRoleDialog = (member: TeamMember) => {
+    setMemberToEdit(member);
+    setCustomRole(member.role);
+    setIsRoleDialogOpen(true);
   };
 
   return (
@@ -159,26 +184,29 @@ export function TeamManagement({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="role">Role *</Label>
+                <Input
+                  id="role"
+                  placeholder="e.g., President, VP of Finance, Social Chair"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  list="role-suggestions"
+                />
+                <datalist id="role-suggestions">
+                  {ROLE_SUGGESTIONS.map((r) => (
+                    <option key={r} value={r} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  Type a custom role or select from suggestions
+                </p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddMember} disabled={isSubmitting || !email.trim()}>
+              <Button onClick={handleAddMember} disabled={isSubmitting || !email.trim() || !role.trim()}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -246,22 +274,10 @@ export function TeamManagement({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem 
-                      onClick={() => onUpdateMember(member.id, { role: "admin" })}
+                      onClick={() => openRoleDialog(member)}
                       className="gap-2"
                     >
-                      <UserCog className="w-4 h-4" /> Make Admin
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => onUpdateMember(member.id, { role: "officer" })}
-                      className="gap-2"
-                    >
-                      <UserCog className="w-4 h-4" /> Make Officer
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => onUpdateMember(member.id, { role: "member" })}
-                      className="gap-2"
-                    >
-                      <UserCog className="w-4 h-4" /> Make Member
+                      <UserCog className="w-4 h-4" /> Change Role
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setMemberToDelete(member)}
@@ -295,6 +311,50 @@ export function TeamManagement({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Role Dialog */}
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Role</DialogTitle>
+            <DialogDescription>
+              Update the role for {memberToEdit?.name || memberToEdit?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="custom-role">Role</Label>
+              <Input
+                id="custom-role"
+                placeholder="e.g., President, VP of Finance"
+                value={customRole}
+                onChange={(e) => setCustomRole(e.target.value)}
+                list="role-suggestions-edit"
+              />
+              <datalist id="role-suggestions-edit">
+                {ROLE_SUGGESTIONS.map((r) => (
+                  <option key={r} value={r} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateRole} disabled={isSubmitting || !customRole.trim()}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Role"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
