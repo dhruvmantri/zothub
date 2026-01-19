@@ -4,11 +4,12 @@ import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, X } from "lucide-react";
+import { Search, X, Bookmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDeadline, normalizeOpportunityType } from "@/lib/formatters";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Opportunity {
   id: string;
@@ -24,18 +25,23 @@ interface Opportunity {
   applications: { id: string }[];
 }
 
-const categories = ["All", "Leadership", "Project", "Internship", "Volunteer", "Committee", "Other"];
+const categories = ["All", "Saved", "Leadership", "Project", "Internship", "Volunteer", "Committee", "Other"];
 
 export default function OpportunitiesPage() {
+  const { user } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchOpportunities();
-  }, []);
+    if (user) {
+      fetchAppliedOpportunities();
+    }
+  }, [user]);
 
   const fetchOpportunities = async () => {
     try {
@@ -73,12 +79,45 @@ export default function OpportunitiesPage() {
     }
   };
 
+  const fetchAppliedOpportunities = async () => {
+    if (!user) return;
+    
+    try {
+      // Get student profile first
+      const { data: studentProfile } = await supabase
+        .from("student_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!studentProfile) return;
+
+      // Get applied opportunity IDs
+      const { data: applications } = await supabase
+        .from("applications")
+        .select("opportunity_id")
+        .eq("student_id", studentProfile.id);
+
+      if (applications) {
+        setAppliedOpportunityIds(new Set(applications.map(a => a.opportunity_id)));
+      }
+    } catch (err) {
+      console.error("Error fetching applied opportunities:", err);
+    }
+  };
+
 
   const filteredOpportunities = opportunities.filter((opp) => {
     const clubName = opp.club_profiles?.club_name || "";
     const matchesSearch =
       opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       clubName.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Handle "Saved" category
+    if (selectedCategory === "Saved") {
+      return matchesSearch && isBookmarked(opp.id);
+    }
+    
     const matchesCategory =
       selectedCategory === "All" ||
       opp.type.toLowerCase() === selectedCategory.toLowerCase();
@@ -131,12 +170,13 @@ export default function OpportunitiesPage() {
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedCategory === category
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     }`}
                   >
+                    {category === "Saved" && <Bookmark className="w-3.5 h-3.5" />}
                     {category}
                   </button>
                 ))}
@@ -187,6 +227,7 @@ export default function OpportunitiesPage() {
                       applicants={opportunity.applications?.length || 0}
                       isBookmarked={isBookmarked(opportunity.id)}
                       onBookmark={() => toggleBookmark(opportunity.id)}
+                      hasApplied={appliedOpportunityIds.has(opportunity.id)}
                     />
                   ))}
                 </div>
