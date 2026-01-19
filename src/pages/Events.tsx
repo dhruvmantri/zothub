@@ -4,7 +4,7 @@ import { EventCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Calendar, X } from "lucide-react";
+import { Search, Calendar, X, Bookmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
@@ -27,7 +27,7 @@ interface Event {
   rsvps: { id: string }[];
 }
 
-const dateFilters = ["All", "This Week", "This Month", "Upcoming"];
+const dateFilters = ["All", "Saved", "This Week", "This Month", "Upcoming"];
 
 export default function EventsPage() {
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
@@ -100,6 +100,12 @@ export default function EventsPage() {
     const matchesSearch =
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       clubName.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Handle "Saved" filter
+    if (selectedDateFilter === "Saved") {
+      return matchesSearch && isBookmarked(event.id);
+    }
+    
     const matchesDate = filterEventsByDate(event);
     return matchesSearch && matchesDate;
   });
@@ -150,12 +156,13 @@ export default function EventsPage() {
                   <button
                     key={filter}
                     onClick={() => setSelectedDateFilter(filter)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedDateFilter === filter
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     }`}
                   >
+                    {filter === "Saved" && <Bookmark className="w-3.5 h-3.5" />}
                     {filter}
                   </button>
                 ))}

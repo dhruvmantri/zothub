@@ -16,6 +16,8 @@ import {
   Inbox,
   MessageSquare,
   Users,
+  Bookmark,
+  ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -45,6 +47,20 @@ interface RsvpData {
   };
 }
 
+interface BookmarkedOpportunity {
+  id: string;
+  title: string;
+  deadline: string | null;
+  club: { club_name: string };
+}
+
+interface BookmarkedEvent {
+  id: string;
+  title: string;
+  event_date: string;
+  club: { club_name: string };
+}
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +71,8 @@ export default function StudentDashboard() {
   const [followingCount, setFollowingCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [bookmarkedOpportunities, setBookmarkedOpportunities] = useState<BookmarkedOpportunity[]>([]);
+  const [bookmarkedEvents, setBookmarkedEvents] = useState<BookmarkedEvent[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -111,7 +129,7 @@ export default function StudentDashboard() {
       setStudentProfileId(studentProfile.id);
 
       // Fetch all data in parallel
-      const [applicationsRes, rsvpsRes, bookmarksRes, notificationsRes, messagesRes] = await Promise.all([
+      const [applicationsRes, rsvpsRes, bookmarksRes, notificationsRes, messagesRes, bookmarkedOppsRes, bookmarkedEventsRes] = await Promise.all([
         // Fetch applications
         supabase
           .from("applications")
@@ -167,7 +185,33 @@ export default function StudentDashboard() {
           .from("messages")
           .select("id", { count: "exact", head: true })
           .eq("receiver_id", user.id)
-          .eq("is_read", false)
+          .eq("is_read", false),
+
+        // Fetch bookmarked opportunities with details
+        supabase
+          .from("bookmarks")
+          .select(`
+            opportunity:opportunities!inner (
+              id, title, deadline,
+              club:club_profiles!inner (club_name)
+            )
+          `)
+          .eq("user_id", user.id)
+          .not("opportunity_id", "is", null)
+          .limit(5),
+
+        // Fetch bookmarked events with details
+        supabase
+          .from("bookmarks")
+          .select(`
+            event:events!inner (
+              id, title, event_date,
+              club:club_profiles!inner (club_name)
+            )
+          `)
+          .eq("user_id", user.id)
+          .not("event_id", "is", null)
+          .limit(5)
       ]);
 
       if (applicationsRes.error) {
@@ -218,6 +262,28 @@ export default function StudentDashboard() {
 
       if (!messagesRes.error) {
         setUnreadMessageCount(messagesRes.count || 0);
+      }
+
+      // Process bookmarked opportunities
+      if (!bookmarkedOppsRes.error && bookmarkedOppsRes.data) {
+        const opps = bookmarkedOppsRes.data.map((item: any) => ({
+          id: item.opportunity.id,
+          title: item.opportunity.title,
+          deadline: item.opportunity.deadline,
+          club: { club_name: item.opportunity.club.club_name }
+        }));
+        setBookmarkedOpportunities(opps);
+      }
+
+      // Process bookmarked events
+      if (!bookmarkedEventsRes.error && bookmarkedEventsRes.data) {
+        const evts = bookmarkedEventsRes.data.map((item: any) => ({
+          id: item.event.id,
+          title: item.event.title,
+          event_date: item.event.event_date,
+          club: { club_name: item.event.club.club_name }
+        }));
+        setBookmarkedEvents(evts);
       }
 
     } catch (err) {
@@ -301,7 +367,7 @@ export default function StudentDashboard() {
           })}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6 mb-6">
           {/* Recent Applications */}
           <Card>
             <CardHeader>
@@ -395,6 +461,119 @@ export default function StudentDashboard() {
               {rsvps.length > 0 && (
                 <Button variant="ghost" className="w-full mt-4" asChild>
                   <Link to="/events">View all events</Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bookmarked Items */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Saved Opportunities */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bookmark className="w-5 h-5 text-primary" />
+                Saved Opportunities
+              </CardTitle>
+              <CardDescription>Opportunities you've bookmarked</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {bookmarkedOpportunities.length > 0 ? (
+                <div className="space-y-3">
+                  {bookmarkedOpportunities.map((opp) => (
+                    <Link 
+                      key={opp.id} 
+                      to={`/opportunities/${opp.id}`}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors block"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{opp.title}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Building2 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{opp.club.club_name}</span>
+                        </p>
+                      </div>
+                      {opp.deadline && (
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 ml-2">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(opp.deadline), "MMM d")}
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Bookmark className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">No saved opportunities</p>
+                  <Button variant="link" asChild className="mt-2">
+                    <Link to="/opportunities">Browse opportunities</Link>
+                  </Button>
+                </div>
+              )}
+              {bookmarkedOpportunities.length > 0 && (
+                <Button variant="ghost" className="w-full mt-4 gap-2" asChild>
+                  <Link to="/opportunities">
+                    View all saved
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Saved Events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bookmark className="w-5 h-5 text-primary" />
+                Saved Events
+              </CardTitle>
+              <CardDescription>Events you've bookmarked</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {bookmarkedEvents.length > 0 ? (
+                <div className="space-y-3">
+                  {bookmarkedEvents.map((event) => (
+                    <Link 
+                      key={event.id} 
+                      to={`/events/${event.id}`}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors block"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{event.title}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Building2 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{event.club.club_name}</span>
+                        </p>
+                      </div>
+                      <div className="text-right ml-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {format(new Date(event.event_date), "MMM d")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(event.event_date), "h:mm a")}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Bookmark className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">No saved events</p>
+                  <Button variant="link" asChild className="mt-2">
+                    <Link to="/events">Explore events</Link>
+                  </Button>
+                </div>
+              )}
+              {bookmarkedEvents.length > 0 && (
+                <Button variant="ghost" className="w-full mt-4 gap-2" asChild>
+                  <Link to="/events">
+                    View all saved
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </Button>
               )}
             </CardContent>

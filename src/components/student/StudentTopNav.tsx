@@ -30,6 +30,7 @@ interface StudentTopNavProps {
 }
 
 const navLinks = [
+  { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/student/feed", label: "Feed", icon: Rss },
   { href: "/opportunities", label: "Opportunities", icon: Briefcase },
   { href: "/events", label: "Events", icon: Calendar },
@@ -41,8 +42,8 @@ export function StudentTopNav({ unreadMessageCount, notificationCount }: Student
   const location = useLocation();
 
   const isActive = (href: string) => {
-    if (href === "/student/feed") {
-      return location.pathname === "/student/feed";
+    if (href === "/student/feed" || href === "/student/dashboard") {
+      return location.pathname === href;
     }
     return location.pathname.startsWith(href);
   };

@@ -1,9 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Rss, Briefcase, Calendar, Building2, User } from "lucide-react";
+import { LayoutDashboard, Briefcase, Calendar, Building2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "/student/feed", label: "Feed", icon: Rss },
+  { href: "/student/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/opportunities", label: "Opps", icon: Briefcase },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/clubs", label: "Clubs", icon: Building2 },
@@ -14,11 +14,8 @@ export function StudentBottomNav() {
   const location = useLocation();
 
   const isActive = (href: string) => {
-    if (href === "/student/feed") {
-      return location.pathname === "/student/feed";
-    }
-    if (href === "/student/profile") {
-      return location.pathname === "/student/profile";
+    if (href === "/student/dashboard" || href === "/student/profile") {
+      return location.pathname === href;
     }
     return location.pathname.startsWith(href);
   };

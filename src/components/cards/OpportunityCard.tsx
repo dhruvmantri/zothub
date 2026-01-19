@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Users, Bookmark } from "lucide-react";
+import { Clock, MapPin, Users, Bookmark, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface OpportunityCardProps {
@@ -14,6 +14,7 @@ export interface OpportunityCardProps {
   applicants?: number;
   isBookmarked?: boolean;
   onBookmark?: () => void;
+  hasApplied?: boolean;
 }
 
 const typeColors = {
@@ -33,10 +34,22 @@ export function OpportunityCard({
   description,
   applicants,
   isBookmarked,
-  onBookmark
+  onBookmark,
+  hasApplied
 }: OpportunityCardProps) {
   return (
     <div className="group relative p-5 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
+      {/* Applied badge */}
+      {hasApplied && (
+        <Badge 
+          variant="default" 
+          className="absolute top-4 left-4 bg-success text-success-foreground text-[10px] px-2 py-0.5"
+        >
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Applied
+        </Badge>
+      )}
+      
       {/* Bookmark button */}
       <button
         onClick={onBookmark}
