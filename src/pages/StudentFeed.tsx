@@ -88,7 +88,8 @@ export default function StudentFeed() {
         setFollowedClubs(clubs || []);
       }
 
-      // Fetch opportunities from followed clubs
+      // Fetch opportunities from followed clubs (excluding past deadline)
+      const now = new Date().toISOString();
       const { data: opportunities, error: oppsError } = await supabase
         .from("opportunities")
         .select(`
@@ -103,6 +104,7 @@ export default function StudentFeed() {
         `)
         .in("club_id", clubIds)
         .eq("is_active", true)
+        .or(`deadline.is.null,deadline.gte.${now}`)
         .order("created_at", { ascending: false })
         .limit(50);
 

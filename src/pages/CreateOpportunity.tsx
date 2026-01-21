@@ -21,6 +21,8 @@ import {
   ApplicationQuestionsBuilder, 
   ApplicationQuestion 
 } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { SuccessModal } from "@/components/SuccessModal";
+import { ShareButton } from "@/components/ShareButton";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import {
   Briefcase,
@@ -46,6 +48,8 @@ export default function CreateOpportunity() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdOpportunityId, setCreatedOpportunityId] = useState<string | null>(null);
   
   // Form state
   const [title, setTitle] = useState("");
@@ -118,7 +122,7 @@ export default function CreateOpportunity() {
 
       const validatedData = validationResult.data;
 
-      const { error } = await supabase.from("opportunities").insert({
+      const { data: insertedData, error } = await supabase.from("opportunities").insert({
         club_id: clubProfile.id,
         title: validatedData.title,
         type: validatedData.type,
@@ -128,7 +132,7 @@ export default function CreateOpportunity() {
         is_active: validatedData.is_active,
         application_questions: validatedData.application_questions,
         show_application_count: showApplicationCount,
-      });
+      }).select("id").single();
 
       if (error) {
         console.error("Error creating opportunity:", error);
@@ -136,8 +140,13 @@ export default function CreateOpportunity() {
         return;
       }
 
-      toast.success(asDraft ? "Opportunity saved as draft" : "Opportunity created successfully!");
-      navigate("/club/dashboard");
+      if (asDraft) {
+        toast.success("Opportunity saved as draft");
+        navigate("/club/dashboard");
+      } else {
+        setCreatedOpportunityId(insertedData?.id || null);
+        setShowSuccessModal(true);
+      }
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -343,6 +352,36 @@ export default function CreateOpportunity() {
             </Button>
           </div>
         </form>
+
+        {/* Success Modal */}
+        <SuccessModal
+          open={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            navigate("/club/dashboard");
+          }}
+          title="Opportunity Published!"
+          description={`"${title}" is now live and students can start applying. Share it to reach more students!`}
+          primaryAction={{
+            label: "View Dashboard",
+            onClick: () => navigate("/club/dashboard"),
+          }}
+          secondaryAction={{
+            label: "Create Another",
+            onClick: () => {
+              setShowSuccessModal(false);
+              // Reset form
+              setTitle("");
+              setType("");
+              setDescription("");
+              setRequirements("");
+              setDeadline("");
+              setIsActive(true);
+              setShowApplicationCount(false);
+              setApplicationQuestions([]);
+            },
+          }}
+        />
       </div>
     </ClubLayout>
   );

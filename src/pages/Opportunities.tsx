@@ -4,7 +4,14 @@ import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, X, Bookmark } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, X, Bookmark, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDeadline, normalizeOpportunityType } from "@/lib/formatters";
@@ -27,6 +34,8 @@ interface Opportunity {
 
 const categories = ["All", "Saved", "Leadership", "Project", "Internship", "Volunteer", "Committee", "Other"];
 
+type SortOption = "newest" | "deadline" | "popular";
+
 export default function OpportunitiesPage() {
   const { user } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
@@ -34,6 +43,7 @@ export default function OpportunitiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
   const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -45,6 +55,7 @@ export default function OpportunitiesPage() {
 
   const fetchOpportunities = async () => {
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("opportunities")
         .select(`
@@ -63,6 +74,7 @@ export default function OpportunitiesPage() {
           )
         `)
         .eq("is_active", true)
+        .or(`deadline.is.null,deadline.gte.${now}`)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -107,22 +119,38 @@ export default function OpportunitiesPage() {
   };
 
 
-  const filteredOpportunities = opportunities.filter((opp) => {
-    const clubName = opp.club_profiles?.club_name || "";
-    const matchesSearch =
-      opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clubName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Handle "Saved" category
-    if (selectedCategory === "Saved") {
-      return matchesSearch && isBookmarked(opp.id);
-    }
-    
-    const matchesCategory =
-      selectedCategory === "All" ||
-      opp.type.toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCategory;
-  });
+  const filteredOpportunities = opportunities
+    .filter((opp) => {
+      const clubName = opp.club_profiles?.club_name || "";
+      const matchesSearch =
+        opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        clubName.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle "Saved" category
+      if (selectedCategory === "Saved") {
+        return matchesSearch && isBookmarked(opp.id);
+      }
+      
+      const matchesCategory =
+        selectedCategory === "All" ||
+        opp.type.toLowerCase() === selectedCategory.toLowerCase();
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      switch (sortOption) {
+        case "deadline":
+          // Opportunities with deadlines first, sorted by deadline ascending
+          if (!a.deadline && !b.deadline) return 0;
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        case "popular":
+          return (b.applications?.length || 0) - (a.applications?.length || 0);
+        case "newest":
+        default:
+          return 0; // Already sorted by created_at from query
+      }
+    });
 
 
   return (
@@ -164,23 +192,36 @@ export default function OpportunitiesPage() {
                 )}
               </div>
 
-              {/* Category filters */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                      selectedCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {category === "Saved" && <Bookmark className="w-3.5 h-3.5" />}
-                    {category}
-                  </button>
-                ))}
-              </div>
+              {/* Sort dropdown */}
+              <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <ArrowUpDown className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="deadline">Deadline Approaching</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Category filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 mt-4">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    selectedCategory === category
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {category === "Saved" && <Bookmark className="w-3.5 h-3.5" />}
+                  {category}
+                </button>
+              ))}
             </div>
           </div>
         </div>
