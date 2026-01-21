@@ -144,6 +144,7 @@ export function useClubData() {
       .from("club_team_members")
       .select("*")
       .eq("club_id", clubId)
+      .neq("status", "declined") // Filter out declined members
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: false });
 
