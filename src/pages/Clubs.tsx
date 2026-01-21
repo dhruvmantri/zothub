@@ -64,11 +64,13 @@ export default function ClubsPage() {
         return;
       }
 
-      // Get opportunity counts per club
+      // Get opportunity counts per club (active and not expired)
+      const now = new Date().toISOString();
       const { data: oppCounts, error: oppError } = await supabase
         .from("opportunities")
         .select("club_id")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .or(`deadline.is.null,deadline.gte.${now}`);
 
       // Get event counts per club (upcoming only)
       const { data: eventCounts, error: eventError } = await supabase
