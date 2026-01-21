@@ -23,6 +23,27 @@ export function useClubData() {
       fetchOpportunities();
       fetchEvents();
       fetchTeamMembers();
+
+      // Subscribe to real-time team member updates
+      const channel = supabase
+        .channel(`team-members-${clubId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "club_team_members",
+            filter: `club_id=eq.${clubId}`,
+          },
+          () => {
+            fetchTeamMembers();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [clubId]);
 
