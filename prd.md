@@ -1,9 +1,9 @@
 # ZotHub MVP Product Requirements Document
 
-**Version:** 1.1
+**Version:** 1.2
 **Last Updated:** 2026-01-20
-**Launch Target:** Within 1 week (public launch)
-**Author:** Claude (based on stakeholder interview + manual testing feedback)
+**Launch Target:** Within 1 week (public launch) - **EXTREME CRUNCH MODE**
+**Author:** Claude (based on stakeholder interview + manual testing feedback + codebase analysis)
 
 ---
 
@@ -20,8 +20,10 @@ Create a single, searchable hub where every UCI student has equal access to all 
 - **Launch Platform:** https://zothub.lovable.app (Lovable subdomain)
 - **Support Model:** Founder-led support via personal email (<24hr response, nights/weekends coverage)
 
-**🆕 Version 1.1 Updates (Manual Testing Feedback):**
-This PRD includes 8 additional UX features identified during manual testing, all MUST-HAVES for launch:
+**🆕 Version 1.2 Updates (Comprehensive Codebase Analysis):**
+This PRD now includes **22 additional UX features** (8 from v1.1 + 14 from codebase analysis), all MUST-HAVES for 1-week launch:
+
+**Original 8 (v1.1 - Manual Testing):**
 1. Team member messaging (students can message individual team members)
 2. Application count visibility toggle (clubs control whether to show "X applications")
 3. Auto-archive expired content (past opportunities/events hidden from students)
@@ -30,6 +32,32 @@ This PRD includes 8 additional UX features identified during manual testing, all
 6. Application question label fix (display question text, not "Unknown question")
 7. Application filtering by opportunity (dropdown filter in review page)
 8. Team member display order sorting (up/down arrows to reorder)
+
+**New 14 (v1.2 - Codebase Analysis):**
+
+**Search & Discovery:**
+9. Full-text keyword search (across titles, descriptions, club names)
+10. Smart sorting dropdown (deadline approaching, most popular, newest)
+11. Unread count badges in navigation (messages, notifications)
+12. Fix club category filtering (actually filter, not just sort)
+
+**Notifications & Engagement:**
+13. Event reminder emails (automated 24hrs before events)
+14. Deadline approaching notifications (24-48hrs before application deadlines)
+15. New opportunity notifications (when followed clubs post)
+16. Resume prefill from profile (auto-populate applications)
+
+**Polish & Convenience:**
+17. Success confirmation modals (after application/RSVP submission)
+18. Post-publication confirmation (clubs see success after posting)
+19. Auto-archive scheduler (nightly cron job for expired content)
+20. Share button (Copy Link for viral growth)
+
+**Content Management:**
+21. Bulk application actions (accept/reject multiple at once)
+22. CSV export (applications/RSVPs for planning/reports)
+
+**⚠️ SCOPE ALERT:** This represents **3X the original scope** committed to 1-week timeline. Requires extreme focus and long hours. High risk of incomplete features or bugs without timeline extension.
 
 ### Success Criteria
 **Primary Metric:** Number of opportunities posted (supply-side health)
@@ -1084,7 +1112,7 @@ const searchOpportunities = async (query, filters) => {
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| **⚠️ EXPANDED SCOPE** (8 new UX features added to 1-week timeline) | VERY HIGH | CRITICAL | **RISK FLAGGED:** Original scope + 8 new features (RSVP forms, auto-archive, team sorting, filtering, etc.) significantly increases dev work. Mitigation: Prioritize ruthlessly, cut non-critical features if timeline slips, extend to 2 weeks if needed. |
+| **🚨 MASSIVELY EXPANDED SCOPE** (22 new UX features for 1-week timeline - 3X original) | EXTREME | CRITICAL | **CRITICAL RISK:** Original scope + 22 new features = ~50-60 hours of dev work for 1-week launch. This is EXTREME CRUNCH MODE. Mitigation: (1) Prioritize CRITICAL features first (search, notifications, bug fixes), (2) Accept some features may be 80% complete vs. 100%, (3) Plan for Day 7 to be pure bug fixes, (4) Have rollback plan if showstopper bugs discovered, (5) Consider soft-launch to beta users if quality issues emerge. **Founder has committed to this timeline despite warnings.** |
 | **Empty platform on day one** (no clubs/opportunities) | HIGH | CRITICAL | **RISK ACCEPTED by founder.** Mitigation: Aggressive club marketing on day 0, offer free onboarding calls, prioritize club approvals (<12hr turnaround). Fallback: Delay student launch 2-3 days if <5 clubs sign up. |
 | **Email reminders don't send** (cron job fails) | MEDIUM | HIGH | **Test thoroughly:** Send test reminder to yourself 24hrs before fake event. Verify cron job logs. Fallback: Manual emails if <10 events/week. |
 | **File uploads fail** (storage errors, security holes) | MEDIUM | HIGH | **Test all file types** (PDF, DOCX, PNG, JPG, forbidden types). Test max file size. Verify RLS on storage bucket. Fallback: Disable file uploads if broken, ask students to link external resumes. |
@@ -1229,7 +1257,53 @@ const searchOpportunities = async (query, filters) => {
   - [ ] Include: SQL queries, verification steps (check UCI club directory), approval email
   - [ ] Test: Approve one club using documented process
 
-#### New UX Features (From Manual Testing Feedback)
+#### New UX Features (v1.2 - 22 Total Features)
+
+**📍 CRITICAL PRIORITY (Build Days 1-2):**
+
+- [ ] **Application Question Label Fix** (BLOCKER)
+  - [ ] In application review UI, map each answer to corresponding question from `opportunity.custom_questions`
+  - [ ] Display question text/label above answer (instead of "Unknown question")
+  - [ ] Test: Apply to opportunity with 3 custom questions → club reviews → verify question labels display correctly
+
+- [ ] **Application Filtering by Opportunity** (BLOCKER)
+  - [ ] Add dropdown filter in application review page: "Filter by opportunity: [All | Opportunity A | Opportunity B | ...]"
+  - [ ] Filter query: `WHERE opportunity_id = selected_id`
+  - [ ] Test: Post 3 opportunities → receive applications for each → filter by Opportunity B → verify only B's applications shown
+
+- [ ] **Full-Text Keyword Search**
+  - [ ] Implement search across opportunity/event titles, descriptions, club names, categories
+  - [ ] Add search input field to Opportunities.tsx and Events.tsx pages
+  - [ ] Use Supabase full-text search or client-side filtering with fuse.js
+  - [ ] Test: Search "marketing" → returns relevant opportunities; search "Python" → returns tech opportunities
+
+- [ ] **Unread Count Badges in Navigation**
+  - [ ] Add unread message count badge to Messages nav icon (red circle with number)
+  - [ ] Add unread notification count badge to Notifications nav icon
+  - [ ] Update badges in real-time when new messages/notifications arrive
+  - [ ] Test: Send message → verify badge updates; mark as read → verify badge decrements
+
+- [ ] **Fix Club Category Filtering**
+  - [ ] Update Clubs.tsx category dropdown to FILTER clubs (not just sort)
+  - [ ] Query: `WHERE category = selected_category` when category selected
+  - [ ] Test: Select "Tech" category → verify only tech clubs shown (not all clubs sorted by tech)
+
+- [ ] **Event Reminder Emails** (BLOCKER)
+  - [ ] Complete notify_deadline_approaching() function in database
+  - [ ] Schedule cron job to run daily at 8 AM checking events in 24-48hr window
+  - [ ] Send email with event details + "Add to Calendar" link + unsubscribe footer
+  - [ ] Track sent reminders in notifications table (idempotency)
+  - [ ] Test: Create event 25hrs in future → RSVP → verify email received at scheduled time
+
+- [ ] **Auto-Archive Scheduler** (BLOCKER)
+  - [ ] Schedule archive_past_events() function to run nightly at midnight
+  - [ ] Archive opportunities WHERE deadline < NOW()
+  - [ ] Archive events WHERE event_date < NOW()
+  - [ ] Archived content hidden from students, visible in club "Archived" tab
+  - [ ] Test: Create opportunity with yesterday's deadline → run job → verify hidden from students
+
+**📍 HIGH PRIORITY (Build Days 3-4):**
+
 - [ ] **Team Member Messaging**
   - [ ] Add message button next to each team member on club profile
   - [ ] Clicking message button opens in-app chat with team member's personal account
@@ -1265,6 +1339,37 @@ const searchOpportunities = async (query, filters) => {
   - [ ] Add dropdown filter in application review page: "Filter by opportunity: [All | Opportunity A | Opportunity B | ...]"
   - [ ] Filter query: `WHERE opportunity_id = selected_id`
   - [ ] Test: Post 3 opportunities → receive applications for each → filter by Opportunity B → verify only B's applications shown
+- [ ] **Smart Sorting Dropdown**
+  - [ ] Add sort dropdown to Opportunities page: [Newest, Deadline Approaching, Most Popular]
+  - [ ] Add sort dropdown to Events page: [Soonest, Most Attendees, Newest]
+  - [ ] Implement sorting logic: deadline approaching = ORDER BY deadline ASC; most popular = ORDER BY application_count DESC
+  - [ ] Test: Sort opportunities by "Deadline Approaching" → verify urgent deadlines at top
+
+- [ ] **Deadline Approaching Notifications**
+  - [ ] Query bookmarked + followed club opportunities with deadlines in 24-48 hours
+  - [ ] Send in-app + email notification to students: "Deadline approaching for [Opportunity]"
+  - [ ] Track sent notifications to avoid duplicates (idempotency)
+  - [ ] Test: Bookmark opportunity with deadline tomorrow → verify notification received
+
+- [ ] **New Opportunity Notifications**
+  - [ ] When club posts new opportunity, query all followers
+  - [ ] Send in-app + email notification: "[Club] posted new opportunity: [Title]"
+  - [ ] Include link to opportunity detail page
+  - [ ] Test: Follow club → club posts opportunity → verify notification received
+
+- [ ] **Resume Prefill from Profile**
+  - [ ] Update ApplicationForm component to prefill resume_url from student profile
+  - [ ] If student has resume_url in profile, pre-populate file upload field
+  - [ ] Student can override with different resume if needed
+  - [ ] Test: Set resume in profile → apply to opportunity → verify resume prefilled
+
+**📍 MEDIUM PRIORITY (Build Days 5-6):**
+
+- [ ] **Application Count Visibility Toggle**
+  - [ ] Add checkbox in opportunity creation form: "Show application count to students"
+  - [ ] If checked, display "X applications" on opportunity detail page
+  - [ ] Test: Post opportunity with toggle on → verify count shown; toggle off → verify count hidden
+
 - [ ] **Team Member Display Order Sorting**
   - [ ] Add `display_order` integer column to `club_team_members` table
   - [ ] Add up/down arrow buttons next to each team member in team management UI
@@ -1272,7 +1377,38 @@ const searchOpportunities = async (query, filters) => {
   - [ ] Query team members `ORDER BY display_order ASC` for public profile display
   - [ ] Test: Add 3 team members → reorder President to top using arrows → verify order reflected on public club profile
 
-### Final QA (Day -3)
+- [ ] **Success Confirmation Modals**
+  - [ ] After application submission, show modal: "Application submitted! [Club] will review and notify you."
+  - [ ] After RSVP, show modal: "You're registered! Reminder will be sent 24 hours before event."
+  - [ ] Include "View Dashboard" and "Browse More" buttons
+  - [ ] Test: Submit application → verify modal appears; click "View Dashboard" → redirects correctly
+
+- [ ] **Post-Publication Confirmation**
+  - [ ] After club creates opportunity, show toast: "Opportunity published! [Preview Link]"
+  - [ ] After club creates event, show toast: "Event published! [Preview Link]"
+  - [ ] Toast includes link to view public page + share link
+  - [ ] Test: Post opportunity → verify toast appears; click preview → opens opportunity detail
+
+- [ ] **Share Button (Copy Link)**
+  - [ ] Add "Copy Link" button to OpportunityCard and EventCard components
+  - [ ] Clicking copies full URL to clipboard: https://zothub.lovable.app/opportunities/:id
+  - [ ] Show toast confirmation: "Link copied!"
+  - [ ] Test: Click "Copy Link" → paste in Discord → verify link works
+
+- [ ] **Bulk Application Actions**
+  - [ ] Add checkboxes next to each application in ApplicationReview component
+  - [ ] Add bulk action bar: "Select All | Accept Selected | Reject Selected"
+  - [ ] Confirm before bulk action: "Accept 12 applications?"
+  - [ ] Test: Select 5 applications → click "Accept Selected" → verify all 5 updated to "Accepted"
+
+- [ ] **CSV Export for Applications/RSVPs**
+  - [ ] Add "Export CSV" button to application review page
+  - [ ] Export columns: Student Name, Email, Status, Applied Date, Answers (flattened)
+  - [ ] Add "Export CSV" button to event RSVP list
+  - [ ] Export columns: Student Name, Email, RSVP Date, Answers (if RSVP form exists)
+  - [ ] Test: Click "Export" → verify CSV downloads with correct data
+
+### Final QA (Day 7 - Full Day Reserved for Testing & Bug Fixes)
 - [ ] **Run full manual QA checklist** (see QA section above)
 - [ ] **Test on real devices** (iPhone, Android, laptop)
 - [ ] **Test cross-browser** (Chrome, Safari, Firefox)
@@ -1556,6 +1692,7 @@ Physical Address: [Use UCI address or Lovable.dev address for CAN-SPAM complianc
 |---------|------|---------|--------|
 | 1.0 | 2026-01-20 | Initial PRD based on stakeholder interview (18 question batches) | Claude |
 | 1.1 | 2026-01-20 | Added 8 UX features from manual testing feedback: team messaging, application count toggle, auto-archive, RSVP forms, RSVP approval, question label fix, application filtering, team sorting | Claude |
+| 1.2 | 2026-01-20 | Added 14 additional UX features from comprehensive codebase analysis (22 total new features): keyword search, smart sorting, unread badges, category filter fix, event reminders, deadline notifications, new opp notifications, resume prefill, success modals, post confirmation, archive scheduler, share button, bulk actions, CSV export. **SCOPE ALERT: 3X expansion, extreme crunch mode for 1-week timeline** | Claude |
 
 ---
 
