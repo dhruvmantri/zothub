@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
+import { sendRSVPStatusEmail } from "@/lib/eventNotifications";
 
 interface RSVPQuestion {
   id: string;
@@ -60,8 +61,12 @@ interface RSVP {
     id: string;
     title: string;
     event_date: string;
+    location: string | null;
     rsvp_questions: RSVPQuestion[];
     requires_approval: boolean;
+    club_profiles: {
+      club_name: string;
+    };
   };
   student: {
     id: string;
@@ -142,9 +147,13 @@ export function RSVPReview() {
             id,
             title,
             event_date,
+            location,
             rsvp_questions,
             requires_approval,
-            club_id
+            club_id,
+            club_profiles (
+              club_name
+            )
           ),
           student:student_profiles!inner (
             id,
@@ -173,8 +182,12 @@ export function RSVPReview() {
           id: rsvp.event.id,
           title: rsvp.event.title,
           event_date: rsvp.event.event_date,
+          location: rsvp.event.location || null,
           rsvp_questions: rsvp.event.rsvp_questions || [],
-          requires_approval: rsvp.event.requires_approval || false
+          requires_approval: rsvp.event.requires_approval || false,
+          club_profiles: {
+            club_name: rsvp.event.club_profiles?.club_name || "Unknown Club"
+          }
         },
         student: {
           id: rsvp.student.id,
@@ -206,6 +219,23 @@ export function RSVPReview() {
         console.error("Error updating RSVP:", error);
         toast.error("Failed to update RSVP");
         return;
+      }
+
+      // Find the RSVP to get details for email
+      const rsvp = rsvps.find(r => r.id === rsvpId);
+      
+      // Send email notification for status change (only for confirm/cancel)
+      if (rsvp && (newStatus === "confirmed" || newStatus === "cancelled")) {
+        sendRSVPStatusEmail(
+          rsvpId,
+          newStatus as "confirmed" | "cancelled",
+          rsvp.event.title,
+          format(new Date(rsvp.event.event_date), "MMMM d, yyyy 'at' h:mm a"),
+          rsvp.event.location,
+          rsvp.event.club_profiles.club_name,
+          rsvp.student.email,
+          rsvp.student.full_name || "there"
+        ).catch(err => console.error("Failed to send RSVP status email:", err));
       }
 
       // Update local state
@@ -245,6 +275,23 @@ export function RSVPReview() {
         console.error("Error updating RSVPs:", error);
         toast.error("Failed to update RSVPs");
         return;
+      }
+
+      // Send email notifications for each updated RSVP (only for confirm/cancel)
+      if (newStatus === "confirmed" || newStatus === "cancelled") {
+        const rsvpsToNotify = rsvps.filter(r => selectedIds.has(r.id));
+        for (const rsvp of rsvpsToNotify) {
+          sendRSVPStatusEmail(
+            rsvp.id,
+            newStatus as "confirmed" | "cancelled",
+            rsvp.event.title,
+            format(new Date(rsvp.event.event_date), "MMMM d, yyyy 'at' h:mm a"),
+            rsvp.event.location,
+            rsvp.event.club_profiles.club_name,
+            rsvp.student.email,
+            rsvp.student.full_name || "there"
+          ).catch(err => console.error("Failed to send RSVP status email:", err));
+        }
       }
 
       // Update local state
