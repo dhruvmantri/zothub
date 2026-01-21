@@ -6,7 +6,8 @@ import {
   Calendar, 
   Users, 
   UserCog, 
-  TrendingUp 
+  TrendingUp,
+  CalendarCheck,
 } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
@@ -15,6 +16,7 @@ const tabs = [
   { href: "/club/dashboard/opportunities", label: "Opportunities", icon: Briefcase },
   { href: "/club/dashboard/events", label: "Events", icon: Calendar },
   { href: "/club/dashboard/applications", label: "Applications", icon: Users },
+  { href: "/club/dashboard/rsvps", label: "RSVPs", icon: CalendarCheck },
   { href: "/club/dashboard/team", label: "Team", icon: UserCog },
   { href: "/club/dashboard/analytics", label: "Analytics", icon: TrendingUp },
 ];
