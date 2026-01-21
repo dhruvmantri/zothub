@@ -667,6 +667,10 @@ export type Database = {
         Returns: boolean
       }
       is_own_student_profile: { Args: { profile_id: string }; Returns: boolean }
+      is_team_invitation_recipient: {
+        Args: { member_email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "student" | "club"
