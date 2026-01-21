@@ -44,6 +44,7 @@ export default function ClubHome() {
     addTeamMember,
     updateTeamMember,
     removeTeamMember,
+    swapTeamMemberOrder,
     refetchOpportunities,
     refetchEvents,
   } = useClubData();
@@ -136,6 +137,7 @@ export default function ClubHome() {
               onAddMember={addTeamMember}
               onUpdateMember={updateTeamMember}
               onRemoveMember={removeTeamMember}
+              onSwapOrder={swapTeamMemberOrder}
             />
           </div>
         );
