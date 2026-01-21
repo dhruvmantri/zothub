@@ -130,6 +130,8 @@ export interface TeamMember {
   status: string;
   invited_at: string;
   joined_at: string | null;
+  display_order: number | null;
+  user_id: string | null;
 }
 
 // ============= UI Types =============

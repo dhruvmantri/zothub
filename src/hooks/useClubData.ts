@@ -123,6 +123,7 @@ export function useClubData() {
       .from("club_team_members")
       .select("*")
       .eq("club_id", clubId)
+      .order("display_order", { ascending: true })
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -228,6 +229,38 @@ export function useClubData() {
     return true;
   };
 
+  const reorderTeamMember = async (id: string, newOrder: number) => {
+    const { error } = await supabase
+      .from("club_team_members")
+      .update({ display_order: newOrder })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error reordering team member:", error);
+      toast.error("Failed to reorder team member");
+      return false;
+    }
+
+    return true;
+  };
+
+  const swapTeamMemberOrder = async (memberId1: string, order1: number, memberId2: string, order2: number) => {
+    // Update both members' display_order
+    const [result1, result2] = await Promise.all([
+      supabase.from("club_team_members").update({ display_order: order2 }).eq("id", memberId1),
+      supabase.from("club_team_members").update({ display_order: order1 }).eq("id", memberId2),
+    ]);
+
+    if (result1.error || result2.error) {
+      console.error("Error swapping order:", result1.error || result2.error);
+      toast.error("Failed to reorder team members");
+      return false;
+    }
+
+    fetchTeamMembers();
+    return true;
+  };
+
   return {
     clubId,
     opportunities,
@@ -239,7 +272,10 @@ export function useClubData() {
     addTeamMember,
     updateTeamMember,
     removeTeamMember,
+    reorderTeamMember,
+    swapTeamMemberOrder,
     refetchOpportunities: fetchOpportunities,
     refetchEvents: fetchEvents,
+    refetchTeamMembers: fetchTeamMembers,
   };
 }

@@ -59,6 +59,8 @@ interface TeamMember {
   id: string;
   name: string | null;
   role: string;
+  display_order: number | null;
+  user_id: string | null;
 }
 
 const ClubDetail = () => {
@@ -111,12 +113,13 @@ const ClubDetail = () => {
 
         if (!eventsError) setEvents(eventsData || []);
 
-        // Fetch active team members (public visibility)
+        // Fetch active team members (public visibility), ordered by display_order
         const { data: teamData, error: teamError } = await supabase
           .from("club_team_members")
-          .select("id, name, role")
+          .select("id, name, role, display_order, user_id")
           .eq("club_id", id)
-          .eq("status", "active");
+          .eq("status", "active")
+          .order("display_order", { ascending: true });
 
         if (!teamError) setTeamMembers(teamData || []);
 
@@ -370,10 +373,22 @@ const ClubDetail = () => {
                       {member.name?.charAt(0) || "?"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium">{member.name || "Team Member"}</p>
                     <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                   </div>
+                  {/* Message button - only show for students and if team member has a user_id */}
+                  {user && role === "student" && member.user_id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => navigate(`/messages?to=${member.user_id}`)}
+                      title={`Message ${member.name || "team member"}`}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
