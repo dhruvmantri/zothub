@@ -94,6 +94,14 @@ const App = () => (
               } 
             />
             <Route 
+              path="/club/dashboard/rsvps" 
+              element={
+                <ProtectedRoute allowedRoles={["club"]}>
+                  <ClubHome />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/club/dashboard/team" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
