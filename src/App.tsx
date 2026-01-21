@@ -31,6 +31,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 // New club route pages
 import ClubHome from "./pages/club/ClubHome";
 import ClubFeed from "./pages/club/ClubFeed";
+import Privacy from "./pages/Privacy";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +55,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route 
               path="/club/feed" 
               element={

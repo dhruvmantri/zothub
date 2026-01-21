@@ -228,6 +228,9 @@ export default function Landing() {
               <Link to="/clubs" className="hover:text-foreground transition-colors">
                 Clubs
               </Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">
+                Privacy
+              </Link>
             </div>
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} ZotHub. Made for UCI.
