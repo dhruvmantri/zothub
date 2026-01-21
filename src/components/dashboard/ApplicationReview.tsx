@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Filter,
@@ -28,12 +36,15 @@ import {
   GraduationCap,
   Calendar,
   Loader2,
-  Inbox
+  Inbox,
+  Download,
+  CheckSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
 
 interface ApplicationQuestion {
   id: string;
@@ -68,6 +79,11 @@ interface Application {
   };
 }
 
+interface Opportunity {
+  id: string;
+  title: string;
+}
+
 const statusColors = {
   pending: "accent",
   reviewed: "default",
@@ -78,11 +94,17 @@ const statusColors = {
 export function ApplicationReview() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [opportunityFilter, setOpportunityFilter] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -106,6 +128,15 @@ export function ApplicationReview() {
         setIsLoading(false);
         return;
       }
+
+      // Fetch opportunities for the filter dropdown
+      const { data: opps } = await supabase
+        .from("opportunities")
+        .select("id, title")
+        .eq("club_id", clubProfile.id)
+        .order("created_at", { ascending: false });
+      
+      setOpportunities(opps || []);
 
       // Fetch applications for this club's opportunities
       const { data, error } = await supabase
@@ -204,6 +235,103 @@ export function ApplicationReview() {
     }
   };
 
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    if (selectedIds.size === 0) return;
+    
+    setIsBulkUpdating(true);
+    try {
+      const idsToUpdate = Array.from(selectedIds);
+      
+      const { error } = await supabase
+        .from("applications")
+        .update({ status: newStatus })
+        .in("id", idsToUpdate);
+
+      if (error) {
+        console.error("Error updating applications:", error);
+        toast.error("Failed to update applications");
+        return;
+      }
+
+      // Update local state
+      setApplications(prev => 
+        prev.map(app => 
+          selectedIds.has(app.id) ? { ...app, status: newStatus } : app
+        )
+      );
+
+      toast.success(`${selectedIds.size} applications ${newStatus}`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error("An error occurred");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredApplications.map(app => app.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) {
+      newSet.add(id);
+    } else {
+      newSet.delete(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const handleExportCSV = () => {
+    const dataToExport = selectedIds.size > 0 
+      ? filteredApplications.filter(app => selectedIds.has(app.id))
+      : filteredApplications;
+
+    if (dataToExport.length === 0) {
+      toast.error("No applications to export");
+      return;
+    }
+
+    // Build columns dynamically based on question keys
+    const allQuestionIds = new Set<string>();
+    dataToExport.forEach(app => {
+      app.answers.forEach(ans => allQuestionIds.add(ans.questionId));
+    });
+
+    const columns: CSVColumn<Application>[] = [
+      { header: "Applicant Name", accessor: (app) => app.student.full_name || "N/A" },
+      { header: "Email", accessor: (app) => app.student.email },
+      { header: "Major", accessor: (app) => app.student.major || "N/A" },
+      { header: "Year", accessor: (app) => app.student.year || "N/A" },
+      { header: "Opportunity", accessor: (app) => app.opportunity.title },
+      { header: "Status", accessor: (app) => app.status },
+      { header: "Applied Date", accessor: (app) => format(new Date(app.created_at), "yyyy-MM-dd") },
+      { header: "Resume URL", accessor: (app) => app.resume_url || "" },
+    ];
+
+    // Add columns for each unique question
+    Array.from(allQuestionIds).forEach((qId, index) => {
+      columns.push({
+        header: `Question ${index + 1}`,
+        accessor: (app) => {
+          const answer = app.answers.find(a => a.questionId === qId);
+          if (!answer) return "";
+          return Array.isArray(answer.answer) ? answer.answer.join("; ") : answer.answer;
+        }
+      });
+    });
+
+    const filename = `applications-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    exportToCSV(dataToExport, columns, filename);
+    toast.success(`Exported ${dataToExport.length} applications`);
+  };
+
   const getQuestionText = (questionId: string, questions: ApplicationQuestion[]): string => {
     const question = questions.find(q => q.id === questionId);
     return question?.question || "Unknown question";
@@ -221,16 +349,21 @@ export function ApplicationReview() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = 
-      (app.student.full_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      app.opportunity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.student.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredApplications = useMemo(() => {
+    return applications.filter(app => {
+      const matchesSearch = 
+        (app.student.full_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        app.opportunity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.student.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+      const matchesOpportunity = opportunityFilter === "all" || app.opportunity.id === opportunityFilter;
+      return matchesSearch && matchesStatus && matchesOpportunity;
+    });
+  }, [applications, searchQuery, statusFilter, opportunityFilter]);
 
   const pendingCount = applications.filter(a => a.status === "pending").length;
+  const allSelected = filteredApplications.length > 0 && filteredApplications.every(app => selectedIds.has(app.id));
+  const someSelected = selectedIds.size > 0;
 
   if (isLoading) {
     return (
@@ -243,46 +376,131 @@ export function ApplicationReview() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search applications..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Filter className="w-4 h-4" />
-              {statusFilter === "all" ? "All Status" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search applications..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {/* Opportunity Filter */}
+            <Select value={opportunityFilter} onValueChange={setOpportunityFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Opportunities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Opportunities</SelectItem>
+                {opportunities.map((opp) => (
+                  <SelectItem key={opp.id} value={opp.id}>
+                    {opp.title.length > 25 ? opp.title.substring(0, 25) + "..." : opp.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Filter className="w-4 h-4" />
+                  {statusFilter === "all" ? "All Status" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("pending")}>
+                  Pending ({pendingCount})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("reviewed")}>Reviewed</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("accepted")}>Accepted</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>Rejected</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Export Button */}
+            <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
+              <Download className="w-4 h-4" />
+              Export CSV
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("pending")}>
-              Pending ({pendingCount})
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("reviewed")}>Reviewed</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("accepted")}>Accepted</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>Rejected</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Bulk Actions Bar */}
+        {someSelected && (
+          <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+            <CheckSquare className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-green-600 border-green-600/30 hover:bg-green-600/10"
+                disabled={isBulkUpdating}
+                onClick={() => handleBulkStatusUpdate("accepted")}
+              >
+                <Check className="w-3.5 h-3.5" />
+                Accept All
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                disabled={isBulkUpdating}
+                onClick={() => handleBulkStatusUpdate("rejected")}
+              >
+                <X className="w-3.5 h-3.5" />
+                Reject All
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Applications List */}
       <div className="space-y-3">
+        {/* Select All Header */}
+        {filteredApplications.length > 0 && (
+          <div className="flex items-center gap-3 px-5 py-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={handleSelectAll}
+              aria-label="Select all"
+            />
+            <span>Select all ({filteredApplications.length})</span>
+          </div>
+        )}
+
         {filteredApplications.map((application) => (
           <div 
             key={application.id}
-            className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all cursor-pointer"
-            onClick={() => setSelectedApplication(application)}
+            className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all"
           >
             <div className="flex flex-col md:flex-row md:items-center gap-4">
+              {/* Checkbox */}
+              <Checkbox
+                checked={selectedIds.has(application.id)}
+                onCheckedChange={(checked) => handleSelectOne(application.id, checked as boolean)}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Select ${application.student.full_name || application.student.email}`}
+              />
+
               {/* Applicant Info */}
-              <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div 
+                className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
+                onClick={() => setSelectedApplication(application)}
+              >
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
                   <span className="text-lg font-semibold text-muted-foreground">
                     {getInitials(application.student.full_name)}
@@ -307,7 +525,7 @@ export function ApplicationReview() {
               </div>
 
               {/* Opportunity */}
-              <div className="md:w-64">
+              <div className="md:w-64 cursor-pointer" onClick={() => setSelectedApplication(application)}>
                 <p className="text-sm font-medium text-foreground truncate">{application.opportunity.title}</p>
                 <p className="text-xs text-muted-foreground">
                   Applied {format(new Date(application.created_at), "MMM d, yyyy")}
@@ -335,7 +553,7 @@ export function ApplicationReview() {
                     <Button 
                       variant="outline" 
                       size="icon"
-                      className="h-8 w-8 text-success hover:bg-success/10"
+                      className="h-8 w-8 text-green-600 hover:bg-green-600/10"
                       disabled={isUpdating}
                       onClick={(e) => {
                         e.stopPropagation();
