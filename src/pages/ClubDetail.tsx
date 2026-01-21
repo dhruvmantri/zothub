@@ -92,12 +92,13 @@ const ClubDetail = () => {
         if (clubError) throw clubError;
         setClub(clubData);
 
-        // Fetch active opportunities
+        // Fetch active opportunities (excluding expired ones)
         const { data: oppsData, error: oppsError } = await supabase
           .from("opportunities")
           .select("id, title, type, description, deadline")
           .eq("club_id", id)
           .eq("is_active", true)
+          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`)
           .order("created_at", { ascending: false });
 
         if (!oppsError) setOpportunities(oppsData || []);
