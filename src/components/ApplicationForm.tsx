@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Loader2, Send, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { applicationSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
+import { sendApplicationConfirmation } from "@/lib/emailService";
 
 interface ApplicationQuestion {
   id: string;
@@ -55,6 +56,29 @@ export function ApplicationForm({
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [resumeUrl, setResumeUrl] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentName, setStudentName] = useState("");
+
+  // Fetch student profile for email prefill and resume URL
+  useEffect(() => {
+    const fetchStudentProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("student_profiles")
+        .select("email, full_name, resume_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setStudentEmail(data.email);
+        setStudentName(data.full_name || "");
+        if (data.resume_url && !resumeUrl) {
+          setResumeUrl(data.resume_url);
+        }
+      }
+    };
+    fetchStudentProfile();
+  }, [user]);
 
   const updateAnswer = (questionId: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -158,6 +182,16 @@ export function ApplicationForm({
           toast.error("Failed to submit application");
         }
         return;
+      }
+
+      // Send confirmation email (non-blocking)
+      if (studentEmail) {
+        sendApplicationConfirmation(
+          studentEmail,
+          studentName || "Student",
+          opportunity.title,
+          opportunity.club_profiles?.club_name || "the club"
+        ).catch(console.error);
       }
 
       toast.success("Application submitted successfully!");
