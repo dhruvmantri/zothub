@@ -93,6 +93,16 @@ const handler = async (req: Request): Promise<Response> => {
                   </div>
                   <p>See you there!</p>
                   <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #71717a; font-size: 12px; margin: 0;">
+                      You received this email because you RSVP'd to this event.<br/>
+                      <a href="https://zothub.lovable.app/unsubscribe?type=event_reminders" style="color: #3b82f6;">Unsubscribe from event reminders</a> | 
+                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                    </p>
+                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
+                      ZotHub • University of California, Irvine • Irvine, CA 92697
+                    </p>
+                  </div>
                 </div>
               `,
             });
@@ -183,6 +193,16 @@ const handler = async (req: Request): Promise<Response> => {
                   </div>
                   <p>Don't miss out on this opportunity!</p>
                   <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #71717a; font-size: 12px; margin: 0;">
+                      You received this email because you bookmarked this opportunity.<br/>
+                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from deadline reminders</a> | 
+                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                    </p>
+                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
+                      ZotHub • University of California, Irvine • Irvine, CA 92697
+                    </p>
+                  </div>
                 </div>
               `,
             });

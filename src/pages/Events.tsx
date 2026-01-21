@@ -42,6 +42,7 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("events")
         .select(`
@@ -62,6 +63,7 @@ export default function EventsPage() {
           )
         `)
         .eq("is_active", true)
+        .gte("event_date", now)
         .order("event_date", { ascending: true });
 
       if (error) {
