@@ -54,6 +54,7 @@ export default function CreateOpportunity() {
   const [requirements, setRequirements] = useState("");
   const [deadline, setDeadline] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [showApplicationCount, setShowApplicationCount] = useState(false);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -126,6 +127,7 @@ export default function CreateOpportunity() {
         deadline: validatedData.deadline ? new Date(validatedData.deadline).toISOString() : null,
         is_active: validatedData.is_active,
         application_questions: validatedData.application_questions,
+        show_application_count: showApplicationCount,
       });
 
       if (error) {
@@ -274,6 +276,20 @@ export default function CreateOpportunity() {
                   id="isActive"
                   checked={isActive}
                   onCheckedChange={setIsActive}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div>
+                  <Label htmlFor="showApplicationCount" className="text-base">Show application count</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display how many students have applied
+                  </p>
+                </div>
+                <Switch
+                  id="showApplicationCount"
+                  checked={showApplicationCount}
+                  onCheckedChange={setShowApplicationCount}
                 />
               </div>
             </CardContent>

@@ -111,6 +111,35 @@ export type Database = {
           },
         ]
       }
+      club_followers: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_followers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_profiles: {
         Row: {
           banner_url: string | null
@@ -166,6 +195,7 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string
+          display_order: number | null
           email: string
           id: string
           invited_at: string
@@ -179,6 +209,7 @@ export type Database = {
         Insert: {
           club_id: string
           created_at?: string
+          display_order?: number | null
           email: string
           id?: string
           invited_at?: string
@@ -192,6 +223,7 @@ export type Database = {
         Update: {
           club_id?: string
           created_at?: string
+          display_order?: number | null
           email?: string
           id?: string
           invited_at?: string
@@ -223,6 +255,8 @@ export type Database = {
           id: string
           is_active: boolean | null
           location: string | null
+          requires_approval: boolean | null
+          rsvp_questions: Json | null
           title: string
           updated_at: string
           views: number | null
@@ -237,6 +271,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location?: string | null
+          requires_approval?: boolean | null
+          rsvp_questions?: Json | null
           title: string
           updated_at?: string
           views?: number | null
@@ -251,6 +287,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location?: string | null
+          requires_approval?: boolean | null
+          rsvp_questions?: Json | null
           title?: string
           updated_at?: string
           views?: number | null
@@ -371,6 +409,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           requirements: string | null
+          show_application_count: boolean | null
           title: string
           type: string
           updated_at: string
@@ -385,6 +424,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           requirements?: string | null
+          show_application_count?: boolean | null
           title: string
           type: string
           updated_at?: string
@@ -399,6 +439,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           requirements?: string | null
+          show_application_count?: boolean | null
           title?: string
           type?: string
           updated_at?: string
@@ -414,8 +455,36 @@ export type Database = {
           },
         ]
       }
+      reminder_logs: {
+        Row: {
+          created_at: string
+          id: string
+          reminder_type: string
+          sent_at: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reminder_type: string
+          sent_at?: string
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rsvps: {
         Row: {
+          answers: Json | null
           created_at: string
           event_id: string
           id: string
@@ -423,6 +492,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          answers?: Json | null
           created_at?: string
           event_id: string
           id?: string
@@ -430,6 +500,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          answers?: Json | null
           created_at?: string
           event_id?: string
           id?: string

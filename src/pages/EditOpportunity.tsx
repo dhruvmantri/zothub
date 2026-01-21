@@ -56,6 +56,7 @@ export default function EditOpportunity() {
   const [requirements, setRequirements] = useState("");
   const [deadline, setDeadline] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [showApplicationCount, setShowApplicationCount] = useState(false);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -87,6 +88,7 @@ export default function EditOpportunity() {
     setRequirements(data.requirements || "");
     setDeadline(data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : "");
     setIsActive(data.is_active ?? true);
+    setShowApplicationCount(data.show_application_count ?? false);
     
     // Parse application questions
     const questions = (data.application_questions as unknown) as ApplicationQuestion[] | null;
@@ -147,6 +149,7 @@ export default function EditOpportunity() {
           deadline: validatedData.deadline ? new Date(validatedData.deadline).toISOString() : null,
           is_active: validatedData.is_active,
           application_questions: validatedData.application_questions,
+          show_application_count: showApplicationCount,
         })
         .eq("id", id);
 
@@ -306,6 +309,20 @@ export default function EditOpportunity() {
                   id="isActive"
                   checked={isActive}
                   onCheckedChange={setIsActive}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div>
+                  <Label htmlFor="showApplicationCount" className="text-base">Show application count</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display how many students have applied
+                  </p>
+                </div>
+                <Switch
+                  id="showApplicationCount"
+                  checked={showApplicationCount}
+                  onCheckedChange={setShowApplicationCount}
                 />
               </div>
             </CardContent>
