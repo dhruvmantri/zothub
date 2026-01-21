@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { SuccessModal } from "@/components/SuccessModal";
 import {
   Calendar,
   MapPin,
@@ -32,6 +33,8 @@ export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
   
   // Form state
   const [title, setTitle] = useState("");
@@ -97,7 +100,7 @@ export default function CreateEvent() {
 
       const validatedData = validationResult.data;
 
-      const { error } = await supabase.from("events").insert([{
+      const { data: insertedData, error } = await supabase.from("events").insert([{
         club_id: clubProfile.id,
         title: validatedData.title,
         description: validatedData.description,
@@ -108,7 +111,7 @@ export default function CreateEvent() {
         is_active: validatedData.is_active,
         rsvp_questions: rsvpQuestions as unknown as null,
         requires_approval: requiresApproval,
-      }]);
+      }]).select("id").single();
 
       if (error) {
         console.error("Error creating event:", error);
@@ -116,8 +119,13 @@ export default function CreateEvent() {
         return;
       }
 
-      toast.success(asDraft ? "Event saved as draft" : "Event created successfully!");
-      navigate("/club/dashboard");
+      if (asDraft) {
+        toast.success("Event saved as draft");
+        navigate("/club/dashboard");
+      } else {
+        setCreatedEventId(insertedData?.id || null);
+        setShowSuccessModal(true);
+      }
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -363,6 +371,37 @@ export default function CreateEvent() {
             </Button>
           </div>
         </form>
+
+        {/* Success Modal */}
+        <SuccessModal
+          open={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            navigate("/club/dashboard");
+          }}
+          title="Event Published!"
+          description={`"${title}" is now live and students can RSVP. Share it to reach more attendees!`}
+          primaryAction={{
+            label: "View Dashboard",
+            onClick: () => navigate("/club/dashboard"),
+          }}
+          secondaryAction={{
+            label: "Create Another",
+            onClick: () => {
+              setShowSuccessModal(false);
+              // Reset form
+              setTitle("");
+              setDescription("");
+              setEventDate("");
+              setLocation("");
+              setCapacity("");
+              setBannerUrl("");
+              setIsActive(true);
+              setRsvpQuestions([]);
+              setRequiresApproval(false);
+            },
+          }}
+        />
       </div>
     </ClubLayout>
   );

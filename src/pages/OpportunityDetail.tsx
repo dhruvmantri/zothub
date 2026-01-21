@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ApplicationForm } from "@/components/ApplicationForm";
+import { ShareButton } from "@/components/ShareButton";
+import { SuccessModal } from "@/components/SuccessModal";
 import {
   ArrowLeft,
   Clock,
@@ -41,6 +42,7 @@ interface Opportunity {
   requirements: string | null;
   deadline: string | null;
   application_questions: ApplicationQuestion[] | null;
+  show_application_count: boolean;
   created_at: string;
   club_id: string;
   club_profiles: {
@@ -70,6 +72,7 @@ export default function OpportunityDetail() {
   const [hasApplied, setHasApplied] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -95,6 +98,7 @@ export default function OpportunityDetail() {
           requirements,
           deadline,
           application_questions,
+          show_application_count,
           created_at,
           club_id,
           club_profiles (
@@ -148,6 +152,7 @@ export default function OpportunityDetail() {
         requirements: data.requirements,
         deadline: data.deadline,
         application_questions: parsedQuestions,
+        show_application_count: data.show_application_count ?? true,
         created_at: data.created_at,
         club_id: data.club_id,
         club_profiles: data.club_profiles as Opportunity["club_profiles"],
@@ -245,6 +250,7 @@ export default function OpportunityDetail() {
   const handleApplicationSuccess = () => {
     setHasApplied(true);
     setShowApplicationForm(false);
+    setShowSuccessModal(true);
   };
 
   const formatDeadline = (deadline: string | null) => {
@@ -343,10 +349,12 @@ export default function OpportunityDetail() {
                   <Badge variant={getTypeVariant(opportunity.type)} className="capitalize">
                     {opportunity.type}
                   </Badge>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{opportunity.applications?.length || 0} applicants</span>
-                  </div>
+                  {opportunity.show_application_count && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>{opportunity.applications?.length || 0} applicants</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     <span>Posted {format(new Date(opportunity.created_at), "MMM d, yyyy")}</span>
@@ -383,6 +391,12 @@ export default function OpportunityDetail() {
                 <Bookmark className={cn("w-4 h-4 mr-2", isBookmarked && "fill-current")} />
                 {isBookmarked ? "Bookmarked" : "Bookmark"}
               </Button>
+              <ShareButton
+                url={window.location.href}
+                title={opportunity.title}
+                description={`Check out this ${opportunity.type} opportunity from ${opportunity.club_profiles?.club_name}`}
+                variant="outline"
+              />
             </div>
           </div>
         </div>
@@ -573,6 +587,22 @@ export default function OpportunityDetail() {
           onSuccess={handleApplicationSuccess}
         />
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Application Submitted!"
+        description={`Your application to ${opportunity?.title} has been successfully submitted. You'll be notified when ${opportunity?.club_profiles?.club_name} reviews your application.`}
+        primaryAction={{
+          label: "View My Applications",
+          onClick: () => navigate("/dashboard"),
+        }}
+        secondaryAction={{
+          label: "Browse More Opportunities",
+          onClick: () => navigate("/opportunities"),
+        }}
+      />
     </RoleBasedLayout>
   );
 }
