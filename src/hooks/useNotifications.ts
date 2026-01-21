@@ -242,19 +242,39 @@ export function useNotifications() {
     if (!user) return false;
 
     try {
-      // Update team member status
-      const { error: updateError } = await supabase
+      // Update team member status and verify the update actually happened
+      // Using .select() to get back the updated row - if no row returned, RLS blocked it
+      const { data: updatedRow, error: updateError } = await supabase
         .from("club_team_members")
         .update({ 
           status: "active", 
           joined_at: new Date().toISOString(),
           user_id: user.id 
         })
-        .eq("id", teamMemberId);
+        .eq("id", teamMemberId)
+        .select("id, status, club_id, joined_at")
+        .maybeSingle();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating team member:", updateError);
+        throw updateError;
+      }
 
-      // Delete the notification
+      // Check if the update actually affected a row
+      if (!updatedRow) {
+        console.error("No rows updated - RLS policy may have blocked the update");
+        return false;
+      }
+
+      // Verify the status was actually changed to active
+      if (updatedRow.status !== "active") {
+        console.error("Update succeeded but status is not active:", updatedRow.status);
+        return false;
+      }
+
+      console.log("Successfully accepted invitation, updated row:", updatedRow);
+
+      // Only delete the notification if the update truly succeeded
       await deleteNotification(notificationId);
 
       return true;
@@ -269,15 +289,27 @@ export function useNotifications() {
     if (!user) return false;
 
     try {
-      // Delete the team member record
-      const { error: deleteError } = await supabase
+      // Delete the team member record and verify it actually happened
+      const { data: deletedRows, error: deleteError } = await supabase
         .from("club_team_members")
         .delete()
-        .eq("id", teamMemberId);
+        .eq("id", teamMemberId)
+        .select("id");
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error("Error deleting team member:", deleteError);
+        throw deleteError;
+      }
 
-      // Delete the notification
+      // Check if the delete actually affected a row
+      if (!deletedRows || deletedRows.length === 0) {
+        console.error("No rows deleted - RLS policy may have blocked the delete");
+        return false;
+      }
+
+      console.log("Successfully declined invitation, deleted rows:", deletedRows);
+
+      // Only delete the notification if the delete truly succeeded
       await deleteNotification(notificationId);
 
       return true;
