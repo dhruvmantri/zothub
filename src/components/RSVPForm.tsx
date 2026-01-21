@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, CalendarCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sendRSVPConfirmation } from "@/lib/emailService";
+import { format } from "date-fns";
 
 interface RSVPQuestion {
   id: string;
@@ -31,6 +33,8 @@ interface RSVPQuestion {
 interface Event {
   id: string;
   title: string;
+  event_date?: string;
+  location?: string | null;
   requires_approval?: boolean;
   club_profiles: {
     club_name: string;
@@ -56,6 +60,25 @@ export function RSVPForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentName, setStudentName] = useState("");
+
+  // Fetch student profile info for email
+  useEffect(() => {
+    const fetchStudentInfo = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("student_profiles")
+        .select("email, full_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setStudentEmail(data.email);
+        setStudentName(data.full_name || "");
+      }
+    };
+    fetchStudentInfo();
+  }, [user]);
 
   const updateAnswer = (questionId: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -139,6 +162,20 @@ export function RSVPForm({
       } else {
         toast.success("RSVP confirmed! See you there!");
       }
+
+      // Send confirmation email (non-blocking)
+      if (studentEmail) {
+        sendRSVPConfirmation(
+          studentEmail,
+          studentName || "Student",
+          event.title,
+          event.club_profiles?.club_name || "the club",
+          event.event_date ? format(new Date(event.event_date), "MMMM d, yyyy 'at' h:mm a") : "TBD",
+          event.location || "TBD",
+          event.requires_approval || false
+        ).catch(console.error);
+      }
+
       onSuccess();
     } catch (err) {
       console.error("Error:", err);

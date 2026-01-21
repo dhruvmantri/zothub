@@ -45,6 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
+import { sendApplicationStatusUpdate } from "@/lib/emailService";
 
 interface ApplicationQuestion {
   id: string;
@@ -214,16 +215,29 @@ export function ApplicationReview() {
         return;
       }
 
+      // Find the application to get student info for email
+      const app = applications.find(a => a.id === applicationId);
+      
       // Update local state
       setApplications(prev => 
-        prev.map(app => 
-          app.id === applicationId ? { ...app, status: newStatus } : app
+        prev.map(a => 
+          a.id === applicationId ? { ...a, status: newStatus } : a
         )
       );
 
       // Update selected application if it's the one being updated
       if (selectedApplication?.id === applicationId) {
         setSelectedApplication(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+
+      // Send status update email (non-blocking)
+      if (app && (newStatus === "accepted" || newStatus === "rejected")) {
+        sendApplicationStatusUpdate(
+          app.student.email,
+          app.student.full_name || "Applicant",
+          app.opportunity.title,
+          newStatus
+        ).catch(console.error);
       }
 
       toast.success(`Application ${newStatus}`);
@@ -251,6 +265,19 @@ export function ApplicationReview() {
         console.error("Error updating applications:", error);
         toast.error("Failed to update applications");
         return;
+      }
+
+      // Send status update emails for accepted/rejected (non-blocking)
+      if (newStatus === "accepted" || newStatus === "rejected") {
+        const appsToEmail = applications.filter(app => selectedIds.has(app.id));
+        appsToEmail.forEach(app => {
+          sendApplicationStatusUpdate(
+            app.student.email,
+            app.student.full_name || "Applicant",
+            app.opportunity.title,
+            newStatus
+          ).catch(console.error);
+        });
       }
 
       // Update local state
