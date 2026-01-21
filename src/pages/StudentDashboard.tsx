@@ -187,7 +187,7 @@ export default function StudentDashboard() {
           .eq("receiver_id", user.id)
           .eq("is_read", false),
 
-        // Fetch bookmarked opportunities with details
+        // Fetch bookmarked opportunities with details (exclude expired)
         supabase
           .from("bookmarks")
           .select(`
@@ -198,9 +198,10 @@ export default function StudentDashboard() {
           `)
           .eq("user_id", user.id)
           .not("opportunity_id", "is", null)
+          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`, { foreignTable: 'opportunities' })
           .limit(5),
 
-        // Fetch bookmarked events with details
+        // Fetch bookmarked events with details (exclude past events)
         supabase
           .from("bookmarks")
           .select(`
@@ -211,6 +212,7 @@ export default function StudentDashboard() {
           `)
           .eq("user_id", user.id)
           .not("event_id", "is", null)
+          .gte('event.event_date', new Date().toISOString())
           .limit(5)
       ]);
 
