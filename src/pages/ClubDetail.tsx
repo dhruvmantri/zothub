@@ -76,6 +76,18 @@ const ClubDetail = () => {
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
+  const fetchTeamMembers = async () => {
+    if (!id) return;
+    const { data: teamData, error: teamError } = await supabase
+      .from("club_team_members")
+      .select("id, name, role, display_order, user_id")
+      .eq("club_id", id)
+      .eq("status", "active")
+      .order("display_order", { ascending: true });
+
+    if (!teamError) setTeamMembers(teamData || []);
+  };
+
   useEffect(() => {
     const fetchClubData = async () => {
       if (!id) return;
@@ -115,14 +127,7 @@ const ClubDetail = () => {
         if (!eventsError) setEvents(eventsData || []);
 
         // Fetch active team members (public visibility), ordered by display_order
-        const { data: teamData, error: teamError } = await supabase
-          .from("club_team_members")
-          .select("id, name, role, display_order, user_id")
-          .eq("club_id", id)
-          .eq("status", "active")
-          .order("display_order", { ascending: true });
-
-        if (!teamError) setTeamMembers(teamData || []);
+        await fetchTeamMembers();
 
       } catch (error) {
         console.error("Error fetching club data:", error);
@@ -132,6 +137,32 @@ const ClubDetail = () => {
     };
 
     fetchClubData();
+  }, [id]);
+
+  // Subscribe to realtime changes on team members for this club
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`club-team-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "club_team_members",
+          filter: `club_id=eq.${id}`,
+        },
+        () => {
+          // Refetch team members when any change occurs
+          fetchTeamMembers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   // Check if user is following this club
