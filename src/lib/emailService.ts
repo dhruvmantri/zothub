@@ -5,7 +5,9 @@ type EmailType =
   | "application_status"
   | "rsvp_confirmation"
   | "rsvp_reminder"
-  | "deadline_reminder";
+  | "deadline_reminder"
+  | "event_cancelled"
+  | "new_club_post";
 
 interface EmailData {
   studentName?: string;
