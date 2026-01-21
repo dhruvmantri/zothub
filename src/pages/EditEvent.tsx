@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
+import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import {
   Calendar,
   MapPin,
@@ -22,6 +23,8 @@ import {
   Eye,
   Clock,
   Info,
+  ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function EditEvent() {
@@ -40,6 +43,10 @@ export default function EditEvent() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
+  // RSVP form state
+  const [rsvpQuestions, setRsvpQuestions] = useState<ApplicationQuestion[]>([]);
+  const [requiresApproval, setRequiresApproval] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -70,6 +77,8 @@ export default function EditEvent() {
     setCapacity(data.capacity?.toString() || "");
     setBannerUrl(data.banner_url || "");
     setIsActive(data.is_active ?? true);
+    setRsvpQuestions(Array.isArray(data.rsvp_questions) ? (data.rsvp_questions as unknown as ApplicationQuestion[]) : []);
+    setRequiresApproval(data.requires_approval ?? false);
     
     setIsLoading(false);
   };
@@ -116,6 +125,8 @@ export default function EditEvent() {
           capacity: validatedData.capacity,
           banner_url: validatedData.banner_url,
           is_active: validatedData.is_active,
+          rsvp_questions: rsvpQuestions as unknown as null,
+          requires_approval: requiresApproval,
         })
         .eq("id", id);
 
@@ -300,6 +311,42 @@ export default function EditEvent() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* RSVP Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-accent" />
+                RSVP Form
+              </CardTitle>
+              <CardDescription>
+                Add custom questions for attendees to answer when they RSVP
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-border">
+                <div>
+                  <Label htmlFor="requiresApproval" className="text-base flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    Require Approval
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Manually approve each RSVP before confirming attendance
+                  </p>
+                </div>
+                <Switch
+                  id="requiresApproval"
+                  checked={requiresApproval}
+                  onCheckedChange={setRequiresApproval}
+                />
+              </div>
+              
+              <ApplicationQuestionsBuilder
+                questions={rsvpQuestions}
+                onChange={setRsvpQuestions}
+              />
             </CardContent>
           </Card>
 

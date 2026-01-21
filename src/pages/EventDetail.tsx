@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { RSVPForm } from "@/components/RSVPForm";
+import { AddToCalendarButton } from "@/components/AddToCalendarButton";
+import { ShareButton } from "@/components/ShareButton";
 import { 
   Calendar, 
   MapPin, 
@@ -17,9 +20,19 @@ import {
   Bookmark,
   BookmarkCheck,
   CheckCircle,
-  XCircle
+  XCircle,
+  HourglassIcon
 } from "lucide-react";
 import { format } from "date-fns";
+
+interface RSVPQuestion {
+  id: string;
+  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
+  question: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
 
 interface Event {
   id: string;
@@ -30,12 +43,14 @@ interface Event {
   capacity: number | null;
   banner_url: string | null;
   views: number | null;
+  rsvp_questions: RSVPQuestion[] | null;
+  requires_approval: boolean | null;
   club_profiles: {
     id: string;
     club_name: string;
     logo_url: string | null;
   };
-  rsvps: { id: string; student_id: string }[];
+  rsvps: { id: string; student_id: string; status: string | null }[];
 }
 
 export default function EventDetail() {
@@ -47,8 +62,10 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [hasRSVP, setHasRSVP] = useState(false);
+  const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
   const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
   const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [showRSVPForm, setShowRSVPForm] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -67,13 +84,22 @@ export default function EventDetail() {
         .select(`
           *,
           club_profiles (id, club_name, logo_url),
-          rsvps (id, student_id)
+          rsvps (id, student_id, status)
         `)
         .eq("id", id)
         .single();
 
       if (error) throw error;
-      setEvent(data);
+      
+      // Parse rsvp_questions from JSON
+      const eventData: Event = {
+        ...data,
+        rsvp_questions: Array.isArray(data.rsvp_questions) 
+          ? (data.rsvp_questions as unknown as RSVPQuestion[]) 
+          : null,
+      };
+      
+      setEvent(eventData);
     } catch (error) {
       console.error("Error fetching event:", error);
       toast.error("Failed to load event");
@@ -108,13 +134,19 @@ export default function EventDetail() {
     try {
       const { data, error } = await supabase
         .from("rsvps")
-        .select("id")
+        .select("id, status")
         .eq("event_id", id)
         .eq("student_id", profileId)
         .maybeSingle();
 
       if (error) throw error;
-      setHasRSVP(!!data);
+      if (data) {
+        setHasRSVP(data.status !== "cancelled");
+        setRsvpStatus(data.status);
+      } else {
+        setHasRSVP(false);
+        setRsvpStatus(null);
+      }
     } catch (error) {
       console.error("Error checking RSVP:", error);
     }
@@ -181,7 +213,13 @@ export default function EventDetail() {
       return;
     }
 
-    if (!studentProfileId || !id) return;
+    if (!studentProfileId || !id || !event) return;
+
+    // If event has RSVP questions, show the form
+    if (event.rsvp_questions && event.rsvp_questions.length > 0 && !hasRSVP) {
+      setShowRSVPForm(true);
+      return;
+    }
 
     setRsvpLoading(true);
     try {
@@ -195,26 +233,37 @@ export default function EventDetail() {
 
         if (error) throw error;
         setHasRSVP(false);
+        setRsvpStatus("cancelled");
         toast.success("RSVP cancelled");
         fetchEvent();
       } else {
         // Check capacity
-        if (event?.capacity && event.rsvps.length >= event.capacity) {
+        const confirmedRsvps = event.rsvps.filter(r => r.status === "confirmed").length;
+        if (event.capacity && confirmedRsvps >= event.capacity) {
           toast.error("This event is at full capacity");
           return;
         }
+
+        const status = event.requires_approval ? "pending" : "confirmed";
 
         const { error } = await supabase
           .from("rsvps")
           .insert({ 
             event_id: id, 
             student_id: studentProfileId,
-            status: "confirmed"
+            status,
+            answers: [],
           });
 
         if (error) throw error;
         setHasRSVP(true);
-        toast.success("RSVP confirmed!");
+        setRsvpStatus(status);
+        
+        if (event.requires_approval) {
+          toast.success("RSVP submitted! Awaiting approval.");
+        } else {
+          toast.success("RSVP confirmed!");
+        }
         fetchEvent();
       }
     } catch (error) {
@@ -223,6 +272,13 @@ export default function EventDetail() {
     } finally {
       setRsvpLoading(false);
     }
+  };
+
+  const handleRSVPFormSuccess = () => {
+    setShowRSVPForm(false);
+    setHasRSVP(true);
+    setRsvpStatus(event?.requires_approval ? "pending" : "confirmed");
+    fetchEvent();
   };
 
   const formatEventDate = (date: string) => {
@@ -234,7 +290,9 @@ export default function EventDetail() {
   };
 
   const isEventPast = event ? new Date(event.event_date) < new Date() : false;
-  const spotsLeft = event?.capacity ? event.capacity - event.rsvps.filter(r => r.student_id).length : null;
+  const confirmedRsvps = event?.rsvps.filter(r => r.status === "confirmed").length ?? 0;
+  const spotsLeft = event?.capacity ? event.capacity - confirmedRsvps : null;
+  const eventUrl = typeof window !== "undefined" ? window.location.href : "";
 
   if (loading) {
     return (
@@ -287,18 +345,20 @@ export default function EventDetail() {
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4 mb-4">
               <h1 className="text-3xl font-bold text-foreground">{event.title}</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleBookmark}
-                className="shrink-0"
-              >
-                {isBookmarked ? (
-                  <BookmarkCheck className="w-5 h-5 text-primary" />
-                ) : (
-                  <Bookmark className="w-5 h-5" />
-                )}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <ShareButton url={eventUrl} title={event.title} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleBookmark}
+                >
+                  {isBookmarked ? (
+                    <BookmarkCheck className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Bookmark className="w-5 h-5" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
@@ -339,12 +399,27 @@ export default function EventDetail() {
                 <div className="flex items-center gap-3 text-foreground">
                   <Users className="w-5 h-5 text-primary" />
                   <span>
-                    {event.rsvps.length} attending
+                    {confirmedRsvps} attending
                     {event.capacity && ` • ${spotsLeft} spots left`}
                   </span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Add to Calendar */}
+            {!isEventPast && hasRSVP && rsvpStatus === "confirmed" && (
+              <div className="mb-6">
+                <AddToCalendarButton
+                  event={{
+                    title: event.title,
+                    description: event.description || "",
+                    location: event.location || "",
+                    startDate: new Date(event.event_date),
+                    endDate: new Date(new Date(event.event_date).getTime() + 2 * 60 * 60 * 1000),
+                  }}
+                />
+              </div>
+            )}
 
             {event.description && (
               <div className="mb-8">
@@ -364,11 +439,17 @@ export default function EventDetail() {
                   </div>
                 ) : (
                   <>
-                    {hasRSVP ? (
+                    {hasRSVP && rsvpStatus === "confirmed" ? (
                       <div className="text-center mb-4">
                         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
                         <p className="font-semibold text-foreground">You're registered!</p>
                         <p className="text-sm text-muted-foreground">We'll see you there</p>
+                      </div>
+                    ) : hasRSVP && rsvpStatus === "pending" ? (
+                      <div className="text-center mb-4">
+                        <HourglassIcon className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                        <p className="font-semibold text-foreground">RSVP Pending</p>
+                        <p className="text-sm text-muted-foreground">Awaiting approval from the organizer</p>
                       </div>
                     ) : (
                       <div className="text-center mb-4">
@@ -378,6 +459,9 @@ export default function EventDetail() {
                         <p className="text-sm text-muted-foreground">
                           {formatEventDate(event.event_date)} at {formatEventTime(event.event_date)}
                         </p>
+                        {event.requires_approval && (
+                          <Badge variant="secondary" className="mt-2">Requires Approval</Badge>
+                        )}
                       </div>
                     )}
 
@@ -421,6 +505,22 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      {/* RSVP Form Modal */}
+      {showRSVPForm && event && studentProfileId && (
+        <RSVPForm
+          event={{
+            id: event.id,
+            title: event.title,
+            requires_approval: event.requires_approval ?? false,
+            club_profiles: event.club_profiles,
+          }}
+          questions={event.rsvp_questions || []}
+          studentProfileId={studentProfileId}
+          onClose={() => setShowRSVPForm(false)}
+          onSuccess={handleRSVPFormSuccess}
+        />
+      )}
     </RoleBasedLayout>
   );
 }
