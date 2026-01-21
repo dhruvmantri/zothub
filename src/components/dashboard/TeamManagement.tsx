@@ -85,6 +85,7 @@ const statusColors = {
   pending: "secondary",
   active: "success",
   inactive: "muted",
+  declined: "destructive",
 } as const;
 
 export function TeamManagement({ 
