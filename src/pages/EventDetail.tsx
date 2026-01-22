@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,18 +57,20 @@ export default function EventDetail() {
   
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [hasRSVP, setHasRSVP] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
   const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showRSVPForm, setShowRSVPForm] = useState(false);
 
+  // Use centralized bookmark hook
+  const { isBookmarked, toggleBookmark } = useBookmarks("event");
+  const isEventBookmarked = id ? isBookmarked(id) : false;
+
   useEffect(() => {
     if (id) {
       fetchEvent();
       if (user) {
-        checkBookmark();
         fetchStudentProfile();
       }
     }
@@ -148,55 +151,6 @@ export default function EventDetail() {
     }
   };
 
-  const checkBookmark = async () => {
-    if (!user || !id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("event_id", id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setIsBookmarked(!!data);
-    } catch (error) {
-      console.error("Error checking bookmark:", error);
-    }
-  };
-
-  const toggleBookmark = async () => {
-    if (!user || !id) {
-      toast.error("Please log in to bookmark events");
-      return;
-    }
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("event_id", id);
-
-        if (error) throw error;
-        setIsBookmarked(false);
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase
-          .from("bookmarks")
-          .insert({ user_id: user.id, event_id: id });
-
-        if (error) throw error;
-        setIsBookmarked(true);
-        toast.success("Event bookmarked");
-      }
-    } catch (error) {
-      console.error("Error toggling bookmark:", error);
-      toast.error("Failed to update bookmark");
-    }
-  };
 
   const handleRSVP = async () => {
     if (!user) {
@@ -346,9 +300,9 @@ export default function EventDetail() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={toggleBookmark}
+                  onClick={() => id && toggleBookmark(id)}
                 >
-                  {isBookmarked ? (
+                  {isEventBookmarked ? (
                     <BookmarkCheck className="w-5 h-5 text-primary" />
                   ) : (
                     <Bookmark className="w-5 h-5" />

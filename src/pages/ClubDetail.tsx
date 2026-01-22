@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { requireSession } from "@/lib/requireSession";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,9 +70,11 @@ const ClubDetail = () => {
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [teamMembers, setTeamMembers] = useState<Pick<TeamMember, 'id' | 'name' | 'role' | 'display_order' | 'user_id'>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+
+  // Use centralized bookmark hook for club follows
+  const { isBookmarked, toggleBookmark, isLoading: isFollowLoading } = useBookmarks("club");
+  const isFollowing = id ? isBookmarked(id) : false;
 
   const fetchTeamMembers = async () => {
     if (!id) return;
@@ -163,69 +165,14 @@ const ClubDetail = () => {
     };
   }, [id]);
 
-  // Check if user is following this club
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!user || !id) return;
-
-      const { data } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("club_id", id)
-        .maybeSingle();
-
-      setIsFollowing(!!data);
-    };
-
-    checkFollowStatus();
-  }, [user, id]);
-
-  const handleFollowToggle = async () => {
+  const handleFollowToggle = () => {
     if (!user) {
       toast.error("Please log in to follow clubs");
       navigate("/login", { state: { from: `/clubs/${id}` } });
       return;
     }
-
-    if (!id) return;
-
-    setIsFollowLoading(true);
-    try {
-      // Ensure we have a valid session before making writes
-      await requireSession();
-
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("club_id", id);
-
-        if (error) throw error;
-        setIsFollowing(false);
-        toast.success("Unfollowed club");
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from("bookmarks")
-          .insert({ user_id: user.id, club_id: id });
-
-        if (error) throw error;
-        setIsFollowing(true);
-        toast.success("Following club!");
-      }
-    } catch (error: any) {
-      console.error("Error toggling follow:", error);
-      if (error.message?.includes("Session expired")) {
-        toast.error("Session expired. Please log in again.");
-        navigate("/login", { state: { from: `/clubs/${id}` } });
-      } else {
-        toast.error("Failed to update follow status");
-      }
-    } finally {
-      setIsFollowLoading(false);
+    if (id) {
+      toggleBookmark(id);
     }
   };
 
