@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrackView } from "@/hooks/useTrackView";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ApplicationForm } from "@/components/ApplicationForm";
@@ -66,6 +67,9 @@ export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, role } = useAuth();
+
+  // Track page view
+  useTrackView('opportunity', id);
 
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [isLoading, setIsLoading] = useState(true);

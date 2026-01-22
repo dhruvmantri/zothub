@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { requireSession } from "@/lib/requireSession";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrackView } from "@/hooks/useTrackView";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,10 @@ const ClubDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  
+  // Track page view
+  useTrackView('club', id);
+  
   const [club, setClub] = useState<Club | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [events, setEvents] = useState<Event[]>([]);

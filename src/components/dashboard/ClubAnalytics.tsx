@@ -15,7 +15,7 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { Eye, Briefcase, Calendar, Loader2, BarChart3 } from "lucide-react";
+import { Eye, Briefcase, Calendar, Loader2, BarChart3, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -43,12 +43,14 @@ export function ClubAnalytics() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [totalViews, setTotalViews] = useState(0);
+  const [clubProfileViews, setClubProfileViews] = useState(0);
   const [totalApplications, setTotalApplications] = useState(0);
   const [totalRsvps, setTotalRsvps] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
   const [opportunityStats, setOpportunityStats] = useState<OpportunityStats[]>([]);
   const [eventStats, setEventStats] = useState<EventStats[]>([]);
   const [applicationStatusData, setApplicationStatusData] = useState<ApplicationStatusData[]>([]);
+  const [viewsOverTime, setViewsOverTime] = useState<{ date: string; views: number }[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -63,7 +65,7 @@ export function ClubAnalytics() {
       // Get club profile
       const { data: clubProfile, error: clubError } = await supabase
         .from("club_profiles")
-        .select("id")
+        .select("id, views")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -72,6 +74,8 @@ export function ClubAnalytics() {
         setIsLoading(false);
         return;
       }
+
+      setClubProfileViews(clubProfile.views || 0);
 
       // Fetch opportunities with their stats
       const { data: opportunities, error: oppError } = await supabase
@@ -93,8 +97,44 @@ export function ClubAnalytics() {
         console.error("Error fetching events:", eventError);
       }
 
-      // Calculate opportunity stats with application counts
+      // Get all item IDs for page_views query
       const oppIds = opportunities?.map(o => o.id) || [];
+      const eventIds = events?.map(e => e.id) || [];
+      const allItemIds = [...oppIds, ...eventIds, clubProfile.id];
+
+      // Fetch views over time (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: pageViewsData, error: pvError } = await supabase
+        .from("page_views")
+        .select("view_date, item_id")
+        .in("item_id", allItemIds)
+        .gte("view_date", sevenDaysAgo.toISOString().split('T')[0]);
+
+      if (!pvError && pageViewsData) {
+        // Group by date
+        const viewsByDate: Record<string, number> = {};
+        pageViewsData.forEach(pv => {
+          const dateStr = pv.view_date;
+          viewsByDate[dateStr] = (viewsByDate[dateStr] || 0) + 1;
+        });
+
+        // Create array for last 7 days
+        const viewsTimeData = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toISOString().split('T')[0];
+          viewsTimeData.push({
+            date: new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' }),
+            views: viewsByDate[dateStr] || 0
+          });
+        }
+        setViewsOverTime(viewsTimeData);
+      }
+
+      // Calculate opportunity stats with application counts
       let applicationsByOpp: Record<string, number> = {};
       let applicationsByStatus: Record<string, number> = {
         pending: 0,
@@ -119,7 +159,6 @@ export function ClubAnalytics() {
       }
 
       // Calculate event stats with RSVP counts
-      const eventIds = events?.map(e => e.id) || [];
       let rsvpsByEvent: Record<string, number> = {};
 
       if (eventIds.length > 0) {
@@ -157,7 +196,7 @@ export function ClubAnalytics() {
       const totalApps = Object.values(applicationsByOpp).reduce((sum, count) => sum + count, 0);
       const totalRsvpCount = Object.values(rsvpsByEvent).reduce((sum, count) => sum + count, 0);
 
-      setTotalViews(totalOppViews + totalEventViews);
+      setTotalViews(totalOppViews + totalEventViews + (clubProfile.views || 0));
       setTotalApplications(totalApps);
       setTotalRsvps(totalRsvpCount);
       setConversionRate(totalOppViews > 0 ? (totalApps / totalOppViews) * 100 : 0);
@@ -234,7 +273,7 @@ export function ClubAnalytics() {
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -243,6 +282,17 @@ export function ClubAnalytics() {
                 <p className="text-3xl font-bold text-foreground">{totalViews.toLocaleString()}</p>
               </div>
               <Eye className="w-8 h-8 text-muted-foreground/30" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Profile Views</p>
+                <p className="text-3xl font-bold text-foreground">{clubProfileViews.toLocaleString()}</p>
+              </div>
+              <Users className="w-8 h-8 text-muted-foreground/30" />
             </div>
           </CardContent>
         </Card>
@@ -280,6 +330,52 @@ export function ClubAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Views Over Time */}
+      {viewsOverTime.some(v => v.views > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Views Over Time (Last 7 Days)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={viewsOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" />
+                  <XAxis 
+                    dataKey="date"
+                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
+                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: 'hsl(220, 9%, 46%)', fontSize: 12 }}
+                    axisLine={{ stroke: 'hsl(220, 13%, 91%)' }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(0, 0%, 100%)',
+                      border: '1px solid hsl(220, 13%, 91%)',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="views" 
+                    stroke="hsl(222, 47%, 40%)" 
+                    fill="hsl(222, 47%, 40%)" 
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-3 gap-6">

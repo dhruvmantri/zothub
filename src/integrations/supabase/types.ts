@@ -155,6 +155,7 @@ export type Database = {
           logo_url: string | null
           updated_at: string
           user_id: string
+          views: number | null
           website_url: string | null
         }
         Insert: {
@@ -171,6 +172,7 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id: string
+          views?: number | null
           website_url?: string | null
         }
         Update: {
@@ -187,6 +189,7 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id?: string
+          views?: number | null
           website_url?: string | null
         }
         Relationships: []
@@ -455,6 +458,36 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string
+          item_type: string
+          session_id: string | null
+          user_id: string | null
+          view_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          session_id?: string | null
+          user_id?: string | null
+          view_date?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          session_id?: string | null
+          user_id?: string | null
+          view_date?: string
+        }
+        Relationships: []
+      }
       reminder_logs: {
         Row: {
           created_at: string
@@ -670,6 +703,10 @@ export type Database = {
       is_team_invitation_recipient: {
         Args: { member_email: string }
         Returns: boolean
+      }
+      track_page_view: {
+        Args: { p_item_id: string; p_item_type: string; p_session_id?: string }
+        Returns: undefined
       }
     }
     Enums: {
