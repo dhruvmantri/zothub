@@ -25,17 +25,9 @@ import {
   HourglassIcon
 } from "lucide-react";
 import { format } from "date-fns";
+import type { FormQuestion } from "@/types";
 
-interface RSVPQuestion {
-  id: string;
-  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
-  question: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
-
-interface Event {
+interface EventDetail {
   id: string;
   title: string;
   description: string | null;
@@ -44,7 +36,7 @@ interface Event {
   capacity: number | null;
   banner_url: string | null;
   views: number | null;
-  rsvp_questions: RSVPQuestion[] | null;
+  rsvp_questions: FormQuestion[] | null;
   requires_approval: boolean | null;
   club_profiles: {
     id: string;
@@ -62,7 +54,7 @@ export default function EventDetail() {
   // Track page view
   useTrackView('event', id);
   
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [hasRSVP, setHasRSVP] = useState(false);
@@ -96,10 +88,10 @@ export default function EventDetail() {
       if (error) throw error;
       
       // Parse rsvp_questions from JSON
-      const eventData: Event = {
+      const eventData: EventDetail = {
         ...data,
         rsvp_questions: Array.isArray(data.rsvp_questions) 
-          ? (data.rsvp_questions as unknown as RSVPQuestion[]) 
+          ? (data.rsvp_questions as unknown as FormQuestion[]) 
           : null,
       };
       

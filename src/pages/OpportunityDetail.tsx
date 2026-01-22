@@ -25,24 +25,16 @@ import {
   Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FormQuestion } from "@/types";
 
-interface ApplicationQuestion {
-  id: string;
-  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
-  question: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
-
-interface Opportunity {
+interface OpportunityDetail {
   id: string;
   title: string;
   type: string;
   description: string | null;
   requirements: string | null;
   deadline: string | null;
-  application_questions: ApplicationQuestion[] | null;
+  application_questions: FormQuestion[] | null;
   show_application_count: boolean;
   created_at: string;
   club_id: string;
@@ -71,7 +63,7 @@ export default function OpportunityDetail() {
   // Track page view
   useTrackView('opportunity', id);
 
-  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
+  const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -133,13 +125,13 @@ export default function OpportunityDetail() {
       }
 
       // Parse application_questions from JSON
-      let parsedQuestions: ApplicationQuestion[] | null = null;
+      let parsedQuestions: FormQuestion[] | null = null;
       if (data.application_questions && Array.isArray(data.application_questions)) {
         parsedQuestions = (data.application_questions as unknown[]).map((q: unknown) => {
           const question = q as Record<string, unknown>;
           return {
             id: String(question.id || ""),
-            type: (question.type as ApplicationQuestion["type"]) || "short_text",
+            type: (question.type as FormQuestion["type"]) || "short_text",
             question: String(question.question || ""),
             required: Boolean(question.required),
             options: Array.isArray(question.options) ? question.options as string[] : undefined,
@@ -148,7 +140,7 @@ export default function OpportunityDetail() {
         });
       }
 
-      const parsedData: Opportunity = {
+      const parsedData: OpportunityDetail = {
         id: data.id,
         title: data.title,
         type: data.type,
@@ -159,7 +151,7 @@ export default function OpportunityDetail() {
         show_application_count: data.show_application_count ?? true,
         created_at: data.created_at,
         club_id: data.club_id,
-        club_profiles: data.club_profiles as Opportunity["club_profiles"],
+        club_profiles: data.club_profiles as OpportunityDetail["club_profiles"],
         applications: data.applications as { id: string }[],
       };
 

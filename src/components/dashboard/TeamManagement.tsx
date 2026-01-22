@@ -50,17 +50,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-interface TeamMember {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  status: string;
-  invited_at: string;
-  joined_at: string | null;
-  display_order: number | null;
-  user_id: string | null;
-}
+import type { TeamMember } from "@/types";
 
 interface TeamManagementProps {
   teamMembers: TeamMember[];
