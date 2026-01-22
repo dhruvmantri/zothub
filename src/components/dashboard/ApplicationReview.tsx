@@ -46,30 +46,18 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
 import { sendApplicationStatusUpdate } from "@/lib/emailService";
-
-interface ApplicationQuestion {
-  id: string;
-  question: string;
-  type: string;
-  required: boolean;
-  options?: string[];
-}
-
-interface ApplicationAnswer {
-  questionId: string;
-  answer: string | string[];
-}
+import type { FormQuestion, FormAnswer } from "@/types";
 
 interface Application {
   id: string;
   status: string;
   created_at: string;
   resume_url: string | null;
-  answers: ApplicationAnswer[];
+  answers: FormAnswer[];
   opportunity: {
     id: string;
     title: string;
-    application_questions: ApplicationQuestion[];
+    application_questions: FormQuestion[];
   };
   student: {
     id: string;
@@ -328,7 +316,7 @@ export function ApplicationReview() {
     // Build columns dynamically based on question keys
     const allQuestionIds = new Set<string>();
     dataToExport.forEach(app => {
-      app.answers.forEach(ans => allQuestionIds.add(ans.questionId));
+      app.answers.forEach(ans => allQuestionIds.add(ans.question_id));
     });
 
     const columns: CSVColumn<Application>[] = [
@@ -347,9 +335,9 @@ export function ApplicationReview() {
       columns.push({
         header: `Question ${index + 1}`,
         accessor: (app) => {
-          const answer = app.answers.find(a => a.questionId === qId);
+          const answer = app.answers.find(a => a.question_id === qId);
           if (!answer) return "";
-          return Array.isArray(answer.answer) ? answer.answer.join("; ") : answer.answer;
+          return Array.isArray(answer.answer) ? answer.answer.join("; ") : String(answer.answer);
         }
       });
     });
@@ -359,7 +347,7 @@ export function ApplicationReview() {
     toast.success(`Exported ${dataToExport.length} applications`);
   };
 
-  const getQuestionText = (questionId: string, questions: ApplicationQuestion[]): string => {
+  const getQuestionText = (questionId: string, questions: FormQuestion[]): string => {
     const question = questions.find(q => q.id === questionId);
     return question?.question || "Unknown question";
   };
@@ -687,7 +675,7 @@ export function ApplicationReview() {
                     selectedApplication.answers.map((response, index) => (
                       <div key={index} className="space-y-2">
                         <p className="text-sm font-medium text-foreground">
-                          {getQuestionText(response.questionId, selectedApplication.opportunity.application_questions)}
+                          {getQuestionText(response.question_id, selectedApplication.opportunity.application_questions)}
                         </p>
                         <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
                           {formatAnswer(response.answer)}

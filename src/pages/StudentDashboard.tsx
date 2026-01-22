@@ -22,44 +22,12 @@ import {
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { StudentLayout } from "@/components/student/StudentLayout";
-
-interface ApplicationData {
-  id: string;
-  status: string;
-  created_at: string;
-  opportunity: {
-    title: string;
-    club: {
-      club_name: string;
-    };
-  };
-}
-
-interface RsvpData {
-  id: string;
-  event: {
-    id: string;
-    title: string;
-    event_date: string;
-    club: {
-      club_name: string;
-    };
-  };
-}
-
-interface BookmarkedOpportunity {
-  id: string;
-  title: string;
-  deadline: string | null;
-  club: { club_name: string };
-}
-
-interface BookmarkedEvent {
-  id: string;
-  title: string;
-  event_date: string;
-  club: { club_name: string };
-}
+import type { 
+  StudentApplicationData as ApplicationData,
+  StudentRSVPData as RsvpData,
+  BookmarkedOpportunity,
+  BookmarkedEvent
+} from "@/types";
 
 export default function StudentDashboard() {
   const { user } = useAuth();

@@ -20,27 +20,11 @@ import { Loader2, Send, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { applicationSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { sendApplicationConfirmation } from "@/lib/emailService";
-
-interface ApplicationQuestion {
-  id: string;
-  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
-  question: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
-
-interface Opportunity {
-  id: string;
-  title: string;
-  club_profiles: {
-    club_name: string;
-  };
-}
+import type { FormQuestion, OpportunityForForm } from "@/types";
 
 interface ApplicationFormProps {
-  opportunity: Opportunity;
-  questions: ApplicationQuestion[];
+  opportunity: OpportunityForForm;
+  questions: FormQuestion[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -204,7 +188,7 @@ export function ApplicationForm({
     }
   };
 
-  const renderQuestion = (question: ApplicationQuestion, index: number) => {
+  const renderQuestion = (question: FormQuestion, index: number) => {
     const hasError = !!errors[question.id];
 
     return (

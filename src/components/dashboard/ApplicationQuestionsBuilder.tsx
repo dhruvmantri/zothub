@@ -24,21 +24,14 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FormQuestion, QuestionType } from "@/types";
 
-export type QuestionType = "short_text" | "long_text" | "single_choice" | "multiple_choice";
-
-export interface ApplicationQuestion {
-  id: string;
-  type: QuestionType;
-  question: string;
-  required: boolean;
-  options?: string[]; // For choice questions
-  placeholder?: string;
-}
+// Re-export for backward compatibility
+export type { QuestionType, FormQuestion as ApplicationQuestion };
 
 interface ApplicationQuestionsBuilderProps {
-  questions: ApplicationQuestion[];
-  onChange: (questions: ApplicationQuestion[]) => void;
+  questions: FormQuestion[];
+  onChange: (questions: FormQuestion[]) => void;
 }
 
 const questionTypeConfig = {
@@ -57,7 +50,7 @@ export function ApplicationQuestionsBuilder({
   const generateId = () => `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const addQuestion = (type: QuestionType) => {
-    const newQuestion: ApplicationQuestion = {
+    const newQuestion: FormQuestion = {
       id: generateId(),
       type,
       question: "",
@@ -68,7 +61,7 @@ export function ApplicationQuestionsBuilder({
     setExpandedId(newQuestion.id);
   };
 
-  const updateQuestion = (id: string, updates: Partial<ApplicationQuestion>) => {
+  const updateQuestion = (id: string, updates: Partial<FormQuestion>) => {
     onChange(
       questions.map((q) => (q.id === id ? { ...q, ...updates } : q))
     );

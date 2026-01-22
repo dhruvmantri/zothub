@@ -38,31 +38,19 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
 import { sendRSVPStatusEmail } from "@/lib/eventNotifications";
-
-interface RSVPQuestion {
-  id: string;
-  question: string;
-  type: string;
-  required: boolean;
-  options?: string[];
-}
-
-interface RSVPAnswer {
-  questionId: string;
-  answer: string | string[];
-}
+import type { FormQuestion, FormAnswer } from "@/types";
 
 interface RSVP {
   id: string;
   status: string;
   created_at: string;
-  answers: RSVPAnswer[];
+  answers: FormAnswer[];
   event: {
     id: string;
     title: string;
     event_date: string;
     location: string | null;
-    rsvp_questions: RSVPQuestion[];
+    rsvp_questions: FormQuestion[];
     requires_approval: boolean;
     club_profiles: {
       club_name: string;
@@ -342,7 +330,7 @@ export function RSVPReview() {
     // Build columns dynamically based on question keys
     const allQuestionIds = new Set<string>();
     dataToExport.forEach(rsvp => {
-      rsvp.answers.forEach(ans => allQuestionIds.add(ans.questionId));
+      rsvp.answers.forEach(ans => allQuestionIds.add(ans.question_id));
     });
 
     const columns: CSVColumn<RSVP>[] = [
@@ -361,9 +349,9 @@ export function RSVPReview() {
       columns.push({
         header: `Question ${index + 1}`,
         accessor: (rsvp) => {
-          const answer = rsvp.answers.find(a => a.questionId === qId);
+          const answer = rsvp.answers.find(a => a.question_id === qId);
           if (!answer) return "";
-          return Array.isArray(answer.answer) ? answer.answer.join("; ") : answer.answer;
+          return Array.isArray(answer.answer) ? answer.answer.join("; ") : String(answer.answer);
         }
       });
     });
@@ -373,7 +361,7 @@ export function RSVPReview() {
     toast.success(`Exported ${dataToExport.length} RSVPs`);
   };
 
-  const getQuestionText = (questionId: string, questions: RSVPQuestion[]): string => {
+  const getQuestionText = (questionId: string, questions: FormQuestion[]): string => {
     const question = questions.find(q => q.id === questionId);
     return question?.question || "Unknown question";
   };
@@ -686,7 +674,7 @@ export function RSVPReview() {
                     {selectedRsvp.answers.map((answer, index) => (
                       <div key={index} className="space-y-1">
                         <p className="text-sm font-medium text-foreground">
-                          {getQuestionText(answer.questionId, selectedRsvp.event.rsvp_questions)}
+                          {getQuestionText(answer.question_id, selectedRsvp.event.rsvp_questions)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {formatAnswer(answer.answer)}

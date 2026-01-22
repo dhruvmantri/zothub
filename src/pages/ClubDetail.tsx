@@ -25,8 +25,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import type { TeamMember } from "@/types";
 
-interface Club {
+interface ClubDetailData {
   id: string;
   user_id: string;
   club_name: string;
@@ -40,7 +41,7 @@ interface Club {
   discord_url: string | null;
 }
 
-interface Opportunity {
+interface ClubOpportunity {
   id: string;
   title: string;
   type: string;
@@ -48,20 +49,12 @@ interface Opportunity {
   deadline: string | null;
 }
 
-interface Event {
+interface ClubEvent {
   id: string;
   title: string;
   description: string | null;
   event_date: string;
   location: string | null;
-}
-
-interface TeamMember {
-  id: string;
-  name: string | null;
-  role: string;
-  display_order: number | null;
-  user_id: string | null;
 }
 
 const ClubDetail = () => {
@@ -72,10 +65,10 @@ const ClubDetail = () => {
   // Track page view
   useTrackView('club', id);
   
-  const [club, setClub] = useState<Club | null>(null);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [club, setClub] = useState<ClubDetailData | null>(null);
+  const [opportunities, setOpportunities] = useState<ClubOpportunity[]>([]);
+  const [events, setEvents] = useState<ClubEvent[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Pick<TeamMember, 'id' | 'name' | 'role' | 'display_order' | 'user_id'>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);

@@ -20,30 +20,11 @@ import { Loader2, CalendarCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendRSVPConfirmation } from "@/lib/emailService";
 import { format } from "date-fns";
-
-interface RSVPQuestion {
-  id: string;
-  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
-  question: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  event_date?: string;
-  location?: string | null;
-  requires_approval?: boolean;
-  club_profiles: {
-    club_name: string;
-  };
-}
+import type { FormQuestion, EventForForm } from "@/types";
 
 interface RSVPFormProps {
-  event: Event;
-  questions: RSVPQuestion[];
+  event: EventForForm;
+  questions: FormQuestion[];
   studentProfileId: string;
   onClose: () => void;
   onSuccess: () => void;
@@ -185,7 +166,7 @@ export function RSVPForm({
     }
   };
 
-  const renderQuestion = (question: RSVPQuestion, index: number) => {
+  const renderQuestion = (question: FormQuestion, index: number) => {
     const hasError = !!errors[question.id];
 
     return (
