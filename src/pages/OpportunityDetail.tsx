@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ApplicationForm } from "@/components/ApplicationForm";
@@ -66,16 +67,18 @@ export default function OpportunityDetail() {
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Use centralized bookmark hook
+  const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
+  const isOpportunityBookmarked = id ? isBookmarked(id) : false;
 
   useEffect(() => {
     if (id) {
       fetchOpportunity();
       if (user) {
         checkExistingApplication();
-        checkBookmark();
       }
     }
   }, [id, user]);
@@ -191,57 +194,6 @@ export default function OpportunityDetail() {
     }
   };
 
-  const checkBookmark = async () => {
-    if (!user || !id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("opportunity_id", id)
-        .maybeSingle();
-
-      if (!error && data) {
-        setIsBookmarked(true);
-      }
-    } catch (err) {
-      console.error("Error checking bookmark:", err);
-    }
-  };
-
-  const toggleBookmark = async () => {
-    if (!user) {
-      toast.error("Please log in to bookmark opportunities");
-      return;
-    }
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("opportunity_id", id);
-
-        if (error) throw error;
-        setIsBookmarked(false);
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({
-          user_id: user.id,
-          opportunity_id: id,
-        });
-
-        if (error) throw error;
-        setIsBookmarked(true);
-        toast.success("Opportunity bookmarked");
-      }
-    } catch (err) {
-      console.error("Error toggling bookmark:", err);
-      toast.error("Failed to update bookmark");
-    }
-  };
 
   const handleApplicationSuccess = () => {
     setHasApplied(true);
@@ -381,11 +333,11 @@ export default function OpportunityDetail() {
               )}
               <Button
                 variant="outline"
-                onClick={toggleBookmark}
-                className={cn(isBookmarked && "text-accent")}
+                onClick={() => id && toggleBookmark(id)}
+                className={cn(isOpportunityBookmarked && "text-accent")}
               >
-                <Bookmark className={cn("w-4 h-4 mr-2", isBookmarked && "fill-current")} />
-                {isBookmarked ? "Bookmarked" : "Bookmark"}
+                <Bookmark className={cn("w-4 h-4 mr-2", isOpportunityBookmarked && "fill-current")} />
+                {isOpportunityBookmarked ? "Bookmarked" : "Bookmark"}
               </Button>
               <ShareButton
                 url={window.location.href}
