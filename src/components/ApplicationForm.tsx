@@ -1,12 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, Send, FileText, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, Send, FileText } from "lucide-react";
 import { applicationSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { sendApplicationConfirmation } from "@/lib/emailService";
+import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
 import type { FormQuestion, OpportunityForForm } from "@/types";
 
 interface ApplicationFormProps {
@@ -42,6 +39,8 @@ export function ApplicationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [studentEmail, setStudentEmail] = useState("");
   const [studentName, setStudentName] = useState("");
+  
+  const { validateAnswers } = useDynamicQuestionForm(questions);
 
   // Fetch student profile for email prefill and resume URL
   useEffect(() => {
@@ -64,7 +63,7 @@ export function ApplicationForm({
     fetchStudentProfile();
   }, [user]);
 
-  const updateAnswer = (questionId: string, value: string | string[]) => {
+  const handleAnswerChange = useCallback((questionId: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
     // Clear error when user starts typing
     if (errors[questionId]) {
@@ -74,33 +73,7 @@ export function ApplicationForm({
         return next;
       });
     }
-  };
-
-  const toggleMultipleChoice = (questionId: string, option: string) => {
-    const currentValue = (answers[questionId] as string[]) || [];
-    const newValue = currentValue.includes(option)
-      ? currentValue.filter((v) => v !== option)
-      : [...currentValue, option];
-    updateAnswer(questionId, newValue);
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    questions.forEach((q) => {
-      if (q.required) {
-        const answer = answers[q.id];
-        if (!answer || (Array.isArray(answer) && answer.length === 0)) {
-          newErrors[q.id] = "This field is required";
-        } else if (typeof answer === "string" && answer.trim() === "") {
-          newErrors[q.id] = "This field is required";
-        }
-      }
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  }, [errors]);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -108,7 +81,9 @@ export function ApplicationForm({
       return;
     }
 
-    if (!validateForm()) {
+    const validation = validateAnswers(answers);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
       toast.error("Please fill in all required fields");
       return;
     }
@@ -188,95 +163,6 @@ export function ApplicationForm({
     }
   };
 
-  const renderQuestion = (question: FormQuestion, index: number) => {
-    const hasError = !!errors[question.id];
-
-    return (
-      <div key={question.id} className="space-y-3">
-        <Label
-          htmlFor={`question-${question.id}`}
-          className={cn("text-base", hasError && "text-destructive")}
-        >
-          {index + 1}. {question.question}
-          {question.required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-
-        {question.type === "short_text" && (
-          <Input
-            id={`question-${question.id}`}
-            placeholder={question.placeholder || "Your answer..."}
-            value={(answers[question.id] as string) || ""}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            className={cn(hasError && "border-destructive")}
-          />
-        )}
-
-        {question.type === "long_text" && (
-          <Textarea
-            id={`question-${question.id}`}
-            placeholder={question.placeholder || "Your answer..."}
-            value={(answers[question.id] as string) || ""}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            rows={4}
-            className={cn(hasError && "border-destructive")}
-          />
-        )}
-
-        {question.type === "single_choice" && question.options && (
-          <RadioGroup
-            value={(answers[question.id] as string) || ""}
-            onValueChange={(value) => updateAnswer(question.id, value)}
-            className="space-y-2"
-          >
-            {question.options.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`${question.id}-${option}`} />
-                <Label
-                  htmlFor={`${question.id}-${option}`}
-                  className="font-normal cursor-pointer"
-                >
-                  {option}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )}
-
-        {question.type === "multiple_choice" && question.options && (
-          <div className="space-y-2">
-            {question.options.map((option) => {
-              const currentValue = (answers[question.id] as string[]) || [];
-              const isChecked = currentValue.includes(option);
-
-              return (
-                <div key={option} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`${question.id}-${option}`}
-                    checked={isChecked}
-                    onCheckedChange={() => toggleMultipleChoice(question.id, option)}
-                  />
-                  <Label
-                    htmlFor={`${question.id}-${option}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {option}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {hasError && (
-          <p className="text-sm text-destructive flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {errors[question.id]}
-          </p>
-        )}
-      </div>
-    );
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] p-0">
@@ -309,13 +195,14 @@ export function ApplicationForm({
 
             {/* Application Questions */}
             {questions.length > 0 ? (
-              <div className="space-y-6">
-                <div className="border-t border-border pt-4">
-                  <h3 className="font-medium text-foreground mb-4">Application Questions</h3>
-                  <div className="space-y-6">
-                    {questions.map((q, index) => renderQuestion(q, index))}
-                  </div>
-                </div>
+              <div className="border-t border-border pt-4">
+                <h3 className="font-medium text-foreground mb-4">Application Questions</h3>
+                <DynamicQuestionForm
+                  questions={questions}
+                  answers={answers}
+                  errors={errors}
+                  onAnswerChange={handleAnswerChange}
+                />
               </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
