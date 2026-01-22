@@ -1,12 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, CalendarCheck, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2, CalendarCheck } from "lucide-react";
 import { sendRSVPConfirmation } from "@/lib/emailService";
 import { format } from "date-fns";
+import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
 import type { FormQuestion, EventForForm } from "@/types";
 
 interface RSVPFormProps {
@@ -44,6 +39,8 @@ export function RSVPForm({
   const [studentEmail, setStudentEmail] = useState("");
   const [studentName, setStudentName] = useState("");
 
+  const { validateAnswers } = useDynamicQuestionForm(questions);
+
   // Fetch student profile info for email
   useEffect(() => {
     const fetchStudentInfo = async () => {
@@ -61,7 +58,7 @@ export function RSVPForm({
     fetchStudentInfo();
   }, [user]);
 
-  const updateAnswer = (questionId: string, value: string | string[]) => {
+  const handleAnswerChange = useCallback((questionId: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
     if (errors[questionId]) {
       setErrors((prev) => {
@@ -70,33 +67,7 @@ export function RSVPForm({
         return next;
       });
     }
-  };
-
-  const toggleMultipleChoice = (questionId: string, option: string) => {
-    const currentValue = (answers[questionId] as string[]) || [];
-    const newValue = currentValue.includes(option)
-      ? currentValue.filter((v) => v !== option)
-      : [...currentValue, option];
-    updateAnswer(questionId, newValue);
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    questions.forEach((q) => {
-      if (q.required) {
-        const answer = answers[q.id];
-        if (!answer || (Array.isArray(answer) && answer.length === 0)) {
-          newErrors[q.id] = "This field is required";
-        } else if (typeof answer === "string" && answer.trim() === "") {
-          newErrors[q.id] = "This field is required";
-        }
-      }
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  }, [errors]);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -104,9 +75,13 @@ export function RSVPForm({
       return;
     }
 
-    if (questions.length > 0 && !validateForm()) {
-      toast.error("Please fill in all required fields");
-      return;
+    if (questions.length > 0) {
+      const validation = validateAnswers(answers);
+      if (!validation.isValid) {
+        setErrors(validation.errors);
+        toast.error("Please fill in all required fields");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -166,95 +141,6 @@ export function RSVPForm({
     }
   };
 
-  const renderQuestion = (question: FormQuestion, index: number) => {
-    const hasError = !!errors[question.id];
-
-    return (
-      <div key={question.id} className="space-y-3">
-        <Label
-          htmlFor={`question-${question.id}`}
-          className={cn("text-base", hasError && "text-destructive")}
-        >
-          {index + 1}. {question.question}
-          {question.required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-
-        {question.type === "short_text" && (
-          <Input
-            id={`question-${question.id}`}
-            placeholder={question.placeholder || "Your answer..."}
-            value={(answers[question.id] as string) || ""}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            className={cn(hasError && "border-destructive")}
-          />
-        )}
-
-        {question.type === "long_text" && (
-          <Textarea
-            id={`question-${question.id}`}
-            placeholder={question.placeholder || "Your answer..."}
-            value={(answers[question.id] as string) || ""}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            rows={4}
-            className={cn(hasError && "border-destructive")}
-          />
-        )}
-
-        {question.type === "single_choice" && question.options && (
-          <RadioGroup
-            value={(answers[question.id] as string) || ""}
-            onValueChange={(value) => updateAnswer(question.id, value)}
-            className="space-y-2"
-          >
-            {question.options.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`${question.id}-${option}`} />
-                <Label
-                  htmlFor={`${question.id}-${option}`}
-                  className="font-normal cursor-pointer"
-                >
-                  {option}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )}
-
-        {question.type === "multiple_choice" && question.options && (
-          <div className="space-y-2">
-            {question.options.map((option) => {
-              const currentValue = (answers[question.id] as string[]) || [];
-              const isChecked = currentValue.includes(option);
-
-              return (
-                <div key={option} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`${question.id}-${option}`}
-                    checked={isChecked}
-                    onCheckedChange={() => toggleMultipleChoice(question.id, option)}
-                  />
-                  <Label
-                    htmlFor={`${question.id}-${option}`}
-                    className="font-normal cursor-pointer"
-                  >
-                    {option}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {hasError && (
-          <p className="text-sm text-destructive flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {errors[question.id]}
-          </p>
-        )}
-      </div>
-    );
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] p-0">
@@ -274,9 +160,12 @@ export function RSVPForm({
         <ScrollArea className="max-h-[60vh]">
           <div className="px-6 py-6 space-y-6">
             {questions.length > 0 ? (
-              <div className="space-y-6">
-                {questions.map((q, index) => renderQuestion(q, index))}
-              </div>
+              <DynamicQuestionForm
+                questions={questions}
+                answers={answers}
+                errors={errors}
+                onAnswerChange={handleAnswerChange}
+              />
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <p>No additional information required.</p>
