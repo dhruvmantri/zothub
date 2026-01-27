@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { studentProfileSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
+import { YEAR_OPTIONS, SKILL_SUGGESTIONS, INTEREST_SUGGESTIONS } from "@/lib/constants";
 import { 
   User, 
   GraduationCap, 
@@ -31,21 +32,6 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { StudentLayout } from "@/components/student/StudentLayout";
-
-const YEAR_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate", "PhD"] as const;
-
-const SKILL_SUGGESTIONS = [
-  "JavaScript", "TypeScript", "React", "Python", "Java", "C++", 
-  "Node.js", "SQL", "Machine Learning", "Data Analysis", "UI/UX Design",
-  "Project Management", "Marketing", "Public Speaking", "Leadership",
-  "Graphic Design", "Video Editing", "Writing", "Research"
-];
-
-const INTEREST_SUGGESTIONS = [
-  "Technology", "Business", "Arts", "Sports", "Music", "Gaming",
-  "Photography", "Community Service", "Entrepreneurship", "Finance",
-  "Healthcare", "Environment", "Education", "Research", "Social Impact"
-];
 
 export default function StudentProfileSetup() {
   const { user } = useAuth();

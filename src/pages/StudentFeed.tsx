@@ -12,29 +12,7 @@ import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { toast } from "sonner";
 import { StudentLayout } from "@/components/student/StudentLayout";
 import { PageTransition, SlideUp } from "@/components/ui/page-transition";
-
-interface FollowedClub {
-  id: string;
-  club_name: string;
-  logo_url: string | null;
-}
-
-interface FeedItem {
-  type: "opportunity" | "event";
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  club_id: string;
-  club_name: string;
-  club_logo: string | null;
-  // Opportunity specific
-  deadline?: string | null;
-  opportunity_type?: string;
-  // Event specific
-  event_date?: string;
-  location?: string | null;
-}
+import type { FeedItem, FollowedClub } from "@/types";
 
 export default function StudentFeed() {
   const { user } = useAuth();

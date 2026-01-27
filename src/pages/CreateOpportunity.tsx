@@ -24,6 +24,7 @@ import {
 import { SuccessModal } from "@/components/SuccessModal";
 import { ShareButton } from "@/components/ShareButton";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
+import { OPPORTUNITY_TYPES } from "@/lib/constants";
 import {
   Briefcase,
   FileText,
@@ -34,15 +35,6 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
-
-const OPPORTUNITY_TYPES = [
-  { value: "leadership", label: "Leadership Role" },
-  { value: "project", label: "Project Team" },
-  { value: "internship", label: "Internship" },
-  { value: "volunteer", label: "Volunteer" },
-  { value: "committee", label: "Committee" },
-  { value: "other", label: "Other" },
-];
 
 export default function CreateOpportunity() {
   const { user } = useAuth();

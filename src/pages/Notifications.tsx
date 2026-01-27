@@ -18,18 +18,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +37,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentLayout } from "@/components/student/StudentLayout";
+import {
+  NotificationPreferencesDialog,
+  TeamInvitationCard,
+  NotificationCard,
+} from "@/components/notifications";
 
 type InvitationStatus = "pending" | "active" | "declined" | null;
 
@@ -120,19 +115,6 @@ export default function Notifications() {
     }
   };
 
-  const getNotificationLink = (notification: Notification) => {
-    switch (notification.type) {
-      case "application_update":
-        return role === "student" ? "/student/dashboard" : "/club/applications";
-      case "new_message":
-        return role === "student" ? "/student/messages" : "/club/messages";
-      case "event_reminder":
-        return notification.related_id ? `/events/${notification.related_id}` : "/events";
-      default:
-        return null;
-    }
-  };
-
   const handleMarkAsRead = async (notification: Notification) => {
     await markAsRead(notification.id);
     toast.success("Marked as read");
@@ -176,9 +158,7 @@ export default function Notifications() {
     });
 
     if (success) {
-      // Update local status immediately
       setInvitationStatuses((prev) => ({ ...prev, [notification.id]: "active" }));
-      // Refetch notifications to get updated message
       refetch();
     }
   };
@@ -195,9 +175,7 @@ export default function Notifications() {
     });
 
     if (success) {
-      // Update local status immediately
       setInvitationStatuses((prev) => ({ ...prev, [notification.id]: "declined" }));
-      // Refetch notifications to get updated message
       refetch();
     }
   };
@@ -205,134 +183,6 @@ export default function Notifications() {
   const filteredNotifications =
     filter === "unread" ? notifications.filter((n) => !n.is_read) : notifications;
 
-  // Render team invitation notification
-  const renderTeamInvitation = (notification: Notification) => {
-    const status = invitationStatuses[notification.id];
-    const isProcessingThis = processingInvitations.has(notification.id);
-    const isPending = status === "pending" || status === null;
-    const isAccepted = status === "active";
-    const isDeclined = status === "declined";
-
-    return (
-      <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-sm",
-            !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-          )}
-        >
-          {notification.title}
-        </p>
-        {notification.message && (
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {notification.message}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-        </p>
-
-        {/* Show Accept/Decline buttons only for pending invitations */}
-        {isPending && notification.related_id && (
-          <div className="flex items-center gap-2 mt-3">
-            <Button
-              size="sm"
-              onClick={() => handleAcceptInvitation(notification)}
-              disabled={isProcessingThis || isProcessing}
-            >
-              {isProcessingThis ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-1" />
-                  Accept
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleDeclineInvitation(notification)}
-              disabled={isProcessingThis || isProcessing}
-            >
-              <X className="w-4 h-4 mr-1" />
-              Decline
-            </Button>
-          </div>
-        )}
-
-        {/* Show status badges for responded invitations */}
-        {isAccepted && (
-          <div className="mt-2">
-            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-500">
-              <Check className="w-3 h-3 mr-1" />
-              Accepted
-            </Badge>
-          </div>
-        )}
-        {isDeclined && (
-          <div className="mt-2">
-            <Badge variant="secondary">
-              <X className="w-3 h-3 mr-1" />
-              Declined
-            </Badge>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Render standard notification
-  const renderStandardNotification = (notification: Notification) => {
-    const link = getNotificationLink(notification);
-
-    return (
-      <div className="flex-1 min-w-0">
-        {link ? (
-          <Link
-            to={link}
-            onClick={() => !notification.is_read && markAsRead(notification.id)}
-            className="block"
-          >
-            <p
-              className={cn(
-                "text-sm",
-                !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-              )}
-            >
-              {notification.title}
-            </p>
-            {notification.message && (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                {notification.message}
-              </p>
-            )}
-          </Link>
-        ) : (
-          <>
-            <p
-              className={cn(
-                "text-sm",
-                !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-              )}
-            >
-              {notification.title}
-            </p>
-            {notification.message && (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                {notification.message}
-              </p>
-            )}
-          </>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-        </p>
-      </div>
-    );
-  };
-
-  // Wrap content in StudentLayout for students, otherwise show standalone
   const content = (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
@@ -349,93 +199,18 @@ export default function Notifications() {
           <p className="text-muted-foreground mt-1">Stay updated with your activity</p>
         </div>
 
-        <Dialog open={showPreferences} onOpenChange={setShowPreferences}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Preferences
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Notification Preferences</DialogTitle>
-              <DialogDescription>
-                Choose which notifications you want to receive.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Application Updates</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when application status changes
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.application_updates}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("application_updates", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Event Reminders</Label>
-                  <p className="text-sm text-muted-foreground">Remind before upcoming events</p>
-                </div>
-                <Switch
-                  checked={preferences.event_reminders}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("event_reminders", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>New Messages</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when you receive a message
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.new_messages}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("new_messages", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Deadline Reminders</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Remind about approaching deadlines
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.deadline_reminders}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("deadline_reminders", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Team Invitations</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when invited to join a club team
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.team_invitations}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("team_invitations", checked)
-                  }
-                />
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="outline" size="sm" onClick={() => setShowPreferences(true)}>
+          <Settings className="w-4 h-4 mr-2" />
+          Preferences
+        </Button>
       </div>
+
+      <NotificationPreferencesDialog
+        open={showPreferences}
+        onOpenChange={setShowPreferences}
+        preferences={preferences}
+        onPreferenceChange={handlePreferenceChange}
+      />
 
       <Card>
         <div className="p-4 border-b border-border">
@@ -518,9 +293,21 @@ export default function Notifications() {
                       {getNotificationIcon(notification.type)}
                     </div>
 
-                    {isTeamInvitation
-                      ? renderTeamInvitation(notification)
-                      : renderStandardNotification(notification)}
+                    {isTeamInvitation ? (
+                      <TeamInvitationCard
+                        notification={notification}
+                        status={invitationStatus}
+                        isProcessing={processingInvitations.has(notification.id) || isProcessing}
+                        onAccept={() => handleAcceptInvitation(notification)}
+                        onDecline={() => handleDeclineInvitation(notification)}
+                      />
+                    ) : (
+                      <NotificationCard
+                        notification={notification}
+                        role={role}
+                        onMarkAsRead={() => markAsRead(notification.id)}
+                      />
+                    )}
 
                     {/* Action buttons - show for non-team invitations OR responded team invitations */}
                     {showActionButtons && (

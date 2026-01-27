@@ -308,6 +308,12 @@ export interface FeedItem {
   location?: string | null;
 }
 
+export interface FollowedClub {
+  id: string;
+  club_name: string;
+  logo_url: string | null;
+}
+
 // ============= Messaging Types =============
 
 export interface Message {

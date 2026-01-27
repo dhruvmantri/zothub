@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OPPORTUNITY_TYPE_VALUES, YEAR_OPTIONS, CLUB_CATEGORIES } from "@/lib/constants";
 
 // ============= Common Validators =============
 
@@ -99,8 +100,6 @@ export type EventInput = z.infer<typeof eventSchema>;
 
 // ============= Opportunity Validation Schema =============
 
-const opportunityTypes = ["leadership", "project", "internship", "volunteer", "committee", "other"] as const;
-
 const applicationQuestionSchema = z.object({
   id: z.string().max(100),
   type: z.enum(["short_text", "long_text", "single_choice", "multiple_choice"]),
@@ -112,7 +111,7 @@ const applicationQuestionSchema = z.object({
 
 export const opportunitySchema = z.object({
   title: requiredSanitizedTextSchema(200, "Title"),
-  type: z.enum(opportunityTypes, { errorMap: () => ({ message: "Please select an opportunity type" }) }),
+  type: z.enum(OPPORTUNITY_TYPE_VALUES, { errorMap: () => ({ message: "Please select an opportunity type" }) }),
   description: sanitizedTextSchema(5000, "Description").optional().nullable(),
   requirements: sanitizedTextSchema(3000, "Requirements").optional().nullable(),
   deadline: futureDateSchema.optional().nullable(),
@@ -143,12 +142,10 @@ export type ApplicationInput = z.infer<typeof applicationSchema>;
 
 // ============= Student Profile Schema =============
 
-const yearOptions = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate", "PhD"] as const;
-
 export const studentProfileSchema = z.object({
   full_name: sanitizedTextSchema(100, "Full name").optional().nullable(),
   major: sanitizedTextSchema(100, "Major").optional().nullable(),
-  year: z.enum(yearOptions).optional().nullable(),
+  year: z.enum(YEAR_OPTIONS).optional().nullable(),
   graduation_date: z.string().optional().nullable().refine(
     (val) => {
       if (!val) return true;
@@ -169,14 +166,6 @@ export const studentProfileSchema = z.object({
 export type StudentProfileInput = z.infer<typeof studentProfileSchema>;
 
 // ============= Club Profile Schema =============
-
-const categoryOptions = [
-  "Academic", "Arts & Culture", "Business & Finance", "Community Service",
-  "Engineering", "Gaming & Esports", "Health & Wellness", "Media & Journalism",
-  "Music & Performance", "Political & Advocacy", "Professional Development",
-  "Religious & Spiritual", "Science & Research", "Social", "Sports & Recreation",
-  "Technology", "Other"
-] as const;
 
 export const clubProfileSchema = z.object({
   club_name: requiredSanitizedTextSchema(100, "Club name"),

@@ -6,21 +6,7 @@ import { Loader2, Rss } from "lucide-react";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { ClubLayout } from "@/components/club/ClubLayout";
-
-interface FeedItem {
-  type: "opportunity" | "event";
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  club_id: string;
-  club_name: string;
-  club_logo: string | null;
-  deadline?: string | null;
-  opportunity_type?: string;
-  event_date?: string;
-  location?: string | null;
-}
+import type { FeedItem } from "@/types";
 
 export default function ClubFeed() {
   const { user } = useAuth();
