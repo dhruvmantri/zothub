@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useEventRSVP } from "@/hooks/useEventRSVP";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,26 +58,14 @@ export default function EventDetail() {
   
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasRSVP, setHasRSVP] = useState(false);
-  const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
-  const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
-  const [rsvpLoading, setRsvpLoading] = useState(false);
-  const [showRSVPForm, setShowRSVPForm] = useState(false);
 
   // Use centralized bookmark hook
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const isEventBookmarked = id ? isBookmarked(id) : false;
 
-  useEffect(() => {
-    if (id) {
-      fetchEvent();
-      if (user) {
-        fetchStudentProfile();
-      }
-    }
-  }, [id, user]);
-
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
+    if (!id) return;
+    
     try {
       const { data, error } = await supabase
         .from("events")
@@ -105,131 +94,25 @@ export default function EventDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchStudentProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("student_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) {
-        setStudentProfileId(data.id);
-        checkRSVP(data.id);
-      }
-    } catch (error) {
-      console.error("Error fetching student profile:", error);
-    }
-  };
-
-  const checkRSVP = async (profileId: string) => {
-    if (!id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("rsvps")
-        .select("id, status")
-        .eq("event_id", id)
-        .eq("student_id", profileId)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) {
-        setHasRSVP(data.status !== "cancelled");
-        setRsvpStatus(data.status);
-      } else {
-        setHasRSVP(false);
-        setRsvpStatus(null);
-      }
-    } catch (error) {
-      console.error("Error checking RSVP:", error);
-    }
-  };
-
-
-  const handleRSVP = async () => {
-    if (!user) {
-      toast.error("Please log in to RSVP");
-      return;
-    }
-
-    if (role !== "student") {
-      toast.error("Only students can RSVP to events");
-      return;
-    }
-
-    if (!studentProfileId || !id || !event) return;
-
-    // If event has RSVP questions, show the form
-    if (event.rsvp_questions && event.rsvp_questions.length > 0 && !hasRSVP) {
-      setShowRSVPForm(true);
-      return;
-    }
-
-    setRsvpLoading(true);
-    try {
-      if (hasRSVP) {
-        // Cancel RSVP - need to update status since we can't delete
-        const { error } = await supabase
-          .from("rsvps")
-          .update({ status: "cancelled" })
-          .eq("event_id", id)
-          .eq("student_id", studentProfileId);
-
-        if (error) throw error;
-        setHasRSVP(false);
-        setRsvpStatus("cancelled");
-        toast.success("RSVP cancelled");
-        fetchEvent();
-      } else {
-        // Check capacity
-        const confirmedRsvps = event.rsvps.filter(r => r.status === "confirmed").length;
-        if (event.capacity && confirmedRsvps >= event.capacity) {
-          toast.error("This event is at full capacity");
-          return;
-        }
-
-        const status = event.requires_approval ? "pending" : "confirmed";
-
-        const { error } = await supabase
-          .from("rsvps")
-          .insert({ 
-            event_id: id, 
-            student_id: studentProfileId,
-            status,
-            answers: [],
-          });
-
-        if (error) throw error;
-        setHasRSVP(true);
-        setRsvpStatus(status);
-        
-        if (event.requires_approval) {
-          toast.success("RSVP submitted! Awaiting approval.");
-        } else {
-          toast.success("RSVP confirmed!");
-        }
-        fetchEvent();
-      }
-    } catch (error) {
-      console.error("Error handling RSVP:", error);
-      toast.error("Failed to process RSVP");
-    } finally {
-      setRsvpLoading(false);
-    }
-  };
-
-  const handleRSVPFormSuccess = () => {
-    setShowRSVPForm(false);
-    setHasRSVP(true);
-    setRsvpStatus(event?.requires_approval ? "pending" : "confirmed");
+  useEffect(() => {
     fetchEvent();
-  };
+  }, [fetchEvent]);
+
+  // Use the extracted RSVP hook
+  const {
+    studentProfileId,
+    hasRSVP,
+    rsvpStatus,
+    rsvpLoading,
+    showRSVPForm,
+    setShowRSVPForm,
+    handleRSVP,
+    handleRSVPFormSuccess,
+    confirmedRsvps,
+    spotsLeft,
+  } = useEventRSVP(id, event, fetchEvent);
 
   const formatEventDate = (date: string) => {
     return format(new Date(date), "EEEE, MMMM d, yyyy");
@@ -240,8 +123,6 @@ export default function EventDetail() {
   };
 
   const isEventPast = event ? new Date(event.event_date) < new Date() : false;
-  const confirmedRsvps = event?.rsvps.filter(r => r.status === "confirmed").length ?? 0;
-  const spotsLeft = event?.capacity ? event.capacity - confirmedRsvps : null;
   const eventUrl = typeof window !== "undefined" ? window.location.href : "";
 
   if (loading) {
