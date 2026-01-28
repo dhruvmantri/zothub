@@ -33,6 +33,11 @@ import ClubHome from "./pages/club/ClubHome";
 import ClubFeed from "./pages/club/ClubFeed";
 import Privacy from "./pages/Privacy";
 import Unsubscribe from "./pages/Unsubscribe";
+// Waitlist and Admin
+import Waitlist from "./pages/Waitlist";
+import WaitlistRejected from "./pages/WaitlistRejected";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import { AdminRoute } from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +62,16 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/waitlist" element={<Waitlist />} />
+            <Route path="/waitlist-rejected" element={<WaitlistRejected />} />
+            <Route 
+              path="/admin" 
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              } 
+            />
             <Route 
               path="/club/feed" 
               element={

@@ -7,7 +7,10 @@ type EmailType =
   | "rsvp_reminder"
   | "deadline_reminder"
   | "event_cancelled"
-  | "new_club_post";
+  | "new_club_post"
+  | "waitlist_confirmation"
+  | "waitlist_approved"
+  | "waitlist_rejected";
 
 interface EmailData {
   studentName?: string;
