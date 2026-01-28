@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,8 @@ export default function OpportunitiesPage() {
         `)
         .eq("is_active", true)
         .or(`deadline.is.null,deadline.gte.${now}`)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
 
       if (error) {
         console.error("Error fetching opportunities:", error);
@@ -119,38 +120,40 @@ export default function OpportunitiesPage() {
   };
 
 
-  const filteredOpportunities = opportunities
-    .filter((opp) => {
-      const clubName = opp.club_profiles?.club_name || "";
-      const matchesSearch =
-        opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        clubName.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Handle "Saved" category
-      if (selectedCategory === "Saved") {
-        return matchesSearch && isBookmarked(opp.id);
-      }
-      
-      const matchesCategory =
-        selectedCategory === "All" ||
-        opp.type.toLowerCase() === selectedCategory.toLowerCase();
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      switch (sortOption) {
-        case "deadline":
-          // Opportunities with deadlines first, sorted by deadline ascending
-          if (!a.deadline && !b.deadline) return 0;
-          if (!a.deadline) return 1;
-          if (!b.deadline) return -1;
-          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-        case "popular":
-          return (b.applications?.length || 0) - (a.applications?.length || 0);
-        case "newest":
-        default:
-          return 0; // Already sorted by created_at from query
-      }
-    });
+  const filteredOpportunities = useMemo(() => {
+    return opportunities
+      .filter((opp) => {
+        const clubName = opp.club_profiles?.club_name || "";
+        const matchesSearch =
+          opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          clubName.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        // Handle "Saved" category
+        if (selectedCategory === "Saved") {
+          return matchesSearch && isBookmarked(opp.id);
+        }
+        
+        const matchesCategory =
+          selectedCategory === "All" ||
+          opp.type.toLowerCase() === selectedCategory.toLowerCase();
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        switch (sortOption) {
+          case "deadline":
+            // Opportunities with deadlines first, sorted by deadline ascending
+            if (!a.deadline && !b.deadline) return 0;
+            if (!a.deadline) return 1;
+            if (!b.deadline) return -1;
+            return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          case "popular":
+            return (b.applications?.length || 0) - (a.applications?.length || 0);
+          case "newest":
+          default:
+            return 0; // Already sorted by created_at from query
+        }
+      });
+  }, [opportunities, searchQuery, selectedCategory, sortOption, isBookmarked]);
 
 
   return (
