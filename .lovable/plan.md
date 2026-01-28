@@ -1,89 +1,122 @@
-# Pre-Launch Critical Fixes - COMPLETED ✅
 
-All 5 critical fixes have been implemented for the beta launch (5-10 clubs, 50-100 students).
 
----
+# Email Notification Fixes Plan
 
-## Summary of Changes
-
-| # | Fix | Status | Files Changed |
-|---|-----|--------|---------------|
-| 1 | Remove .env from git history + rotate keys | ⚠️ MANUAL | See instructions below |
-| 2 | Add query limits (.limit(50/100)) | ✅ DONE | Opportunities.tsx, Events.tsx, useMessages.ts |
-| 3 | Wrap filtering in useMemo() | ✅ DONE | Opportunities.tsx, Events.tsx, StudentFeed.tsx, ClubFeed.tsx |
-| 4 | Batch profile fetches (fix N+1) | ✅ DONE | useProfileLookup.ts, useMessages.ts |
-| 5 | Add 18 database indexes | ✅ DONE | Migration applied |
+This plan addresses the two missing email notification triggers identified in the audit.
 
 ---
 
-## Task 1: Security (MANUAL ACTION REQUIRED)
+## Overview
 
-**You must run these commands locally:**
+| Issue | Current State | Fix Required |
+|-------|--------------|--------------|
+| Event Cancellation Emails | Function exists but never called | Add call before delete |
+| New Club Post Emails | Template exists but no trigger | Add call after create |
 
-```bash
-# 1. Install git-filter-repo (if not installed)
-pip install git-filter-repo
+---
 
-# 2. Remove .env from git history
-git filter-repo --path .env --invert-paths
+## Task 1: Add Event Cancellation Email Trigger
 
-# 3. Force push to remote
-git push origin --force --all
+**Problem**: When a club deletes an event, confirmed attendees are not notified via email.
 
-# 4. Verify
-git log --all -- .env
-# Should return nothing
+**Current Code** (`src/hooks/useClubEvents.ts` lines 56-71):
+```typescript
+const deleteEvent = async (id: string) => {
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", id);
+  // No notification to attendees!
+  ...
+};
 ```
 
-**Additionally:** Rotate your Supabase keys in Lovable Cloud settings if .env was ever committed.
+**Solution**: Before deleting, fetch event details and send cancellation emails to all confirmed RSVPs.
+
+### File: `src/hooks/useClubEvents.ts`
+
+Changes:
+1. Import `sendEventCancellationEmails` from `@/lib/eventNotifications`
+2. Before deleting, fetch event title, date, and club name
+3. Call `sendEventCancellationEmails()` to notify attendees
+4. Then proceed with delete
+
+The updated function will:
+- Fetch the event details (title, date) before deletion
+- Get the club name from the clubId
+- Call `sendEventCancellationEmails(eventId, title, date, clubName)`
+- Then delete the event from database
 
 ---
 
-## Verification Checklist
+## Task 2: Add New Club Post Email Notification
 
-After deployment, verify:
+**Problem**: When a club creates a new opportunity or event, followers only get in-app notifications (via database trigger) but no email.
 
-- [ ] Pages load < 3s (Opportunities, Events, Messages)
-- [ ] No filter lag when typing in search
-- [ ] Network tab shows single batch query for conversation list profiles
-- [ ] `git log --all -- .env` returns nothing (manual check)
-- [ ] No console errors
-- [ ] Database indexes visible in Cloud View > Database
+**Current State**: The database trigger `notify_followers_on_new_post` creates in-app notifications only.
+
+**Solution**: Add email sending logic to the edge function `send-reminders` or create a new database trigger that calls the edge function.
+
+### Option A: Add to Create Flow (Client-Side)
+
+After successfully creating an opportunity/event, call the send-email function for each follower.
+
+### Option B: Create Database Trigger (Recommended)
+
+Create a new edge function `notify-followers` that:
+1. Is triggered by the existing database trigger OR
+2. Runs on a schedule to check for new posts and email followers
+
+**Recommended Approach**: Modify the existing `send-reminders` function to also check for recent posts (created in last hour) and email followers who haven't been notified.
+
+### File: `supabase/functions/send-reminders/index.ts`
+
+Add a third section after deadline reminders:
+
+1. Query opportunities and events created in the last hour
+2. For each new post, get followers who have `deadline_reminders` enabled
+3. Check if email already sent (add to reminder_logs with type `new_post_email`)
+4. Send `new_club_post` email with link to the opportunity/event
 
 ---
 
-## Technical Details
+## Implementation Order
 
-### Database Indexes Added (18 total)
+| Step | Task | Effort |
+|------|------|--------|
+| 1 | Add event cancellation emails to deleteEvent | Low |
+| 2 | Add new_club_post emails to send-reminders | Medium |
+| 3 | Test email delivery with real accounts | Low |
 
-```sql
--- OPPORTUNITIES: club_id, is_active, deadline, created_at
--- EVENTS: club_id, is_active, event_date, created_at
--- APPLICATIONS: opportunity_id, student_id, status
--- RSVPS: event_id, student_id
--- MESSAGES: sender_id, receiver_id, created_at
--- BOOKMARKS: user_id, club_id
--- NOTIFICATIONS: user_id, is_read
-```
+---
 
-### Query Limits
+## Files to Modify
 
-- Opportunities page: `.limit(50)`
-- Events page: `.limit(50)`
-- Messages hook: `.limit(100)`
+1. **`src/hooks/useClubEvents.ts`**
+   - Import eventNotifications
+   - Fetch event details before delete
+   - Call sendEventCancellationEmails()
 
-### useMemo Optimizations
+2. **`supabase/functions/send-reminders/index.ts`**
+   - Add section 3 for new post notifications
+   - Query recent opportunities/events
+   - Email followers with new_club_post template
 
-All filtering logic now wrapped in `useMemo()` to prevent recalculation on every render:
-- `filteredOpportunities` in Opportunities.tsx
-- `filteredEvents` in Events.tsx
-- `filteredItems` in StudentFeed.tsx
-- `filteredItems` in ClubFeed.tsx
+---
 
-### Batch Profile Fetching
+## Verification
 
-New `fetchProfileInfoBatch()` function in `useProfileLookup.ts`:
-- Single query for club_profiles where user_id IN (...)
-- Single query for student_profiles where user_id IN (...)
-- Results cached to prevent duplicate fetches
-- Replaces N+1 sequential profile lookups in useMessages.ts
+After implementation:
+- Delete an event with RSVPs → Attendees should receive cancellation email
+- Create a new opportunity → Followers should receive new_club_post email within 1 hour
+- Check edge function logs for successful email sends
+
+---
+
+## Note on Testing
+
+Since there are no recent edge function logs, we should also verify:
+1. RESEND_API_KEY secret is configured correctly
+2. Resend domain is verified
+3. Edge functions are deployed and accessible
+
