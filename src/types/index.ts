@@ -287,7 +287,7 @@ export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected"
 
 export type RSVPStatus = "pending" | "confirmed" | "cancelled";
 
-export type UserRole = "student" | "club";
+export type UserRole = "student" | "club" | "admin";
 
 // ============= Feed Types =============
 

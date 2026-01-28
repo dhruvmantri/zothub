@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "application_confirmation" | "application_status" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post";
+  type: "application_confirmation" | "application_status" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected";
   to: string;
   data: Record<string, unknown>;
 }
@@ -179,6 +179,80 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
             </div>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("deadline_reminders")}
+          </div>
+        `,
+      };
+
+    case "waitlist_confirmation":
+      return {
+        subject: "You're on the ZotHub Waitlist!",
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">Welcome to ZotHub! 🎉</h1>
+            <p>Thanks for signing up as a <strong>${data.role}</strong>!</p>
+            <p>You're now on our waitlist. We manually review all signups to ensure a quality experience for our UCI community.</p>
+            <div style="margin: 24px 0; padding: 16px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+              <p style="margin: 0; font-weight: 600; color: #b45309;">What happens next?</p>
+              <p style="margin: 8px 0 0 0;">We'll review your signup and send you an email once you're approved. This usually takes 1-2 business days.</p>
+            </div>
+            <p>In the meantime, you can explore <a href="https://zothub.lovable.app" style="color: #3b82f6;">ZotHub</a> to see what's available.</p>
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getEmailFooter("application_updates")}
+          </div>
+        `,
+      };
+
+    case "waitlist_approved":
+      return {
+        subject: "You're Approved! Welcome to ZotHub 🎉",
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">You're In! 🎊</h1>
+            <p>Great news! Your ZotHub account has been approved.</p>
+            <p>You can now log in and access all features as a <strong>${data.role}</strong>.</p>
+            <div style="margin: 24px 0;">
+              <a href="https://zothub.lovable.app/login" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px;">Log In Now</a>
+            </div>
+            ${data.role === "club" ? `
+            <p>As a club, you can now:</p>
+            <ul>
+              <li>Create and manage opportunities</li>
+              <li>Post events and track RSVPs</li>
+              <li>Build your team</li>
+              <li>Connect with UCI students</li>
+            </ul>
+            ` : `
+            <p>As a student, you can now:</p>
+            <ul>
+              <li>Discover opportunities from UCI clubs</li>
+              <li>Apply for leadership roles, projects, and more</li>
+              <li>RSVP to events</li>
+              <li>Follow your favorite clubs</li>
+            </ul>
+            `}
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getEmailFooter("application_updates")}
+          </div>
+        `,
+      };
+
+    case "waitlist_rejected":
+      return {
+        subject: "ZotHub Application Update",
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">Application Update</h1>
+            <p>Thank you for your interest in ZotHub.</p>
+            <p>Unfortunately, we're unable to approve your signup request at this time.</p>
+            ${data.reason ? `
+            <div style="margin: 24px 0; padding: 16px; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px;">
+              <p style="margin: 0; font-weight: 600; color: #b91c1c;">Reason:</p>
+              <p style="margin: 8px 0 0 0;">${data.reason}</p>
+            </div>
+            ` : ''}
+            <p>If you believe this was a mistake, please reach out to us.</p>
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getEmailFooter("application_updates")}
           </div>
         `,
       };
