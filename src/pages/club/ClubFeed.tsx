@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,12 +134,14 @@ export default function ClubFeed() {
     }
   };
 
-  const filteredItems = feedItems.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "opportunities") return item.type === "opportunity";
-    if (activeTab === "events") return item.type === "event";
-    return true;
-  });
+  const filteredItems = useMemo(() => {
+    return feedItems.filter((item) => {
+      if (activeTab === "all") return true;
+      if (activeTab === "opportunities") return item.type === "opportunity";
+      if (activeTab === "events") return item.type === "event";
+      return true;
+    });
+  }, [feedItems, activeTab]);
 
   if (isLoading) {
     return (
