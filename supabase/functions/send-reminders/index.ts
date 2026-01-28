@@ -222,6 +222,205 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // 3. New club post notifications (opportunities/events created in last hour)
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    let newPostEmails = 0;
+
+    // Check for new opportunities
+    const { data: newOpportunities, error: oppError } = await supabase
+      .from("opportunities")
+      .select(`
+        id, title,
+        club_profiles:club_id(id, club_name)
+      `)
+      .eq("is_active", true)
+      .gte("created_at", oneHourAgo.toISOString());
+
+    if (oppError) {
+      results.errors.push(`New opportunities query error: ${oppError.message}`);
+    } else if (newOpportunities) {
+      for (const opportunity of newOpportunities) {
+        const clubProfile = opportunity.club_profiles as unknown as { id: string; club_name: string } | null;
+        if (!clubProfile) continue;
+
+        // Get followers of this club
+        const { data: followers } = await supabase
+          .from("club_followers")
+          .select("user_id")
+          .eq("club_id", clubProfile.id);
+
+        if (!followers) continue;
+
+        for (const follower of followers) {
+          // Check if email already sent
+          const { data: existingLog } = await supabase
+            .from("reminder_logs")
+            .select("id")
+            .eq("reminder_type", "new_post_email")
+            .eq("target_id", opportunity.id)
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (existingLog) continue;
+
+          // Check notification preferences
+          const { data: prefs } = await supabase
+            .from("notification_preferences")
+            .select("deadline_reminders")
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (prefs && !prefs.deadline_reminders) continue;
+
+          // Get student email
+          const { data: student } = await supabase
+            .from("student_profiles")
+            .select("email, full_name")
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (!student?.email) continue;
+
+          try {
+            await resend.emails.send({
+              from: "ZotHub <notifications@resend.dev>",
+              to: [student.email],
+              subject: `New opportunity from ${clubProfile.club_name}`,
+              html: `
+                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h1 style="color: #1a1a2e;">New Opportunity 🎯</h1>
+                  <p>Hi ${student.full_name || "there"},</p>
+                  <p><strong>${clubProfile.club_name}</strong> just posted a new opportunity:</p>
+                  <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
+                    <h2 style="margin: 0 0 8px 0; color: #1a1a2e;">${opportunity.title}</h2>
+                  </div>
+                  <a href="https://zothub.lovable.app/opportunities/${opportunity.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Opportunity</a>
+                  <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #71717a; font-size: 12px; margin: 0;">
+                      You received this email because you follow ${clubProfile.club_name}.<br/>
+                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                    </p>
+                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
+                      ZotHub • University of California, Irvine • Irvine, CA 92697
+                    </p>
+                  </div>
+                </div>
+              `,
+            });
+
+            await supabase.from("reminder_logs").insert({
+              reminder_type: "new_post_email",
+              target_id: opportunity.id,
+              user_id: follower.user_id,
+            });
+
+            newPostEmails++;
+          } catch (emailError) {
+            results.errors.push(`New post email error: ${emailError}`);
+          }
+        }
+      }
+    }
+
+    // Check for new events
+    const { data: newEvents, error: eventsErr } = await supabase
+      .from("events")
+      .select(`
+        id, title, event_date, location,
+        club_profiles:club_id(id, club_name)
+      `)
+      .eq("is_active", true)
+      .gte("created_at", oneHourAgo.toISOString());
+
+    if (eventsErr) {
+      results.errors.push(`New events query error: ${eventsErr.message}`);
+    } else if (newEvents) {
+      for (const event of newEvents) {
+        const clubProfile = event.club_profiles as unknown as { id: string; club_name: string } | null;
+        if (!clubProfile) continue;
+
+        const { data: followers } = await supabase
+          .from("club_followers")
+          .select("user_id")
+          .eq("club_id", clubProfile.id);
+
+        if (!followers) continue;
+
+        for (const follower of followers) {
+          const { data: existingLog } = await supabase
+            .from("reminder_logs")
+            .select("id")
+            .eq("reminder_type", "new_post_email")
+            .eq("target_id", event.id)
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (existingLog) continue;
+
+          const { data: prefs } = await supabase
+            .from("notification_preferences")
+            .select("deadline_reminders")
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (prefs && !prefs.deadline_reminders) continue;
+
+          const { data: student } = await supabase
+            .from("student_profiles")
+            .select("email, full_name")
+            .eq("user_id", follower.user_id)
+            .single();
+
+          if (!student?.email) continue;
+
+          try {
+            await resend.emails.send({
+              from: "ZotHub <notifications@resend.dev>",
+              to: [student.email],
+              subject: `New event from ${clubProfile.club_name}`,
+              html: `
+                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h1 style="color: #1a1a2e;">New Event 📅</h1>
+                  <p>Hi ${student.full_name || "there"},</p>
+                  <p><strong>${clubProfile.club_name}</strong> just posted a new event:</p>
+                  <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
+                    <h2 style="margin: 0 0 8px 0; color: #1a1a2e;">${event.title}</h2>
+                    <p style="margin: 0;"><strong>📅</strong> ${new Date(event.event_date).toLocaleString()}</p>
+                    ${event.location ? `<p style="margin: 4px 0 0 0;"><strong>📍</strong> ${event.location}</p>` : ''}
+                  </div>
+                  <a href="https://zothub.lovable.app/events/${event.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Event</a>
+                  <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #71717a; font-size: 12px; margin: 0;">
+                      You received this email because you follow ${clubProfile.club_name}.<br/>
+                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                    </p>
+                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
+                      ZotHub • University of California, Irvine • Irvine, CA 92697
+                    </p>
+                  </div>
+                </div>
+              `,
+            });
+
+            await supabase.from("reminder_logs").insert({
+              reminder_type: "new_post_email",
+              target_id: event.id,
+              user_id: follower.user_id,
+            });
+
+            newPostEmails++;
+          } catch (emailError) {
+            results.errors.push(`New event email error: ${emailError}`);
+          }
+        }
+      }
+    }
+
+    (results as any).newPostEmails = newPostEmails;
     console.log("Reminder results:", results);
 
     return new Response(JSON.stringify(results), {
