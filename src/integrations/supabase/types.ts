@@ -247,6 +247,42 @@ export type Database = {
           },
         ]
       }
+      email_verifications: {
+        Row: {
+          attempts: number | null
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          password_hash: string
+          role: string
+          verified: boolean | null
+        }
+        Insert: {
+          attempts?: number | null
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          password_hash: string
+          role: string
+          verified?: boolean | null
+        }
+        Update: {
+          attempts?: number | null
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          password_hash?: string
+          role?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           banner_url: string | null

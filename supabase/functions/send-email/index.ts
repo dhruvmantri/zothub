@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "application_confirmation" | "application_status" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected";
+  type: "application_confirmation" | "application_status" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
   to: string;
   data: Record<string, unknown>;
 }
@@ -253,6 +253,25 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
             <p>If you believe this was a mistake, please reach out to us.</p>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("application_updates")}
+          </div>
+        `,
+      };
+
+    case "email_otp":
+      return {
+        subject: "Your ZotHub Verification Code",
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">Verify Your Email</h1>
+            <p>Use this code to verify your email address and complete your ZotHub signup:</p>
+            <div style="margin: 24px 0; padding: 24px; background: #f4f4f5; border-radius: 8px; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a2e;">
+                ${data.code}
+              </span>
+            </div>
+            <p style="color: #71717a;">This code expires in 10 minutes.</p>
+            <p style="color: #71717a;">If you didn't request this code, you can safely ignore this email.</p>
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
           </div>
         `,
       };
