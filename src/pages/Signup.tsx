@@ -90,12 +90,14 @@ export default function SignupPage() {
         },
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
+      // Check for error in response data first (edge function custom errors)
       if (data?.error) {
         throw new Error(data.error);
+      }
+
+      // Then check for transport/network errors
+      if (error) {
+        throw new Error(error.message);
       }
 
       setOtpExpiresAt(data.expiresAt);
