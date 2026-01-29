@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 import { OTPVerification } from "@/components/OTPVerification";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 type UserRole = "student" | "club";
 
@@ -90,14 +91,18 @@ export default function SignupPage() {
         },
       });
 
-      // Check for error in response data first (edge function custom errors)
-      if (data?.error) {
-        throw new Error(data.error);
+      if (error) {
+        // Handle HTTP errors from edge function (non-2xx responses)
+        if (error instanceof FunctionsHttpError) {
+          const errorData = await error.context.json();
+          throw new Error(errorData.error || "Request failed");
+        }
+        throw new Error(error.message);
       }
 
-      // Then check for transport/network errors
-      if (error) {
-        throw new Error(error.message);
+      // Also check for error in response data (for 2xx responses with error payload)
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       setOtpExpiresAt(data.expiresAt);
