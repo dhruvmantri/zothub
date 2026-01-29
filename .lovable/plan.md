@@ -1,74 +1,167 @@
 
-# Allow Admin Email Exception
+# Email OTP Verification for Signup
 
-This plan adds `zothub.uci@gmail.com` as an allowed admin email that bypasses the UCI email restriction.
+This plan adds a 6-digit OTP code verification step during email/password signup to ensure users actually own the email addresses they register with.
 
 ---
 
 ## Overview
 
-Create an allowlist for special admin emails that can sign up despite not being `@uci.edu` addresses.
+Before creating a Supabase account, users will:
+1. Enter their email, password, and role
+2. Receive a 6-digit OTP code via email
+3. Enter the code to verify ownership
+4. Only then is their account created
+
+**Note**: Google OAuth users skip this step since Google already verifies email ownership via their authentication flow.
 
 ---
 
-## Changes Required
+## Architecture
 
-### 1. Create Admin Allowlist Constant
+```text
+Current Flow:
+Email/Password → Create Account → Add to Waitlist → Done
 
-**File**: `src/lib/constants.ts`
-
-Add a constant for allowed admin emails:
-
-```typescript
-// Emails allowed to bypass @uci.edu restriction (admin accounts)
-export const ADMIN_ALLOWED_EMAILS = ["zothub.uci@gmail.com"];
+New Flow:
+Email/Password → Send OTP → Verify OTP → Create Account → Add to Waitlist → Done
 ```
 
 ---
 
-### 2. Update Signup Page Validation
+## Database Changes
 
-**File**: `src/pages/Signup.tsx`
+### 1. Create `email_verifications` Table
 
-Modify the email validation to allow admin emails:
+Store pending OTP codes with expiration:
 
-```typescript
-import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
+```sql
+CREATE TABLE public.email_verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('student', 'club')),
+  password_hash TEXT NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
-// In validateForm():
-if (!formData.email) {
-  newErrors.email = "Email is required";
-} else if (!formData.email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())) {
-  newErrors.email = "Please use your @uci.edu email";
-}
+-- Allow anyone to insert (before auth)
+-- RLS policies for unauthenticated access
+ALTER TABLE public.email_verifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can insert verification" ON public.email_verifications
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can select by email" ON public.email_verifications
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can update verification status" ON public.email_verifications
+  FOR UPDATE USING (true);
+
+CREATE POLICY "Anyone can delete expired verifications" ON public.email_verifications
+  FOR DELETE USING (expires_at < now());
+
+-- Auto-cleanup old entries
+CREATE INDEX idx_email_verifications_expires ON public.email_verifications(expires_at);
+CREATE INDEX idx_email_verifications_email ON public.email_verifications(email);
 ```
 
 ---
 
-### 3. Update AuthContext OAuth Handler
+## Backend Changes
 
-**File**: `src/contexts/AuthContext.tsx`
+### 2. Create Edge Function: `send-otp`
 
-Modify the OAuth email check:
+Handles OTP generation and email sending:
+
+- Generate a cryptographically secure 6-digit code
+- Store in `email_verifications` table with 10-minute expiry
+- Hash the password temporarily (not stored in plain text)
+- Send OTP via Resend email
+- Rate limit: max 3 requests per email per hour
+
+### 3. Create Edge Function: `verify-otp`
+
+Handles OTP verification and account creation:
+
+- Validate the OTP code matches and isn't expired
+- Create the Supabase auth user
+- Add user to waitlist
+- Create profile (student or club)
+- Send waitlist confirmation email
+- Delete the verification record
+
+### 4. Update `send-email` Function
+
+Add new email template type: `email_otp`
 
 ```typescript
-import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
-
-// In handleNewOAuthUser():
-if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerCase())) {
-  console.error("Non-UCI email attempted to sign up");
-  await supabase.auth.signOut();
-  return;
-}
+case "email_otp":
+  return {
+    subject: "Your ZotHub Verification Code",
+    html: `
+      <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #1a1a2e;">Verify Your Email</h1>
+        <p>Use this code to verify your email address:</p>
+        <div style="margin: 24px 0; padding: 24px; background: #f4f4f5; border-radius: 8px; text-align: center;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a2e;">
+            ${data.code}
+          </span>
+        </div>
+        <p style="color: #71717a;">This code expires in 10 minutes.</p>
+        <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+      </div>
+    `,
+  };
 ```
 
 ---
 
-### 4. Google OAuth Domain Restriction
+## Frontend Changes
 
-**Note**: The `hd: "uci.edu"` parameter in Google OAuth will still block Gmail accounts from using the Google sign-in button. This is a Google-side restriction that cannot be bypassed client-side.
+### 5. Update Signup Page (`src/pages/Signup.tsx`)
 
-**Solution**: For admin signup with `zothub.uci@gmail.com`, you'll need to use the **email/password signup** method instead of Google OAuth. The Google button will remain restricted to UCI accounts only.
+Add a new step to the signup flow:
+
+**Steps**: `role` → `details` → `otp` → (account created)
+
+- After form validation, call `send-otp` edge function
+- Show OTP input UI using the existing `InputOTP` component
+- Add "Resend Code" button with 60-second cooldown
+- On successful verification, show success toast and redirect
+
+### 6. Create OTP Verification Component
+
+New component: `src/components/OTPVerification.tsx`
+
+- 6-digit OTP input using shadcn's `InputOTP` components
+- Loading states and error handling
+- Countdown timer for code expiry
+- Resend functionality with rate limiting UI
+
+---
+
+## Security Considerations
+
+| Concern | Mitigation |
+|---------|------------|
+| Brute force OTP | Max 5 attempts per verification, then invalidate |
+| Email spam | Rate limit: 3 OTP requests per email per hour |
+| Password exposure | Password is hashed before storing temporarily |
+| Code guessing | 6 digits = 1 million combinations, 10-min expiry |
+| Replay attacks | Code deleted immediately after successful verification |
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/send-otp/index.ts` | Generate and send OTP code |
+| `supabase/functions/verify-otp/index.ts` | Verify code and create account |
+| `src/components/OTPVerification.tsx` | OTP input UI component |
 
 ---
 
@@ -76,33 +169,30 @@ if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerC
 
 | File | Change |
 |------|--------|
-| `src/lib/constants.ts` | Add `ADMIN_ALLOWED_EMAILS` array |
-| `src/pages/Signup.tsx` | Update email validation to check allowlist |
-| `src/contexts/AuthContext.tsx` | Update OAuth handler to check allowlist |
+| `supabase/functions/send-email/index.ts` | Add `email_otp` template |
+| `src/pages/Signup.tsx` | Add OTP verification step |
+| Database migration | Create `email_verifications` table |
 
 ---
 
-## After Implementation
+## User Experience Flow
 
-1. Go to `/signup`
-2. Select any role (student or club - doesn't matter for admin)
-3. Enter `zothub.uci@gmail.com` and a password
-4. Create account - you'll be added to waitlist
-5. Use SQL to grant admin role:
-   ```sql
-   -- Find your user ID
-   SELECT id FROM auth.users WHERE email = 'zothub.uci@gmail.com';
-   
-   -- Grant admin role
-   INSERT INTO user_roles (user_id, role) VALUES ('YOUR_USER_ID', 'admin');
-   
-   -- Remove from waitlist
-   DELETE FROM waitlist WHERE user_id = 'YOUR_USER_ID';
-   ```
-6. Log in and access `/admin`
+1. User selects role (student/club)
+2. User enters email and password
+3. User clicks "Create Account"
+4. Page shows OTP input with message: "Check your email for a 6-digit code"
+5. User enters code from email
+6. Success: "Account created! Welcome to ZotHub."
+7. User is redirected to waitlist page
 
 ---
 
-## Security Note
+## Admin Emails Exception
 
-The allowlist is intentionally small and explicit. Only emails in `ADMIN_ALLOWED_EMAILS` can bypass the restriction. This prevents arbitrary non-UCI emails from signing up while allowing specific admin accounts.
+For admin-allowed emails (like `zothub.uci@gmail.com`), the OTP verification still applies since it's email/password signup. This ensures even admin accounts verify email ownership.
+
+---
+
+## Google OAuth Flow
+
+No changes needed - Google OAuth already verifies email ownership through their authentication process. The `hd: "uci.edu"` parameter ensures only UCI accounts can use this method.
