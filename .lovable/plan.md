@@ -1,34 +1,23 @@
 
 
-# Fix Edge Function Error Message Display
+# Fix Edge Function Error Message Extraction
 
-When users try to sign up with an email that's already registered, the edge function correctly returns a helpful error message, but the frontend displays a generic error instead.
+The error handling for edge function responses needs to use Supabase's built-in error types to properly extract custom error messages from non-2xx responses.
 
 ---
 
 ## Problem
 
-The edge function returns:
-```json
-{"error": "This email is already registered. Please log in instead."}
-```
-
-But users see:
-```
-"Edge Function returned a non-2xx status code"
-```
-
----
-
-## Root Cause
-
-The `supabase.functions.invoke` method doesn't automatically parse error messages from non-2xx responses. When a 400 status is returned, the `error` object contains a generic message while the actual error details are in the response body.
+When `supabase.functions.invoke` receives a non-2xx status:
+- The `error` object is populated with a generic message
+- The `data` object may be `null` or not contain the response body
+- The actual error message is in `error.context` which needs to be parsed as JSON
 
 ---
 
 ## Solution
 
-Update the error handling in `Signup.tsx` to properly extract error messages from edge function responses.
+Use Supabase's `FunctionsHttpError` class to properly extract error messages from edge function responses.
 
 ---
 
@@ -36,48 +25,80 @@ Update the error handling in `Signup.tsx` to properly extract error messages fro
 
 ### File: `src/pages/Signup.tsx`
 
-Update the `sendOTP` function error handling:
-
-**Current approach:**
+**Import the error types:**
 ```typescript
-const { data, error } = await supabase.functions.invoke("send-otp", { ... });
-if (error) {
-  throw new Error(error.message);
-}
+import { FunctionsHttpError } from "@supabase/supabase-js";
 ```
 
-**Fixed approach:**
+**Update `sendOTP` function:**
 ```typescript
-const { data, error } = await supabase.functions.invoke("send-otp", { ... });
+const sendOTP = async () => {
+  setIsSubmitting(true);
+  setErrors({});
+  
+  try {
+    const { data, error } = await supabase.functions.invoke("send-otp", {
+      body: {
+        email: formData.email,
+        password: formData.password,
+        role: selectedRole,
+      },
+    });
 
-// Check for error in response data first (edge function custom errors)
-if (data?.error) {
-  throw new Error(data.error);
-}
+    if (error) {
+      // Handle HTTP errors from edge function (non-2xx responses)
+      if (error instanceof FunctionsHttpError) {
+        const errorData = await error.context.json();
+        throw new Error(errorData.error || "Request failed");
+      }
+      throw new Error(error.message);
+    }
 
-// Then check for transport/network errors
-if (error) {
-  throw new Error(error.message);
-}
+    // Also check for error in response data (for 2xx responses with error payload)
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    setOtpExpiresAt(data.expiresAt);
+    setStep("otp");
+    toast({
+      title: "Code sent!",
+      description: "Check your email for the 6-digit verification code.",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to send verification code";
+    toast({
+      title: "Error",
+      description: message,
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 ```
-
-The key insight is that even when an edge function returns a non-2xx status, the response body is still parsed into `data`. So we should check `data.error` before checking the generic `error` object.
 
 ---
 
-## Technical Details
+## Technical Explanation
 
-- The edge function returns proper error messages in the JSON body
-- `supabase.functions.invoke` may still populate `data` even on non-2xx responses
-- By checking `data.error` first, we capture the meaningful error message
+Supabase's functions client provides three error types:
+
+| Error Type | When It Occurs |
+|------------|----------------|
+| `FunctionsHttpError` | Edge function returns non-2xx status |
+| `FunctionsRelayError` | Error in the relay/gateway layer |
+| `FunctionsFetchError` | Network/fetch failure |
+
+For `FunctionsHttpError`, the response body is accessible via `error.context.json()` which returns a promise containing the parsed JSON response.
 
 ---
 
 ## Expected Behavior After Fix
 
-| Scenario | Current Toast | Fixed Toast |
-|----------|--------------|-------------|
+| Scenario | Current | Fixed |
+|----------|---------|-------|
 | Email already registered | "Edge Function returned a non-2xx status code" | "This email is already registered. Please log in instead." |
 | Rate limited | Generic error | "Too many verification attempts. Please try again in an hour." |
-| Invalid role | Generic error | "Invalid role. Must be 'student' or 'club'" |
+| Missing fields | Generic error | "Missing required fields: email, password, role" |
 
