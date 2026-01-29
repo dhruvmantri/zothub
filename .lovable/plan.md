@@ -1,86 +1,108 @@
-# Waitlist/Verification System - ✅ IMPLEMENTED
 
-This document summarizes the implemented waitlist verification system for ZotHub.
+# Allow Admin Email Exception
 
----
-
-## ✅ Completed Tasks
-
-### 1. Database Changes
-- ✅ Added `admin` role to `user_role` enum
-- ✅ Created `waitlist` table with columns: `id`, `user_id`, `email`, `role`, `status`, `rejection_reason`, `requested_at`, `reviewed_at`, `reviewed_by`
-- ✅ Added RLS policies for user self-view and admin management
-- ✅ Added indexes for performance
-
-### 2. New Files Created
-| File | Purpose |
-|------|---------|
-| `src/hooks/useWaitlist.ts` | Hook for waitlist operations (user status + admin management) |
-| `src/components/AdminRoute.tsx` | Route guard for admin-only pages |
-| `src/pages/Waitlist.tsx` | Waitlist status page for pending users |
-| `src/pages/WaitlistRejected.tsx` | Rejection message page |
-| `src/pages/admin/AdminDashboard.tsx` | Admin dashboard for managing signups |
-
-### 3. Modified Files
-| File | Changes |
-|------|---------|
-| `src/contexts/AuthContext.tsx` | Updated signup to add users to waitlist instead of user_roles; added admin role type |
-| `src/components/ProtectedRoute.tsx` | Added waitlist status check; redirects pending/rejected users |
-| `src/App.tsx` | Added routes for `/waitlist`, `/waitlist-rejected`, `/admin` |
-| `src/lib/emailService.ts` | Added waitlist email types |
-| `supabase/functions/send-email/index.ts` | Added email templates for waitlist_confirmation, waitlist_approved, waitlist_rejected |
-| `src/types/index.ts` | Added "admin" to UserRole type |
+This plan adds `zothub.uci@gmail.com` as an allowed admin email that bypasses the UCI email restriction.
 
 ---
 
-## 🔐 Admin Account Setup (REQUIRED)
+## Overview
 
-To set up your admin account, follow these steps:
+Create an allowlist for special admin emails that can sign up despite not being `@uci.edu` addresses.
 
-1. **Sign up** with your email on ZotHub (you'll be added to waitlist)
+---
 
-2. **Run this SQL** in Cloud View → Run SQL to grant yourself admin access:
+## Changes Required
 
-```sql
--- Replace 'YOUR_USER_ID' with your actual user ID from auth.users
--- You can find this by querying: SELECT id FROM auth.users WHERE email = 'your@email.edu';
+### 1. Create Admin Allowlist Constant
 
--- Grant admin role
-INSERT INTO user_roles (user_id, role)
-VALUES ('YOUR_USER_ID', 'admin');
+**File**: `src/lib/constants.ts`
 
--- Remove from waitlist
-DELETE FROM waitlist WHERE user_id = 'YOUR_USER_ID';
+Add a constant for allowed admin emails:
+
+```typescript
+// Emails allowed to bypass @uci.edu restriction (admin accounts)
+export const ADMIN_ALLOWED_EMAILS = ["zothub.uci@gmail.com"];
 ```
 
-3. **Log in** again and navigate to `/admin` to access the admin dashboard
+---
+
+### 2. Update Signup Page Validation
+
+**File**: `src/pages/Signup.tsx`
+
+Modify the email validation to allow admin emails:
+
+```typescript
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
+
+// In validateForm():
+if (!formData.email) {
+  newErrors.email = "Email is required";
+} else if (!formData.email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())) {
+  newErrors.email = "Please use your @uci.edu email";
+}
+```
 
 ---
 
-## User Flow
+### 3. Update AuthContext OAuth Handler
 
-### New Signups
-1. User signs up → Added to `waitlist` with status `pending`
-2. User sees `/waitlist` page explaining they're being reviewed
-3. Waitlist confirmation email sent
-4. Admin reviews at `/admin`
-5. Admin approves → Role inserted, approval email sent, user can access dashboard
-6. Admin rejects → Rejection email sent (with optional reason), user sees rejection page
+**File**: `src/contexts/AuthContext.tsx`
 
-### Admin Dashboard Features
-- View all pending, approved, rejected signups
-- Filter by status and role type
-- Search by email
-- Approve with one click
-- Reject with optional reason
-- Delete entries
-- Statistics cards showing totals
+Modify the OAuth email check:
+
+```typescript
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
+
+// In handleNewOAuthUser():
+if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerCase())) {
+  console.error("Non-UCI email attempted to sign up");
+  await supabase.auth.signOut();
+  return;
+}
+```
 
 ---
 
-## Security Notes
+### 4. Google OAuth Domain Restriction
 
-- Admin role is stored in `user_roles` table (server-side, not localStorage)
-- RLS policies ensure only admins can view/update all waitlist entries
-- `has_role()` function used for secure role checking
-- Profiles are created on signup but gated by waitlist check in ProtectedRoute
+**Note**: The `hd: "uci.edu"` parameter in Google OAuth will still block Gmail accounts from using the Google sign-in button. This is a Google-side restriction that cannot be bypassed client-side.
+
+**Solution**: For admin signup with `zothub.uci@gmail.com`, you'll need to use the **email/password signup** method instead of Google OAuth. The Google button will remain restricted to UCI accounts only.
+
+---
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/lib/constants.ts` | Add `ADMIN_ALLOWED_EMAILS` array |
+| `src/pages/Signup.tsx` | Update email validation to check allowlist |
+| `src/contexts/AuthContext.tsx` | Update OAuth handler to check allowlist |
+
+---
+
+## After Implementation
+
+1. Go to `/signup`
+2. Select any role (student or club - doesn't matter for admin)
+3. Enter `zothub.uci@gmail.com` and a password
+4. Create account - you'll be added to waitlist
+5. Use SQL to grant admin role:
+   ```sql
+   -- Find your user ID
+   SELECT id FROM auth.users WHERE email = 'zothub.uci@gmail.com';
+   
+   -- Grant admin role
+   INSERT INTO user_roles (user_id, role) VALUES ('YOUR_USER_ID', 'admin');
+   
+   -- Remove from waitlist
+   DELETE FROM waitlist WHERE user_id = 'YOUR_USER_ID';
+   ```
+6. Log in and access `/admin`
+
+---
+
+## Security Note
+
+The allowlist is intentionally small and explicit. Only emails in `ADMIN_ALLOWED_EMAILS` can bypass the restriction. This prevents arbitrary non-UCI emails from signing up while allowing specific admin accounts.
