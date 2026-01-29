@@ -8,6 +8,7 @@ import { ArrowLeft, GraduationCap, Building2, Eye, EyeOff, Loader2 } from "lucid
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 
 type UserRole = "student" | "club";
 
@@ -51,7 +52,7 @@ export default function SignupPage() {
     
     if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (!formData.email.endsWith("@uci.edu")) {
+    } else if (!formData.email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())) {
       newErrors.email = "Please use your @uci.edu email";
     }
     

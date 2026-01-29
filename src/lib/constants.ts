@@ -3,6 +3,11 @@
  * Import from "@/lib/constants" to use these values.
  */
 
+// ============= Admin Allowlist =============
+
+// Emails allowed to bypass @uci.edu restriction (admin accounts)
+export const ADMIN_ALLOWED_EMAILS = ["zothub.uci@gmail.com"];
+
 // ============= Opportunity Types =============
 
 export const OPPORTUNITY_TYPES = [
