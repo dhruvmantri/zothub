@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 
 type UserRole = "student" | "club" | "admin" | null;
 
@@ -116,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Validate UCI email
-      if (!email.endsWith("@uci.edu")) {
+      // Validate UCI email (allow admin emails to bypass)
+      if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerCase())) {
         console.error("Non-UCI email attempted to sign up");
         await supabase.auth.signOut();
         return;
