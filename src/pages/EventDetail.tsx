@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
+import { useEventRSVP } from "@/hooks/useEventRSVP";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { RSVPForm } from "@/components/RSVPForm";
+import { AddToCalendarButton } from "@/components/AddToCalendarButton";
+import { ShareButton } from "@/components/ShareButton";
 import { 
   Calendar, 
   MapPin, 
@@ -17,11 +23,13 @@ import {
   Bookmark,
   BookmarkCheck,
   CheckCircle,
-  XCircle
+  XCircle,
+  HourglassIcon
 } from "lucide-react";
 import { format } from "date-fns";
+import type { FormQuestion } from "@/types";
 
-interface Event {
+interface EventDetail {
   id: string;
   title: string;
   description: string | null;
@@ -30,12 +38,14 @@ interface Event {
   capacity: number | null;
   banner_url: string | null;
   views: number | null;
+  rsvp_questions: FormQuestion[] | null;
+  requires_approval: boolean | null;
   club_profiles: {
     id: string;
     club_name: string;
     logo_url: string | null;
   };
-  rsvps: { id: string; student_id: string }[];
+  rsvps: { id: string; student_id: string; status: string | null }[];
 }
 
 export default function EventDetail() {
@@ -43,187 +53,66 @@ export default function EventDetail() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
   
-  const [event, setEvent] = useState<Event | null>(null);
+  // Track page view
+  useTrackView('event', id);
+  
+  const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [hasRSVP, setHasRSVP] = useState(false);
-  const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
-  const [rsvpLoading, setRsvpLoading] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      fetchEvent();
-      if (user) {
-        checkBookmark();
-        fetchStudentProfile();
-      }
-    }
-  }, [id, user]);
+  // Use centralized bookmark hook
+  const { isBookmarked, toggleBookmark } = useBookmarks("event");
+  const isEventBookmarked = id ? isBookmarked(id) : false;
 
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
+    if (!id) return;
+    
     try {
       const { data, error } = await supabase
         .from("events")
         .select(`
           *,
           club_profiles (id, club_name, logo_url),
-          rsvps (id, student_id)
+          rsvps (id, student_id, status)
         `)
         .eq("id", id)
         .single();
 
       if (error) throw error;
-      setEvent(data);
+      
+      // Parse rsvp_questions from JSON
+      const eventData: EventDetail = {
+        ...data,
+        rsvp_questions: Array.isArray(data.rsvp_questions) 
+          ? (data.rsvp_questions as unknown as FormQuestion[]) 
+          : null,
+      };
+      
+      setEvent(eventData);
     } catch (error) {
       console.error("Error fetching event:", error);
       toast.error("Failed to load event");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchStudentProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("student_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]);
 
-      if (error) throw error;
-      if (data) {
-        setStudentProfileId(data.id);
-        checkRSVP(data.id);
-      }
-    } catch (error) {
-      console.error("Error fetching student profile:", error);
-    }
-  };
-
-  const checkRSVP = async (profileId: string) => {
-    if (!id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("rsvps")
-        .select("id")
-        .eq("event_id", id)
-        .eq("student_id", profileId)
-        .maybeSingle();
-
-      if (error) throw error;
-      setHasRSVP(!!data);
-    } catch (error) {
-      console.error("Error checking RSVP:", error);
-    }
-  };
-
-  const checkBookmark = async () => {
-    if (!user || !id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("event_id", id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setIsBookmarked(!!data);
-    } catch (error) {
-      console.error("Error checking bookmark:", error);
-    }
-  };
-
-  const toggleBookmark = async () => {
-    if (!user || !id) {
-      toast.error("Please log in to bookmark events");
-      return;
-    }
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("event_id", id);
-
-        if (error) throw error;
-        setIsBookmarked(false);
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase
-          .from("bookmarks")
-          .insert({ user_id: user.id, event_id: id });
-
-        if (error) throw error;
-        setIsBookmarked(true);
-        toast.success("Event bookmarked");
-      }
-    } catch (error) {
-      console.error("Error toggling bookmark:", error);
-      toast.error("Failed to update bookmark");
-    }
-  };
-
-  const handleRSVP = async () => {
-    if (!user) {
-      toast.error("Please log in to RSVP");
-      return;
-    }
-
-    if (role !== "student") {
-      toast.error("Only students can RSVP to events");
-      return;
-    }
-
-    if (!studentProfileId || !id) return;
-
-    setRsvpLoading(true);
-    try {
-      if (hasRSVP) {
-        // Cancel RSVP - need to update status since we can't delete
-        const { error } = await supabase
-          .from("rsvps")
-          .update({ status: "cancelled" })
-          .eq("event_id", id)
-          .eq("student_id", studentProfileId);
-
-        if (error) throw error;
-        setHasRSVP(false);
-        toast.success("RSVP cancelled");
-        fetchEvent();
-      } else {
-        // Check capacity
-        if (event?.capacity && event.rsvps.length >= event.capacity) {
-          toast.error("This event is at full capacity");
-          return;
-        }
-
-        const { error } = await supabase
-          .from("rsvps")
-          .insert({ 
-            event_id: id, 
-            student_id: studentProfileId,
-            status: "confirmed"
-          });
-
-        if (error) throw error;
-        setHasRSVP(true);
-        toast.success("RSVP confirmed!");
-        fetchEvent();
-      }
-    } catch (error) {
-      console.error("Error handling RSVP:", error);
-      toast.error("Failed to process RSVP");
-    } finally {
-      setRsvpLoading(false);
-    }
-  };
+  // Use the extracted RSVP hook
+  const {
+    studentProfileId,
+    hasRSVP,
+    rsvpStatus,
+    rsvpLoading,
+    showRSVPForm,
+    setShowRSVPForm,
+    handleRSVP,
+    handleRSVPFormSuccess,
+    confirmedRsvps,
+    spotsLeft,
+  } = useEventRSVP(id, event, fetchEvent);
 
   const formatEventDate = (date: string) => {
     return format(new Date(date), "EEEE, MMMM d, yyyy");
@@ -234,7 +123,7 @@ export default function EventDetail() {
   };
 
   const isEventPast = event ? new Date(event.event_date) < new Date() : false;
-  const spotsLeft = event?.capacity ? event.capacity - event.rsvps.filter(r => r.student_id).length : null;
+  const eventUrl = typeof window !== "undefined" ? window.location.href : "";
 
   if (loading) {
     return (
@@ -287,18 +176,20 @@ export default function EventDetail() {
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4 mb-4">
               <h1 className="text-3xl font-bold text-foreground">{event.title}</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleBookmark}
-                className="shrink-0"
-              >
-                {isBookmarked ? (
-                  <BookmarkCheck className="w-5 h-5 text-primary" />
-                ) : (
-                  <Bookmark className="w-5 h-5" />
-                )}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <ShareButton url={eventUrl} title={event.title} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => id && toggleBookmark(id)}
+                >
+                  {isEventBookmarked ? (
+                    <BookmarkCheck className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Bookmark className="w-5 h-5" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
@@ -339,12 +230,27 @@ export default function EventDetail() {
                 <div className="flex items-center gap-3 text-foreground">
                   <Users className="w-5 h-5 text-primary" />
                   <span>
-                    {event.rsvps.length} attending
+                    {confirmedRsvps} attending
                     {event.capacity && ` • ${spotsLeft} spots left`}
                   </span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Add to Calendar */}
+            {!isEventPast && hasRSVP && rsvpStatus === "confirmed" && (
+              <div className="mb-6">
+                <AddToCalendarButton
+                  event={{
+                    title: event.title,
+                    description: event.description || "",
+                    location: event.location || "",
+                    startDate: new Date(event.event_date),
+                    endDate: new Date(new Date(event.event_date).getTime() + 2 * 60 * 60 * 1000),
+                  }}
+                />
+              </div>
+            )}
 
             {event.description && (
               <div className="mb-8">
@@ -364,11 +270,17 @@ export default function EventDetail() {
                   </div>
                 ) : (
                   <>
-                    {hasRSVP ? (
+                    {hasRSVP && rsvpStatus === "confirmed" ? (
                       <div className="text-center mb-4">
                         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
                         <p className="font-semibold text-foreground">You're registered!</p>
                         <p className="text-sm text-muted-foreground">We'll see you there</p>
+                      </div>
+                    ) : hasRSVP && rsvpStatus === "pending" ? (
+                      <div className="text-center mb-4">
+                        <HourglassIcon className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                        <p className="font-semibold text-foreground">RSVP Pending</p>
+                        <p className="text-sm text-muted-foreground">Awaiting approval from the organizer</p>
                       </div>
                     ) : (
                       <div className="text-center mb-4">
@@ -378,6 +290,9 @@ export default function EventDetail() {
                         <p className="text-sm text-muted-foreground">
                           {formatEventDate(event.event_date)} at {formatEventTime(event.event_date)}
                         </p>
+                        {event.requires_approval && (
+                          <Badge variant="secondary" className="mt-2">Requires Approval</Badge>
+                        )}
                       </div>
                     )}
 
@@ -421,6 +336,22 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      {/* RSVP Form Modal */}
+      {showRSVPForm && event && studentProfileId && (
+        <RSVPForm
+          event={{
+            id: event.id,
+            title: event.title,
+            requires_approval: event.requires_approval ?? false,
+            club_profiles: event.club_profiles,
+          }}
+          questions={event.rsvp_questions || []}
+          studentProfileId={studentProfileId}
+          onClose={() => setShowRSVPForm(false)}
+          onSuccess={handleRSVPFormSuccess}
+        />
+      )}
     </RoleBasedLayout>
   );
 }

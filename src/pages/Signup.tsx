@@ -8,6 +8,10 @@ import { ArrowLeft, GraduationCap, Building2, Eye, EyeOff, Loader2 } from "lucid
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
+import { OTPVerification } from "@/components/OTPVerification";
+import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 type UserRole = "student" | "club";
 
@@ -15,10 +19,10 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialRole = searchParams.get("role") as UserRole | null;
-  const { signUp, signInWithGoogle, user, role } = useAuth();
+  const { signInWithGoogle, user, role } = useAuth();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<"role" | "details">(initialRole ? "details" : "role");
+  const [step, setStep] = useState<"role" | "details" | "otp">(initialRole ? "details" : "role");
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,6 +33,11 @@ export default function SignupPage() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // OTP state
+  const [otpExpiresAt, setOtpExpiresAt] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   // Redirect if already logged in
   useEffect(() => {
@@ -51,7 +60,7 @@ export default function SignupPage() {
     
     if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (!formData.email.endsWith("@uci.edu")) {
+    } else if (!formData.email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())) {
       newErrors.email = "Please use your @uci.edu email";
     }
     
@@ -69,42 +78,97 @@ export default function SignupPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const sendOTP = async () => {
+    setIsSubmitting(true);
+    setErrors({});
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: {
+          email: formData.email,
+          password: formData.password,
+          role: selectedRole,
+        },
+      });
+
+      if (error) {
+        // Handle HTTP errors from edge function (non-2xx responses)
+        if (error instanceof FunctionsHttpError) {
+          const errorData = await error.context.json();
+          throw new Error(errorData.error || "Request failed");
+        }
+        throw new Error(error.message);
+      }
+
+      // Also check for error in response data (for 2xx responses with error payload)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      setOtpExpiresAt(data.expiresAt);
+      setStep("otp");
+      toast({
+        title: "Code sent!",
+        description: "Check your email for the 6-digit verification code.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send verification code";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm() || !selectedRole) return;
+    await sendOTP();
+  };
 
-    setIsSubmitting(true);
-    
-    const { error } = await signUp(formData.email, formData.password, selectedRole);
+  const handleVerifyOTP = async (code: string) => {
+    setIsVerifying(true);
+    setOtpError("");
 
-    if (error) {
-      let errorMessage = error.message;
-      
-      // Handle common errors with friendly messages
-      if (error.message.includes("already registered")) {
-        errorMessage = "This email is already registered. Please log in instead.";
-      }
-      
-      toast({
-        title: "Signup failed",
-        description: errorMessage,
-        variant: "destructive",
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: {
+          email: formData.email,
+          code,
+          password: formData.password,
+        },
       });
-      setIsSubmitting(false);
-      return;
-    }
 
-    toast({
-      title: "Account created!",
-      description: "Welcome to ZotHub. Let's set up your profile.",
-    });
+      if (error) {
+        throw new Error(error.message);
+      }
 
-    // Redirect based on role
-    if (selectedRole === "club") {
-      navigate("/club/dashboard");
-    } else {
-      navigate("/student/dashboard");
+      if (data?.error) {
+        setOtpError(data.error);
+        return;
+      }
+
+      toast({
+        title: "Account created!",
+        description: "Welcome to ZotHub. Please log in to continue.",
+      });
+
+      // Redirect to login page
+      navigate("/login");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification failed";
+      setOtpError(message);
+    } finally {
+      setIsVerifying(false);
     }
+  };
+
+  const handleResendOTP = async () => {
+    setOtpError("");
+    await sendOTP();
   };
 
   const handleGoogleSignUp = async () => {
@@ -190,6 +254,16 @@ export default function SignupPage() {
                 </Link>
               </p>
             </>
+          ) : step === "otp" ? (
+            <OTPVerification
+              email={formData.email}
+              expiresAt={otpExpiresAt}
+              onVerify={handleVerifyOTP}
+              onResend={handleResendOTP}
+              onBack={() => setStep("details")}
+              isVerifying={isVerifying}
+              error={otpError}
+            />
           ) : (
             <>
               <button
@@ -315,7 +389,7 @@ export default function SignupPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating account...
+                      Sending code...
                     </>
                   ) : (
                     "Create Account"

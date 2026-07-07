@@ -24,6 +24,7 @@ import { PageTransition, SlideUp } from "@/components/ui/page-transition";
 import { OpportunityManagement } from "@/components/dashboard/OpportunityManagement";
 import { EventManagement } from "@/components/dashboard/EventManagement";
 import { ApplicationReview } from "@/components/dashboard/ApplicationReview";
+import { RSVPReview } from "@/components/dashboard/RSVPReview";
 import { TeamManagement } from "@/components/dashboard/TeamManagement";
 import { ClubAnalytics as ClubAnalyticsComponent } from "@/components/dashboard/ClubAnalytics";
 
@@ -44,6 +45,7 @@ export default function ClubHome() {
     addTeamMember,
     updateTeamMember,
     removeTeamMember,
+    swapTeamMemberOrder,
     refetchOpportunities,
     refetchEvents,
   } = useClubData();
@@ -55,6 +57,7 @@ export default function ClubHome() {
     if (path.includes("/opportunities")) return "opportunities";
     if (path.includes("/events")) return "events";
     if (path.includes("/applications")) return "applications";
+    if (path.includes("/rsvps")) return "rsvps";
     if (path.includes("/team")) return "team";
     if (path.includes("/analytics")) return "analytics";
     return "overview";
@@ -128,6 +131,13 @@ export default function ClubHome() {
           </div>
         );
       
+      case "rsvps":
+        return (
+          <div className="container mx-auto px-4 py-6">
+            <RSVPReview />
+          </div>
+        );
+      
       case "team":
         return (
           <div className="container mx-auto px-4 py-6">
@@ -136,6 +146,7 @@ export default function ClubHome() {
               onAddMember={addTeamMember}
               onUpdateMember={updateTeamMember}
               onRemoveMember={removeTeamMember}
+              onSwapOrder={swapTeamMemberOrder}
             />
           </div>
         );

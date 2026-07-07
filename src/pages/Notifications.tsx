@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -14,23 +14,12 @@ import {
   Calendar,
   Clock,
   X,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,10 +32,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useNotifications, Notification } from "@/hooks/useNotifications";
+import { useTeamInvitations } from "@/hooks/useTeamInvitations";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentLayout } from "@/components/student/StudentLayout";
+import {
+  NotificationPreferencesDialog,
+  TeamInvitationCard,
+  NotificationCard,
+} from "@/components/notifications";
+
+type InvitationStatus = "pending" | "active" | "declined" | null;
 
 export default function Notifications() {
   const { user, role } = useAuth();
@@ -61,13 +58,45 @@ export default function Notifications() {
     deleteNotification,
     clearAllNotifications,
     updatePreferences,
+    refetch,
+  } = useNotifications();
+
+  const {
     acceptInvitation,
     declineInvitation,
-  } = useNotifications();
+    checkInvitationStatus,
+    isProcessing,
+  } = useTeamInvitations();
 
   const [showPreferences, setShowPreferences] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [processingInvitations, setProcessingInvitations] = useState<Set<string>>(new Set());
+  const [invitationStatuses, setInvitationStatuses] = useState<Record<string, InvitationStatus>>({});
+
+  // Fetch invitation statuses for team_invitation notifications
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      const teamInvitations = notifications.filter(
+        (n) => n.type === "team_invitation" && n.related_id
+      );
+
+      const statuses: Record<string, InvitationStatus> = {};
+      await Promise.all(
+        teamInvitations.map(async (n) => {
+          if (n.related_id) {
+            const status = await checkInvitationStatus(n.related_id);
+            statuses[n.id] = status;
+          }
+        })
+      );
+
+      setInvitationStatuses(statuses);
+    };
+
+    if (notifications.length > 0) {
+      fetchStatuses();
+    }
+  }, [notifications, checkInvitationStatus]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -83,19 +112,6 @@ export default function Notifications() {
         return <Users className="w-5 h-5 text-purple-500" />;
       default:
         return <Bell className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
-  const getNotificationLink = (notification: Notification) => {
-    switch (notification.type) {
-      case "application_update":
-        return role === "student" ? "/student/dashboard" : "/club/applications";
-      case "new_message":
-        return role === "student" ? "/student/messages" : "/club/messages";
-      case "event_reminder":
-        return notification.related_id ? `/events/${notification.related_id}` : "/events";
-      default:
-        return null;
     }
   };
 
@@ -132,45 +148,41 @@ export default function Notifications() {
 
   const handleAcceptInvitation = async (notification: Notification) => {
     if (!notification.related_id) return;
-    
-    setProcessingInvitations(prev => new Set(prev).add(notification.id));
+
+    setProcessingInvitations((prev) => new Set(prev).add(notification.id));
     const success = await acceptInvitation(notification.related_id, notification.id);
-    setProcessingInvitations(prev => {
+    setProcessingInvitations((prev) => {
       const newSet = new Set(prev);
       newSet.delete(notification.id);
       return newSet;
     });
-    
+
     if (success) {
-      toast.success("Invitation accepted! You are now a team member.");
-    } else {
-      toast.error("Failed to accept invitation");
+      setInvitationStatuses((prev) => ({ ...prev, [notification.id]: "active" }));
+      refetch();
     }
   };
 
   const handleDeclineInvitation = async (notification: Notification) => {
     if (!notification.related_id) return;
-    
-    setProcessingInvitations(prev => new Set(prev).add(notification.id));
+
+    setProcessingInvitations((prev) => new Set(prev).add(notification.id));
     const success = await declineInvitation(notification.related_id, notification.id);
-    setProcessingInvitations(prev => {
+    setProcessingInvitations((prev) => {
       const newSet = new Set(prev);
       newSet.delete(notification.id);
       return newSet;
     });
-    
+
     if (success) {
-      toast.success("Invitation declined");
-    } else {
-      toast.error("Failed to decline invitation");
+      setInvitationStatuses((prev) => ({ ...prev, [notification.id]: "declined" }));
+      refetch();
     }
   };
 
-  const filteredNotifications = filter === "unread"
-    ? notifications.filter((n) => !n.is_read)
-    : notifications;
+  const filteredNotifications =
+    filter === "unread" ? notifications.filter((n) => !n.is_read) : notifications;
 
-  // Wrap content in StudentLayout for students, otherwise show standalone
   const content = (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
@@ -184,100 +196,21 @@ export default function Notifications() {
               </Badge>
             )}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Stay updated with your activity
-          </p>
+          <p className="text-muted-foreground mt-1">Stay updated with your activity</p>
         </div>
 
-        <Dialog open={showPreferences} onOpenChange={setShowPreferences}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Preferences
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Notification Preferences</DialogTitle>
-              <DialogDescription>
-                Choose which notifications you want to receive.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Application Updates</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when application status changes
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.application_updates}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("application_updates", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Event Reminders</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Remind before upcoming events
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.event_reminders}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("event_reminders", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>New Messages</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when you receive a message
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.new_messages}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("new_messages", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Deadline Reminders</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Remind about approaching deadlines
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.deadline_reminders}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("deadline_reminders", checked)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Team Invitations</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notify when invited to join a club team
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.team_invitations}
-                  onCheckedChange={(checked) =>
-                    handlePreferenceChange("team_invitations", checked)
-                  }
-                />
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="outline" size="sm" onClick={() => setShowPreferences(true)}>
+          <Settings className="w-4 h-4 mr-2" />
+          Preferences
+        </Button>
       </div>
+
+      <NotificationPreferencesDialog
+        open={showPreferences}
+        onOpenChange={setShowPreferences}
+        preferences={preferences}
+        onPreferenceChange={handlePreferenceChange}
+      />
 
       <Card>
         <div className="p-4 border-b border-border">
@@ -306,7 +239,11 @@ export default function Notifications() {
               {notifications.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                    >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Clear all
                     </Button>
@@ -315,12 +252,16 @@ export default function Notifications() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. All your notifications will be permanently deleted.
+                        This action cannot be undone. All your notifications will be permanently
+                        deleted.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction
+                        onClick={handleClearAll}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
                         Clear all
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -335,9 +276,10 @@ export default function Notifications() {
           {filteredNotifications.length > 0 ? (
             <div className="divide-y divide-border">
               {filteredNotifications.map((notification) => {
-                const link = getNotificationLink(notification);
                 const isTeamInvitation = notification.type === "team_invitation";
-                const isProcessing = processingInvitations.has(notification.id);
+                const invitationStatus = invitationStatuses[notification.id];
+                const showActionButtons = !isTeamInvitation || 
+                  (invitationStatus !== "pending" && invitationStatus !== null);
 
                 return (
                   <div
@@ -351,76 +293,24 @@ export default function Notifications() {
                       {getNotificationIcon(notification.type)}
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      {link && !isTeamInvitation ? (
-                        <Link
-                          to={link}
-                          onClick={() => !notification.is_read && markAsRead(notification.id)}
-                          className="block"
-                        >
-                          <p className={cn(
-                            "text-sm",
-                            !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-                          )}>
-                            {notification.title}
-                          </p>
-                          {notification.message && (
-                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                              {notification.message}
-                            </p>
-                          )}
-                        </Link>
-                      ) : (
-                        <>
-                          <p className={cn(
-                            "text-sm",
-                            !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-                          )}>
-                            {notification.title}
-                          </p>
-                          {notification.message && (
-                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                              {notification.message}
-                            </p>
-                          )}
-                        </>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                      </p>
+                    {isTeamInvitation ? (
+                      <TeamInvitationCard
+                        notification={notification}
+                        status={invitationStatus}
+                        isProcessing={processingInvitations.has(notification.id) || isProcessing}
+                        onAccept={() => handleAcceptInvitation(notification)}
+                        onDecline={() => handleDeclineInvitation(notification)}
+                      />
+                    ) : (
+                      <NotificationCard
+                        notification={notification}
+                        role={role}
+                        onMarkAsRead={() => markAsRead(notification.id)}
+                      />
+                    )}
 
-                      {/* Team invitation action buttons */}
-                      {isTeamInvitation && notification.related_id && (
-                        <div className="flex items-center gap-2 mt-3">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAcceptInvitation(notification)}
-                            disabled={isProcessing}
-                          >
-                            {isProcessing ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Check className="w-4 h-4 mr-1" />
-                                Accept
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeclineInvitation(notification)}
-                            disabled={isProcessing}
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            Decline
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons - hide for team invitations since they have their own buttons */}
-                    {!isTeamInvitation && (
+                    {/* Action buttons - show for non-team invitations OR responded team invitations */}
+                    {showActionButtons && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {notification.is_read ? (
                           <Button
@@ -459,15 +349,17 @@ export default function Notifications() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Inbox className="w-12 h-12 text-muted-foreground/50 mb-4" />
-              <h3 className="font-medium text-foreground mb-1">
-                {filter === "unread" ? "No unread notifications" : "No notifications yet"}
-              </h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="py-16 text-center">
+              <Inbox className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                {filter === "unread"
+                  ? "No unread notifications"
+                  : "No notifications yet"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
                 {filter === "unread"
                   ? "You're all caught up!"
-                  : "When you receive notifications, they'll appear here."}
+                  : "We'll notify you when something happens"}
               </p>
             </div>
           )}
@@ -477,39 +369,25 @@ export default function Notifications() {
   );
 
   if (isLoading) {
-    if (role === "student") {
-      return (
-        <StudentLayout>
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        </StudentLayout>
-      );
-    }
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  // Use StudentLayout for students
+  // Render with appropriate layout based on user role
   if (role === "student") {
     return <StudentLayout>{content}</StudentLayout>;
   }
 
-  // For clubs, show with simple header
+  // For clubs, show a simple header
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/club/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+          <Link to="/club/home" className="font-display font-bold text-xl text-primary">
+            ZotHub
           </Link>
         </div>
       </header>

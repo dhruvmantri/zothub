@@ -111,6 +111,35 @@ export type Database = {
           },
         ]
       }
+      club_followers: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_followers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_profiles: {
         Row: {
           banner_url: string | null
@@ -126,6 +155,7 @@ export type Database = {
           logo_url: string | null
           updated_at: string
           user_id: string
+          views: number | null
           website_url: string | null
         }
         Insert: {
@@ -142,6 +172,7 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id: string
+          views?: number | null
           website_url?: string | null
         }
         Update: {
@@ -158,6 +189,7 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id?: string
+          views?: number | null
           website_url?: string | null
         }
         Relationships: []
@@ -166,6 +198,7 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string
+          display_order: number | null
           email: string
           id: string
           invited_at: string
@@ -179,6 +212,7 @@ export type Database = {
         Insert: {
           club_id: string
           created_at?: string
+          display_order?: number | null
           email: string
           id?: string
           invited_at?: string
@@ -192,6 +226,7 @@ export type Database = {
         Update: {
           club_id?: string
           created_at?: string
+          display_order?: number | null
           email?: string
           id?: string
           invited_at?: string
@@ -212,6 +247,42 @@ export type Database = {
           },
         ]
       }
+      email_verifications: {
+        Row: {
+          attempts: number | null
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          password_hash: string
+          role: string
+          verified: boolean | null
+        }
+        Insert: {
+          attempts?: number | null
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          password_hash: string
+          role: string
+          verified?: boolean | null
+        }
+        Update: {
+          attempts?: number | null
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          password_hash?: string
+          role?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           banner_url: string | null
@@ -223,6 +294,8 @@ export type Database = {
           id: string
           is_active: boolean | null
           location: string | null
+          requires_approval: boolean | null
+          rsvp_questions: Json | null
           title: string
           updated_at: string
           views: number | null
@@ -237,6 +310,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location?: string | null
+          requires_approval?: boolean | null
+          rsvp_questions?: Json | null
           title: string
           updated_at?: string
           views?: number | null
@@ -251,6 +326,8 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           location?: string | null
+          requires_approval?: boolean | null
+          rsvp_questions?: Json | null
           title?: string
           updated_at?: string
           views?: number | null
@@ -371,6 +448,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           requirements: string | null
+          show_application_count: boolean | null
           title: string
           type: string
           updated_at: string
@@ -385,6 +463,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           requirements?: string | null
+          show_application_count?: boolean | null
           title: string
           type: string
           updated_at?: string
@@ -399,6 +478,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           requirements?: string | null
+          show_application_count?: boolean | null
           title?: string
           type?: string
           updated_at?: string
@@ -414,8 +494,66 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string
+          item_type: string
+          session_id: string | null
+          user_id: string | null
+          view_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          session_id?: string | null
+          user_id?: string | null
+          view_date?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          session_id?: string | null
+          user_id?: string | null
+          view_date?: string
+        }
+        Relationships: []
+      }
+      reminder_logs: {
+        Row: {
+          created_at: string
+          id: string
+          reminder_type: string
+          sent_at: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reminder_type: string
+          sent_at?: string
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rsvps: {
         Row: {
+          answers: Json | null
           created_at: string
           event_id: string
           id: string
@@ -423,6 +561,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          answers?: Json | null
           created_at?: string
           event_id: string
           id?: string
@@ -430,6 +569,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          answers?: Json | null
           created_at?: string
           event_id?: string
           id?: string
@@ -531,6 +671,45 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          rejection_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -596,9 +775,17 @@ export type Database = {
         Returns: boolean
       }
       is_own_student_profile: { Args: { profile_id: string }; Returns: boolean }
+      is_team_invitation_recipient: {
+        Args: { member_email: string }
+        Returns: boolean
+      }
+      track_page_view: {
+        Args: { p_item_id: string; p_item_type: string; p_session_id?: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      user_role: "student" | "club"
+      user_role: "student" | "club" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -726,7 +913,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      user_role: ["student", "club"],
+      user_role: ["student", "club", "admin"],
     },
   },
 } as const

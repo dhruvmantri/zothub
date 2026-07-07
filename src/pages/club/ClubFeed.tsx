@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,21 +6,7 @@ import { Loader2, Rss } from "lucide-react";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { ClubLayout } from "@/components/club/ClubLayout";
-
-interface FeedItem {
-  type: "opportunity" | "event";
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  club_id: string;
-  club_name: string;
-  club_logo: string | null;
-  deadline?: string | null;
-  opportunity_type?: string;
-  event_date?: string;
-  location?: string | null;
-}
+import type { FeedItem } from "@/types";
 
 export default function ClubFeed() {
   const { user } = useAuth();
@@ -148,12 +134,14 @@ export default function ClubFeed() {
     }
   };
 
-  const filteredItems = feedItems.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "opportunities") return item.type === "opportunity";
-    if (activeTab === "events") return item.type === "event";
-    return true;
-  });
+  const filteredItems = useMemo(() => {
+    return feedItems.filter((item) => {
+      if (activeTab === "all") return true;
+      if (activeTab === "opportunities") return item.type === "opportunity";
+      if (activeTab === "events") return item.type === "event";
+      return true;
+    });
+  }, [feedItems, activeTab]);
 
   if (isLoading) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,29 +12,7 @@ import { EmptyFeedState } from "@/components/feed/EmptyFeedState";
 import { toast } from "sonner";
 import { StudentLayout } from "@/components/student/StudentLayout";
 import { PageTransition, SlideUp } from "@/components/ui/page-transition";
-
-interface FollowedClub {
-  id: string;
-  club_name: string;
-  logo_url: string | null;
-}
-
-interface FeedItem {
-  type: "opportunity" | "event";
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  club_id: string;
-  club_name: string;
-  club_logo: string | null;
-  // Opportunity specific
-  deadline?: string | null;
-  opportunity_type?: string;
-  // Event specific
-  event_date?: string;
-  location?: string | null;
-}
+import type { FeedItem, FollowedClub } from "@/types";
 
 export default function StudentFeed() {
   const { user } = useAuth();
@@ -88,7 +66,8 @@ export default function StudentFeed() {
         setFollowedClubs(clubs || []);
       }
 
-      // Fetch opportunities from followed clubs
+      // Fetch opportunities from followed clubs (excluding past deadline)
+      const now = new Date().toISOString();
       const { data: opportunities, error: oppsError } = await supabase
         .from("opportunities")
         .select(`
@@ -103,6 +82,7 @@ export default function StudentFeed() {
         `)
         .in("club_id", clubIds)
         .eq("is_active", true)
+        .or(`deadline.is.null,deadline.gte.${now}`)
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -206,12 +186,14 @@ export default function StudentFeed() {
     }
   };
 
-  const filteredItems = feedItems.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "opportunities") return item.type === "opportunity";
-    if (activeTab === "events") return item.type === "event";
-    return true;
-  });
+  const filteredItems = useMemo(() => {
+    return feedItems.filter((item) => {
+      if (activeTab === "all") return true;
+      if (activeTab === "opportunities") return item.type === "opportunity";
+      if (activeTab === "events") return item.type === "event";
+      return true;
+    });
+  }, [feedItems, activeTab]);
 
   if (isLoading) {
     return (

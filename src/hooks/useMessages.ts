@@ -26,7 +26,7 @@ export interface Conversation {
 
 export function useMessages() {
   const { user, role } = useAuth();
-  const { fetchProfileInfo } = useProfileLookup();
+  const { fetchProfileInfo, fetchProfileInfoBatch } = useProfileLookup();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -44,7 +44,8 @@ export function useMessages() {
         .from("messages")
         .select("*")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error("Error fetching messages:", error);
@@ -72,11 +73,15 @@ export function useMessages() {
         }
       }
 
-      // Build conversation list with profile info
+      // Batch fetch all profiles at once (fix N+1 query)
+      const partnerIds = Array.from(conversationMap.keys());
+      const profiles = await fetchProfileInfoBatch(partnerIds);
+      
+      // Build conversation list using cached profiles
       const conversationList: Conversation[] = [];
       
       for (const [partnerId, data] of conversationMap) {
-        const profile = await fetchProfileInfo(partnerId);
+        const profile = profiles.get(partnerId);
         const lastMsg = data.messages[0];
         
         conversationList.push({
@@ -101,7 +106,7 @@ export function useMessages() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, fetchProfileInfo]);
+  }, [user, fetchProfileInfo, fetchProfileInfoBatch]);
 
   // Fetch messages for a specific conversation
   const fetchMessagesForConversation = useCallback(async (partnerId: string) => {

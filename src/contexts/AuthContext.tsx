@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 
-type UserRole = "student" | "club" | null;
+type UserRole = "student" | "club" | "admin" | null;
 
 interface AuthContextType {
   user: User | null;
@@ -116,20 +117,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Validate UCI email
-      if (!email.endsWith("@uci.edu")) {
+      // Validate UCI email (allow admin emails to bypass)
+      if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerCase())) {
         console.error("Non-UCI email attempted to sign up");
         await supabase.auth.signOut();
         return;
       }
 
-      // Insert user role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: userId, role: intendedRole });
+      // Add to waitlist instead of user_roles (pending admin approval)
+      const { error: waitlistError } = await supabase
+        .from("waitlist")
+        .insert({ 
+          user_id: userId, 
+          email: email,
+          role: intendedRole,
+          status: "pending"
+        });
 
-      if (roleError) {
-        console.error("Error inserting role:", roleError);
+      if (waitlistError) {
+        console.error("Error inserting waitlist entry:", waitlistError);
         return;
       }
 
@@ -153,7 +159,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
       }
 
-      setRole(intendedRole);
+      // Send waitlist confirmation email
+      await supabase.functions.invoke("send-email", {
+        body: {
+          type: "waitlist_confirmation",
+          to: email,
+          data: { role: intendedRole },
+        },
+      });
+
+      // Don't set role since they're on waitlist
+      setRole(null);
       localStorage.removeItem("zothub_intended_role");
     } catch (err) {
       console.error("Error handling new OAuth user:", err);
@@ -177,17 +193,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        // Insert user role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: data.user.id, role: selectedRole });
+        // Add to waitlist instead of user_roles (pending admin approval)
+        const { error: waitlistError } = await supabase
+          .from("waitlist")
+          .insert({ 
+            user_id: data.user.id, 
+            email: email,
+            role: selectedRole,
+            status: "pending"
+          });
 
-        if (roleError) {
-          console.error("Error inserting role:", roleError);
-          return { error: roleError as unknown as Error };
+        if (waitlistError) {
+          console.error("Error inserting waitlist entry:", waitlistError);
+          return { error: waitlistError as unknown as Error };
         }
 
-        // Create initial profile based on role
+        // Create initial profile based on role (but they'll be gated by waitlist)
         if (selectedRole === "student") {
           const { error: profileError } = await supabase
             .from("student_profiles")
@@ -211,7 +232,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        setRole(selectedRole);
+        // Send waitlist confirmation email
+        await supabase.functions.invoke("send-email", {
+          body: {
+            type: "waitlist_confirmation",
+            to: email,
+            data: { role: selectedRole },
+          },
+        });
+
+        // Don't set role since they're on waitlist
+        setRole(null);
       }
 
       return { error: null };

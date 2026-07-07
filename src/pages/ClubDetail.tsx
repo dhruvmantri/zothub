@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { requireSession } from "@/lib/requireSession";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import type { TeamMember } from "@/types";
 
-interface Club {
+interface ClubDetailData {
   id: string;
   user_id: string;
   club_name: string;
@@ -39,7 +41,7 @@ interface Club {
   discord_url: string | null;
 }
 
-interface Opportunity {
+interface ClubOpportunity {
   id: string;
   title: string;
   type: string;
@@ -47,7 +49,7 @@ interface Opportunity {
   deadline: string | null;
 }
 
-interface Event {
+interface ClubEvent {
   id: string;
   title: string;
   description: string | null;
@@ -55,24 +57,36 @@ interface Event {
   location: string | null;
 }
 
-interface TeamMember {
-  id: string;
-  name: string | null;
-  role: string;
-}
-
 const ClubDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const navigate = useNavigate();
-  const [club, setClub] = useState<Club | null>(null);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  
+  // Track page view
+  useTrackView('club', id);
+  
+  const [club, setClub] = useState<ClubDetailData | null>(null);
+  const [opportunities, setOpportunities] = useState<ClubOpportunity[]>([]);
+  const [events, setEvents] = useState<ClubEvent[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Pick<TeamMember, 'id' | 'name' | 'role' | 'display_order' | 'user_id'>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+
+  // Use centralized bookmark hook for club follows
+  const { isBookmarked, toggleBookmark, isLoading: isFollowLoading } = useBookmarks("club");
+  const isFollowing = id ? isBookmarked(id) : false;
+
+  const fetchTeamMembers = async () => {
+    if (!id) return;
+    const { data: teamData, error: teamError } = await supabase
+      .from("club_team_members")
+      .select("id, name, role, display_order, user_id")
+      .eq("club_id", id)
+      .eq("status", "active")
+      .order("display_order", { ascending: true });
+
+    if (!teamError) setTeamMembers(teamData || []);
+  };
 
   useEffect(() => {
     const fetchClubData = async () => {
@@ -90,12 +104,13 @@ const ClubDetail = () => {
         if (clubError) throw clubError;
         setClub(clubData);
 
-        // Fetch active opportunities
+        // Fetch active opportunities (excluding expired ones)
         const { data: oppsData, error: oppsError } = await supabase
           .from("opportunities")
           .select("id, title, type, description, deadline")
           .eq("club_id", id)
           .eq("is_active", true)
+          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`)
           .order("created_at", { ascending: false });
 
         if (!oppsError) setOpportunities(oppsData || []);
@@ -111,14 +126,8 @@ const ClubDetail = () => {
 
         if (!eventsError) setEvents(eventsData || []);
 
-        // Fetch active team members (public visibility)
-        const { data: teamData, error: teamError } = await supabase
-          .from("club_team_members")
-          .select("id, name, role")
-          .eq("club_id", id)
-          .eq("status", "active");
-
-        if (!teamError) setTeamMembers(teamData || []);
+        // Fetch active team members (public visibility), ordered by display_order
+        await fetchTeamMembers();
 
       } catch (error) {
         console.error("Error fetching club data:", error);
@@ -130,69 +139,40 @@ const ClubDetail = () => {
     fetchClubData();
   }, [id]);
 
-  // Check if user is following this club
+  // Subscribe to realtime changes on team members for this club
   useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!user || !id) return;
+    if (!id) return;
 
-      const { data } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("club_id", id)
-        .maybeSingle();
+    const channel = supabase
+      .channel(`club-team-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "club_team_members",
+          filter: `club_id=eq.${id}`,
+        },
+        () => {
+          // Refetch team members when any change occurs
+          fetchTeamMembers();
+        }
+      )
+      .subscribe();
 
-      setIsFollowing(!!data);
+    return () => {
+      supabase.removeChannel(channel);
     };
+  }, [id]);
 
-    checkFollowStatus();
-  }, [user, id]);
-
-  const handleFollowToggle = async () => {
+  const handleFollowToggle = () => {
     if (!user) {
       toast.error("Please log in to follow clubs");
       navigate("/login", { state: { from: `/clubs/${id}` } });
       return;
     }
-
-    if (!id) return;
-
-    setIsFollowLoading(true);
-    try {
-      // Ensure we have a valid session before making writes
-      await requireSession();
-
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("club_id", id);
-
-        if (error) throw error;
-        setIsFollowing(false);
-        toast.success("Unfollowed club");
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from("bookmarks")
-          .insert({ user_id: user.id, club_id: id });
-
-        if (error) throw error;
-        setIsFollowing(true);
-        toast.success("Following club!");
-      }
-    } catch (error: any) {
-      console.error("Error toggling follow:", error);
-      if (error.message?.includes("Session expired")) {
-        toast.error("Session expired. Please log in again.");
-        navigate("/login", { state: { from: `/clubs/${id}` } });
-      } else {
-        toast.error("Failed to update follow status");
-      }
-    } finally {
-      setIsFollowLoading(false);
+    if (id) {
+      toggleBookmark(id);
     }
   };
 
@@ -370,10 +350,22 @@ const ClubDetail = () => {
                       {member.name?.charAt(0) || "?"}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium">{member.name || "Team Member"}</p>
                     <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                   </div>
+                  {/* Message button - only show for students and if team member has a user_id */}
+                  {user && role === "student" && member.user_id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => navigate(`/messages?to=${member.user_id}`)}
+                      title={`Message ${member.name || "team member"}`}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

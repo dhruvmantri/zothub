@@ -45,24 +45,19 @@ import {
   Loader2,
   Clock,
   CheckCircle,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 
-interface TeamMember {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  status: string;
-  invited_at: string;
-  joined_at: string | null;
-}
+import type { TeamMember } from "@/types";
 
 interface TeamManagementProps {
   teamMembers: TeamMember[];
   onAddMember: (email: string, name: string, role: string) => Promise<boolean>;
   onUpdateMember: (id: string, updates: { role?: string; status?: string }) => Promise<boolean>;
   onRemoveMember: (id: string) => Promise<boolean>;
+  onSwapOrder: (memberId1: string, order1: number, memberId2: string, order2: number) => Promise<boolean>;
 }
 
 const ROLE_SUGGESTIONS = [
@@ -80,17 +75,20 @@ const statusColors = {
   pending: "secondary",
   active: "success",
   inactive: "muted",
+  declined: "destructive",
 } as const;
 
 export function TeamManagement({ 
   teamMembers, 
   onAddMember, 
   onUpdateMember, 
-  onRemoveMember 
+  onRemoveMember,
+  onSwapOrder,
 }: TeamManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
   const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
   const [customRole, setCustomRole] = useState("");
@@ -137,6 +135,38 @@ export function TeamManagement({
     setMemberToEdit(member);
     setCustomRole(member.role);
     setIsRoleDialogOpen(true);
+  };
+
+  const handleMoveUp = async (index: number) => {
+    if (index <= 0 || isReordering) return;
+    
+    const currentMember = teamMembers[index];
+    const previousMember = teamMembers[index - 1];
+    
+    setIsReordering(true);
+    await onSwapOrder(
+      currentMember.id,
+      currentMember.display_order ?? index,
+      previousMember.id,
+      previousMember.display_order ?? index - 1
+    );
+    setIsReordering(false);
+  };
+
+  const handleMoveDown = async (index: number) => {
+    if (index >= teamMembers.length - 1 || isReordering) return;
+    
+    const currentMember = teamMembers[index];
+    const nextMember = teamMembers[index + 1];
+    
+    setIsReordering(true);
+    await onSwapOrder(
+      currentMember.id,
+      currentMember.display_order ?? index,
+      nextMember.id,
+      nextMember.display_order ?? index + 1
+    );
+    setIsReordering(false);
   };
 
   return (
@@ -233,11 +263,33 @@ export function TeamManagement({
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {teamMembers.map((member) => (
+            {teamMembers.map((member, index) => (
               <div 
                 key={member.id}
                 className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/20 transition-colors"
               >
+                {/* Reorder buttons */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0 || isReordering}
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === teamMembers.length - 1 || isReordering}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </div>
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-foreground truncate">

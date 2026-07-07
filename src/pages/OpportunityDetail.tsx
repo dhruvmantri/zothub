@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrackView } from "@/hooks/useTrackView";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ApplicationForm } from "@/components/ApplicationForm";
+import { ShareButton } from "@/components/ShareButton";
+import { SuccessModal } from "@/components/SuccessModal";
 import {
   ArrowLeft,
   Clock,
@@ -23,24 +26,17 @@ import {
   Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FormQuestion } from "@/types";
 
-interface ApplicationQuestion {
-  id: string;
-  type: "short_text" | "long_text" | "single_choice" | "multiple_choice";
-  question: string;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
-}
-
-interface Opportunity {
+interface OpportunityDetail {
   id: string;
   title: string;
   type: string;
   description: string | null;
   requirements: string | null;
   deadline: string | null;
-  application_questions: ApplicationQuestion[] | null;
+  application_questions: FormQuestion[] | null;
+  show_application_count: boolean;
   created_at: string;
   club_id: string;
   club_profiles: {
@@ -65,18 +61,24 @@ export default function OpportunityDetail() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
 
-  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
+  // Track page view
+  useTrackView('opportunity', id);
+
+  const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Use centralized bookmark hook
+  const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
+  const isOpportunityBookmarked = id ? isBookmarked(id) : false;
 
   useEffect(() => {
     if (id) {
       fetchOpportunity();
       if (user) {
         checkExistingApplication();
-        checkBookmark();
       }
     }
   }, [id, user]);
@@ -95,6 +97,7 @@ export default function OpportunityDetail() {
           requirements,
           deadline,
           application_questions,
+          show_application_count,
           created_at,
           club_id,
           club_profiles (
@@ -125,13 +128,13 @@ export default function OpportunityDetail() {
       }
 
       // Parse application_questions from JSON
-      let parsedQuestions: ApplicationQuestion[] | null = null;
+      let parsedQuestions: FormQuestion[] | null = null;
       if (data.application_questions && Array.isArray(data.application_questions)) {
         parsedQuestions = (data.application_questions as unknown[]).map((q: unknown) => {
           const question = q as Record<string, unknown>;
           return {
             id: String(question.id || ""),
-            type: (question.type as ApplicationQuestion["type"]) || "short_text",
+            type: (question.type as FormQuestion["type"]) || "short_text",
             question: String(question.question || ""),
             required: Boolean(question.required),
             options: Array.isArray(question.options) ? question.options as string[] : undefined,
@@ -140,7 +143,7 @@ export default function OpportunityDetail() {
         });
       }
 
-      const parsedData: Opportunity = {
+      const parsedData: OpportunityDetail = {
         id: data.id,
         title: data.title,
         type: data.type,
@@ -148,9 +151,10 @@ export default function OpportunityDetail() {
         requirements: data.requirements,
         deadline: data.deadline,
         application_questions: parsedQuestions,
+        show_application_count: data.show_application_count ?? true,
         created_at: data.created_at,
         club_id: data.club_id,
-        club_profiles: data.club_profiles as Opportunity["club_profiles"],
+        club_profiles: data.club_profiles as OpportunityDetail["club_profiles"],
         applications: data.applications as { id: string }[],
       };
 
@@ -190,61 +194,11 @@ export default function OpportunityDetail() {
     }
   };
 
-  const checkBookmark = async () => {
-    if (!user || !id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("bookmarks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("opportunity_id", id)
-        .maybeSingle();
-
-      if (!error && data) {
-        setIsBookmarked(true);
-      }
-    } catch (err) {
-      console.error("Error checking bookmark:", err);
-    }
-  };
-
-  const toggleBookmark = async () => {
-    if (!user) {
-      toast.error("Please log in to bookmark opportunities");
-      return;
-    }
-
-    try {
-      if (isBookmarked) {
-        const { error } = await supabase
-          .from("bookmarks")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("opportunity_id", id);
-
-        if (error) throw error;
-        setIsBookmarked(false);
-        toast.success("Bookmark removed");
-      } else {
-        const { error } = await supabase.from("bookmarks").insert({
-          user_id: user.id,
-          opportunity_id: id,
-        });
-
-        if (error) throw error;
-        setIsBookmarked(true);
-        toast.success("Opportunity bookmarked");
-      }
-    } catch (err) {
-      console.error("Error toggling bookmark:", err);
-      toast.error("Failed to update bookmark");
-    }
-  };
 
   const handleApplicationSuccess = () => {
     setHasApplied(true);
     setShowApplicationForm(false);
+    setShowSuccessModal(true);
   };
 
   const formatDeadline = (deadline: string | null) => {
@@ -343,10 +297,12 @@ export default function OpportunityDetail() {
                   <Badge variant={getTypeVariant(opportunity.type)} className="capitalize">
                     {opportunity.type}
                   </Badge>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{opportunity.applications?.length || 0} applicants</span>
-                  </div>
+                  {opportunity.show_application_count && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>{opportunity.applications?.length || 0} applicants</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     <span>Posted {format(new Date(opportunity.created_at), "MMM d, yyyy")}</span>
@@ -377,12 +333,18 @@ export default function OpportunityDetail() {
               )}
               <Button
                 variant="outline"
-                onClick={toggleBookmark}
-                className={cn(isBookmarked && "text-accent")}
+                onClick={() => id && toggleBookmark(id)}
+                className={cn(isOpportunityBookmarked && "text-accent")}
               >
-                <Bookmark className={cn("w-4 h-4 mr-2", isBookmarked && "fill-current")} />
-                {isBookmarked ? "Bookmarked" : "Bookmark"}
+                <Bookmark className={cn("w-4 h-4 mr-2", isOpportunityBookmarked && "fill-current")} />
+                {isOpportunityBookmarked ? "Bookmarked" : "Bookmark"}
               </Button>
+              <ShareButton
+                url={window.location.href}
+                title={opportunity.title}
+                description={`Check out this ${opportunity.type} opportunity from ${opportunity.club_profiles?.club_name}`}
+                variant="outline"
+              />
             </div>
           </div>
         </div>
@@ -573,6 +535,22 @@ export default function OpportunityDetail() {
           onSuccess={handleApplicationSuccess}
         />
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Application Submitted!"
+        description={`Your application to ${opportunity?.title} has been successfully submitted. You'll be notified when ${opportunity?.club_profiles?.club_name} reviews your application.`}
+        primaryAction={{
+          label: "View My Applications",
+          onClick: () => navigate("/dashboard"),
+        }}
+        secondaryAction={{
+          label: "Browse More Opportunities",
+          onClick: () => navigate("/opportunities"),
+        }}
+      />
     </RoleBasedLayout>
   );
 }

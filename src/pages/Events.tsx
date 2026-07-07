@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { EventCard } from "@/components/cards/OpportunityCard";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("events")
         .select(`
@@ -62,7 +63,9 @@ export default function EventsPage() {
           )
         `)
         .eq("is_active", true)
-        .order("event_date", { ascending: true });
+        .gte("event_date", now)
+        .order("event_date", { ascending: true })
+        .limit(50);
 
       if (error) {
         console.error("Error fetching events:", error);
@@ -79,36 +82,40 @@ export default function EventsPage() {
   };
 
 
-  const filterEventsByDate = (event: Event) => {
-    const eventDate = new Date(event.event_date);
-    const now = new Date();
-
-    switch (selectedDateFilter) {
-      case "This Week":
-        return isAfter(eventDate, startOfWeek(now)) && isBefore(eventDate, endOfWeek(now));
-      case "This Month":
-        return isAfter(eventDate, startOfMonth(now)) && isBefore(eventDate, endOfMonth(now));
-      case "Upcoming":
-        return isAfter(eventDate, now);
-      default:
-        return true;
-    }
-  };
-
-  const filteredEvents = events.filter((event) => {
-    const clubName = event.club_profiles?.club_name || "";
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clubName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Handle "Saved" filter
-    if (selectedDateFilter === "Saved") {
-      return matchesSearch && isBookmarked(event.id);
-    }
-    
-    const matchesDate = filterEventsByDate(event);
-    return matchesSearch && matchesDate;
-  });
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      const clubName = event.club_profiles?.club_name || "";
+      const matchesSearch =
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        clubName.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle "Saved" filter
+      if (selectedDateFilter === "Saved") {
+        return matchesSearch && isBookmarked(event.id);
+      }
+      
+      // Inline date filtering logic
+      const eventDate = new Date(event.event_date);
+      const now = new Date();
+      let matchesDate = true;
+      
+      switch (selectedDateFilter) {
+        case "This Week":
+          matchesDate = isAfter(eventDate, startOfWeek(now)) && isBefore(eventDate, endOfWeek(now));
+          break;
+        case "This Month":
+          matchesDate = isAfter(eventDate, startOfMonth(now)) && isBefore(eventDate, endOfMonth(now));
+          break;
+        case "Upcoming":
+          matchesDate = isAfter(eventDate, now);
+          break;
+        default:
+          matchesDate = true;
+      }
+      
+      return matchesSearch && matchesDate;
+    });
+  }, [events, searchQuery, selectedDateFilter, isBookmarked]);
 
 
   return (

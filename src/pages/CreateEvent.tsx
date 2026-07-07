@@ -12,6 +12,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
+import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { SuccessModal } from "@/components/SuccessModal";
 import {
   Calendar,
   MapPin,
@@ -23,12 +25,16 @@ import {
   Eye,
   Clock,
   Info,
+  ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
   
   // Form state
   const [title, setTitle] = useState("");
@@ -39,6 +45,10 @@ export default function CreateEvent() {
   const [bannerUrl, setBannerUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
+  // RSVP form state
+  const [rsvpQuestions, setRsvpQuestions] = useState<ApplicationQuestion[]>([]);
+  const [requiresApproval, setRequiresApproval] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
     e.preventDefault();
@@ -90,7 +100,7 @@ export default function CreateEvent() {
 
       const validatedData = validationResult.data;
 
-      const { error } = await supabase.from("events").insert({
+      const { data: insertedData, error } = await supabase.from("events").insert([{
         club_id: clubProfile.id,
         title: validatedData.title,
         description: validatedData.description,
@@ -99,7 +109,9 @@ export default function CreateEvent() {
         capacity: validatedData.capacity,
         banner_url: validatedData.banner_url,
         is_active: validatedData.is_active,
-      });
+        rsvp_questions: rsvpQuestions as unknown as null,
+        requires_approval: requiresApproval,
+      }]).select("id").single();
 
       if (error) {
         console.error("Error creating event:", error);
@@ -107,8 +119,13 @@ export default function CreateEvent() {
         return;
       }
 
-      toast.success(asDraft ? "Event saved as draft" : "Event created successfully!");
-      navigate("/club/dashboard");
+      if (asDraft) {
+        toast.success("Event saved as draft");
+        navigate("/club/dashboard");
+      } else {
+        setCreatedEventId(insertedData?.id || null);
+        setShowSuccessModal(true);
+      }
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -263,6 +280,42 @@ export default function CreateEvent() {
             </CardContent>
           </Card>
 
+          {/* RSVP Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-accent" />
+                RSVP Form
+              </CardTitle>
+              <CardDescription>
+                Add custom questions for attendees to answer when they RSVP
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-border">
+                <div>
+                  <Label htmlFor="requiresApproval" className="text-base flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    Require Approval
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Manually approve each RSVP before confirming attendance
+                  </p>
+                </div>
+                <Switch
+                  id="requiresApproval"
+                  checked={requiresApproval}
+                  onCheckedChange={setRequiresApproval}
+                />
+              </div>
+              
+              <ApplicationQuestionsBuilder
+                questions={rsvpQuestions}
+                onChange={setRsvpQuestions}
+              />
+            </CardContent>
+          </Card>
+
           {/* Publishing Options */}
           <Card>
             <CardHeader>
@@ -318,6 +371,37 @@ export default function CreateEvent() {
             </Button>
           </div>
         </form>
+
+        {/* Success Modal */}
+        <SuccessModal
+          open={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            navigate("/club/dashboard");
+          }}
+          title="Event Published!"
+          description={`"${title}" is now live and students can RSVP. Share it to reach more attendees!`}
+          primaryAction={{
+            label: "View Dashboard",
+            onClick: () => navigate("/club/dashboard"),
+          }}
+          secondaryAction={{
+            label: "Create Another",
+            onClick: () => {
+              setShowSuccessModal(false);
+              // Reset form
+              setTitle("");
+              setDescription("");
+              setEventDate("");
+              setLocation("");
+              setCapacity("");
+              setBannerUrl("");
+              setIsActive(true);
+              setRsvpQuestions([]);
+              setRequiresApproval(false);
+            },
+          }}
+        />
       </div>
     </ClubLayout>
   );

@@ -22,44 +22,12 @@ import {
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { StudentLayout } from "@/components/student/StudentLayout";
-
-interface ApplicationData {
-  id: string;
-  status: string;
-  created_at: string;
-  opportunity: {
-    title: string;
-    club: {
-      club_name: string;
-    };
-  };
-}
-
-interface RsvpData {
-  id: string;
-  event: {
-    id: string;
-    title: string;
-    event_date: string;
-    club: {
-      club_name: string;
-    };
-  };
-}
-
-interface BookmarkedOpportunity {
-  id: string;
-  title: string;
-  deadline: string | null;
-  club: { club_name: string };
-}
-
-interface BookmarkedEvent {
-  id: string;
-  title: string;
-  event_date: string;
-  club: { club_name: string };
-}
+import type { 
+  StudentApplicationData as ApplicationData,
+  StudentRSVPData as RsvpData,
+  BookmarkedOpportunity,
+  BookmarkedEvent
+} from "@/types";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -187,7 +155,7 @@ export default function StudentDashboard() {
           .eq("receiver_id", user.id)
           .eq("is_read", false),
 
-        // Fetch bookmarked opportunities with details
+        // Fetch bookmarked opportunities with details (exclude expired)
         supabase
           .from("bookmarks")
           .select(`
@@ -198,9 +166,10 @@ export default function StudentDashboard() {
           `)
           .eq("user_id", user.id)
           .not("opportunity_id", "is", null)
+          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`, { foreignTable: 'opportunities' })
           .limit(5),
 
-        // Fetch bookmarked events with details
+        // Fetch bookmarked events with details (exclude past events)
         supabase
           .from("bookmarks")
           .select(`
@@ -211,6 +180,7 @@ export default function StudentDashboard() {
           `)
           .eq("user_id", user.id)
           .not("event_id", "is", null)
+          .gte('event.event_date', new Date().toISOString())
           .limit(5)
       ]);
 
