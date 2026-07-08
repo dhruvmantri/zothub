@@ -65,7 +65,7 @@ function foldLine(line: string): string {
 function generateUID(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 15);
-  return `${timestamp}-${random}@zothub.lovable.app`;
+  return `${timestamp}-${random}@zothub.app`;
 }
 
 /**

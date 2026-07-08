@@ -96,8 +96,8 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you RSVP'd to this event.<br/>
-                      <a href="https://zothub.lovable.app/unsubscribe?type=event_reminders" style="color: #3b82f6;">Unsubscribe from event reminders</a> | 
-                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                      <a href="https://zothub.app/unsubscribe?type=event_reminders" style="color: #3b82f6;">Unsubscribe from event reminders</a> | 
+                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
                       ZotHub • University of California, Irvine • Irvine, CA 92697
@@ -196,8 +196,8 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you bookmarked this opportunity.<br/>
-                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from deadline reminders</a> | 
-                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from deadline reminders</a> | 
+                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
                       ZotHub • University of California, Irvine • Irvine, CA 92697
@@ -294,13 +294,13 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
                     <h2 style="margin: 0 0 8px 0; color: #1a1a2e;">${opportunity.title}</h2>
                   </div>
-                  <a href="https://zothub.lovable.app/opportunities/${opportunity.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Opportunity</a>
+                  <a href="https://zothub.app/opportunities/${opportunity.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Opportunity</a>
                   <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
-                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
                       ZotHub • University of California, Irvine • Irvine, CA 92697
@@ -390,13 +390,13 @@ const handler = async (req: Request): Promise<Response> => {
                     <p style="margin: 0;"><strong>📅</strong> ${new Date(event.event_date).toLocaleString()}</p>
                     ${event.location ? `<p style="margin: 4px 0 0 0;"><strong>📍</strong> ${event.location}</p>` : ''}
                   </div>
-                  <a href="https://zothub.lovable.app/events/${event.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Event</a>
+                  <a href="https://zothub.app/events/${event.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Event</a>
                   <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.lovable.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
-                      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
                       ZotHub • University of California, Irvine • Irvine, CA 92697
