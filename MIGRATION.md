@@ -1,5 +1,49 @@
 # ZotHub: Lovable Cloud → Self-Owned Supabase Migration Runbook
 
+## 📍 Migration Status (updated 2026-07-08)
+
+**The migration is functionally complete and the app is live on owned infrastructure.** Vercel now serves the frontend, pointing at the new self-owned Supabase project (`fguzpscguulkfctipeih`), with core auth/data/email flows verified working. Two known bugs remain, tracked in **Known Issues** below — neither blocks the migration itself.
+
+| Step | Status | Notes |
+|---|---|---|
+| 0. Env vars set up | ✅ Done | |
+| 1-2. Schema dump + apply | ✅ Done | Restored via `pg_restore` (public schema only, not the exact `pg_dump --schema-only` flow originally described below) + grants fixed afterward |
+| 3. Migrate auth users | ⚠️ **Skipped, superseded** | `auth.users` was **intentionally not restored** (per explicit decision during the restore). Instead, all accounts are **fresh signups** through the app's own OTP flow (`send-otp`/`verify-otp`). Neither Strategy A nor B below was used. **This is the root cause of Known Issue #2** — old `public.*` rows (e.g. `club_team_members`) still reference the old, now-nonexistent `auth.users` IDs from the original Lovable Cloud account. |
+| 4. Migrate table data | ✅ Done | Via the `pg_restore` restore, not the per-table `pg_dump` loop described below |
+| 5. Storage buckets + files | ✅ Done | Buckets + all 9 RLS policies created, all 8 files (6 `club-assets` + 2 `student-resumes`) manually copied preserving paths, stored-URL rewrite SQL run for `logo_url`/`banner_url`/`resume_url`/`avatar_url` |
+| 6. Redeploy edge functions | ✅ Done | All 4 (`send-email`, `send-otp`, `verify-otp`, `send-reminders`) deployed with `--no-verify-jwt`; `RESEND_API_KEY` set; sender updated to `notifications@zothub.app` (Resend domain verified) |
+| 7. Auth configuration (dashboard) | 🟡 Assumed working, not explicitly re-verified | OTP signup + login work end-to-end, which implies the basics are fine — but Site URL / redirect allow-list / Google OAuth provider settings on the **new** project haven't been explicitly confirmed against this doc's Step 7 checklist. Worth a quick pass. |
+| 8. Recreate `pg_cron` reminder job | ✅ Done | `send-reminders-hourly` cron job confirmed active |
+| 9. Grant admin account | ✅ Done | Manual waitlist approval confirmed working, implying an admin account exists and functions |
+| 10. Point app at new project | ✅ Done | Vercel frontend now points at the owned Supabase backend |
+| 11. Smoke test | 🟡 Partially done | OTP signup, account creation, login, and manual waitlist approval all confirmed working. Two bugs found during this pass — see **Known Issues** below. Remaining smoke-test items (bookmark/apply/RSVP round-trip, club post → follower email, event cancellation email, hourly reminder log row, resume upload) not yet explicitly confirmed. |
+
+---
+
+## 🐞 Known Issues (found during migration QA)
+
+### 1. Student profile setup: saving fails with a raw validation error
+**Symptom:** During profile setup, saving with only the user's name filled in fails with the raw, developer-facing error `"Expected array, received null. Expected array, received null."` instead of a usable message.
+
+**Likely cause:** The client-side validation schema (Zod, in `src/lib/validation.ts` or the `StudentProfileSetup.tsx` form schema) treats `interests` and `skills` as **required arrays**, rejecting `null` — but a user who hasn't picked any yet naturally submits `null`/empty for those fields.
+
+**Desired future behavior:**
+- `interests` and `skills` should **not** be required fields.
+- `null`/empty values for these fields should be accepted, or normalized to `[]` before validation/submission.
+- Validation errors shown to the user should be **human-readable** (e.g. "Please select at least one interest" or simply not required at all) — never raw Zod/schema error text like `"Expected array, received null"`.
+
+### 2. Orphaned/deleted user still appears as a club team member
+**Symptom:** The original migrated "Dhruv Mantri" account/profile was deleted/cleaned up, but it still appears as a team member on a testing club's team list.
+
+**Likely cause:** Directly explained by **Step 3 above** — `auth.users` was never migrated from Lovable Cloud, so any `public.*` row (notably `club_team_members`) that stored the *old* Lovable Cloud auth UUID for this user now references an ID with no corresponding row in the new project's `auth.users` at all. Deleting/cleaning up "the account" in the new project doesn't remove this row, because it was never truly linked to a real account here — it's a leftover reference to an ID that only ever existed in the old, now-abandoned auth system.
+
+**Desired future cleanup (not yet implemented):**
+- Investigate `club_team_members` (and any other table with a `user_id`/similar FK into `auth.users`) for rows referencing IDs that don't exist in the new project's `auth.users`.
+- Orphaned/deleted-user rows should be **removed or hidden** from team member lists and similar UI (not silently displayed as if they were a real active member).
+- Future work may need: a one-off orphan-cleanup SQL pass, better `ON DELETE CASCADE`/`ON DELETE SET NULL` behavior on these foreign keys going forward, and/or UI-level filtering that checks the referenced user still exists before rendering.
+
+---
+
 All commands run **on your local machine** (not in this chat). You need:
 
 - `psql` and `pg_dump` (Postgres 15+ client tools; `brew install libpq && brew link --force libpq` on macOS)
@@ -304,3 +348,5 @@ DO NOT swap `.env` earlier — the app will 500 against an empty new DB.
 ## Rollback
 
 If anything goes wrong at Step 11, revert `.env` to the Lovable Cloud values (I'll keep them commented at the bottom of `.env` when I swap in Step 10). App returns to the current state instantly; the old Cloud project remains untouched throughout.
+
+**Status note:** as of this update, Step 10 has already happened (Vercel points at the new project) and core flows are verified working, so a full rollback is increasingly unlikely to be needed — but the old Lovable Cloud project has not been touched/decommissioned, so this option remains available if a serious issue surfaces.
