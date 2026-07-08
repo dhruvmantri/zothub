@@ -2,6 +2,8 @@
 
 **Your gateway to UCI campus life** - Discover opportunities, connect with clubs, and make the most of your UCI experience.
 
+> 📋 **For engineering work:** see [`plan.md`](./plan.md) for the current active engineering plan and [`prd.md`](./prd.md) for the full product spec, known issues, and launch readiness criteria. Historical migration docs are archived under [`docs/archive/`](./docs/archive/).
+
 ## About ZotHub
 
 ZotHub is a comprehensive web platform built for the University of California, Irvine (UCI) campus community. It serves as a centralized hub that connects students with campus clubs, events, and opportunities.
@@ -79,6 +81,8 @@ This project is built with modern web technologies:
 
    Run the migrations in the \`supabase/migrations/\` directory in your Supabase project.
 
+   Also deploy the 4 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`) via the Supabase CLI, and set the \`RESEND_API_KEY\` secret — signup (OTP verification) and all outbound email depend on these. Note: **signup requires manual admin approval** via the \`/admin\` waitlist queue after OTP verification — see "Access Model" in \`prd.md\`.
+
 5. **Start the development server**
    \`\`\`bash
    npm run dev
@@ -145,7 +149,7 @@ zothub/
 ## Database Schema
 
 The application uses the following main tables:
-- \`user_roles\` - User role assignment (student/club)
+- \`user_roles\` - User role assignment (student/club/admin)
 - \`student_profiles\` - Student profile information
 - \`club_profiles\` - Club profile information
 - \`opportunities\` - Posted opportunities
@@ -154,8 +158,14 @@ The application uses the following main tables:
 - \`rsvps\` - Event RSVPs
 - \`messages\` - Direct messages
 - \`notifications\` - User notifications
+- \`notification_preferences\` - Per-user notification settings
 - \`bookmarks\` - Saved items
 - \`club_team_members\` - Club team management
+- \`club_followers\` - Club follow relationships (personalized feed)
+- \`waitlist\` - Signup approval queue (see Access Model in \`prd.md\`)
+- \`email_verifications\` - OTP signup verification codes
+- \`page_views\` - View tracking for club analytics
+- \`reminder_logs\` - Sent-reminder ledger (idempotency for the hourly cron job)
 
 ## Contributing
 
@@ -166,22 +176,20 @@ The application uses the following main tables:
 
 ## Deployment
 
-### Using Lovable (Recommended)
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on **Share → Publish**.
-
-### Manual Deployment
+ZotHub is deployed on **Vercel**, backed by a self-owned Supabase project (this repo previously ran on Lovable Cloud/Lovable hosting during initial development — that migration is complete; see \`docs/archive/MIGRATION.md\` for history).
 
 1. Build the project:
    \`\`\`bash
    npm run build
    \`\`\`
 
-2. Deploy the \`dist\` folder to your hosting provider (Vercel, Netlify, etc.)
+2. Vercel builds and deploys automatically on push to \`main\` (framework preset: Vite, output directory: \`dist\`).
 
-3. Set up environment variables in your hosting provider's dashboard
+3. Environment variables are set in the Vercel project dashboard (see below).
 
-4. Configure OAuth redirect URLs in your Supabase project settings
+4. OAuth redirect URLs and Auth settings are configured in the Supabase project dashboard.
+
+Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`plan.md\` for current engineering status.
 
 ## Environment Variables
 

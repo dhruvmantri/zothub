@@ -1,9 +1,9 @@
 # ZotHub Product Requirements Document
 
-**Version:** 2.0
+**Version:** 3.0
 **Last Updated:** 2026-07-08
-**Status:** Pre-launch — deploy migration + final QA in progress (see `plan.md` for the engineering execution plan)
-**Author:** Claude, reconciled against the live `main` branch after a full codebase audit
+**Status:** Migration complete, entering Full Product Audit stage — see `plan.md` for the active engineering plan
+**Author:** Claude, reconciled against the live codebase
 
 ---
 
@@ -15,21 +15,16 @@
 Create a single, searchable hub where every UCI student has equal access to all campus opportunities, and every club has professional tools to recruit, manage, and engage their community.
 
 ### Relationship to `plan.md`
-This document (`prd.md`) is the **product spec** — vision, users, journeys, success metrics, and launch operations. `plan.md` is the **engineering execution plan** — the concrete remaining build/deploy work, file paths, and verification steps. Read this for *why* and *what "done" looks like*; read `plan.md` for *what's left and how to finish it*.
+This document (`prd.md`) is the **product spec** — vision, users, journeys, access model, known issues, and launch readiness. `plan.md` is the **engineering execution plan** — the active next-stage work (a full product audit, followed by prioritized fixes). Read this for *what the product is and what's known to be wrong*; read `plan.md` for *what to do next*.
 
-### Where the product stands today
-**Update (2026-07-08): the Lovable Cloud → self-owned Supabase/Vercel migration is functionally complete.** The app now runs on Vercel with a self-owned Supabase project (`fguzpscguulkfctipeih`) replacing Lovable Cloud — schema, data, storage, and all 4 edge functions migrated; the hourly reminder cron job is active; OTP signup, account creation, login, and manual waitlist approval are all confirmed working. Full step-by-step status is tracked in `MIGRATION.md`.
-
-**Two known bugs surfaced during migration QA** (not blockers, tracked as cleanup items in `plan.md`/`MIGRATION.md`): (1) student profile setup fails with a raw validation error when `interests`/`skills` are left empty, and (2) a deleted/orphaned user (left over from `auth.users` intentionally not being migrated) still shows up as a club team member.
-
-**Still open:** re-pointing `zothub.app`'s DNS at Vercel (not yet done — the domain isn't confirmed to be serving the new app yet), a DB-level `@uci.edu` enforcement trigger (currently client-side only), and a full end-to-end QA pass beyond the flows already confirmed above.
+### Infrastructure note
+ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovable hosting. It has since **migrated to a self-owned Supabase project + Vercel hosting** — schema, data, storage, and all edge functions moved over, and this is functionally complete. Full migration history is archived at `docs/archive/MIGRATION.md`; nothing further on this needs tracking here.
 
 ### Launch scope
 - **Access model:** Gated beta — new users go through a waitlist (signup → email OTP verification → admin approval) rather than fully open signup. See "Access Model" below.
-- **Timeline:** No longer a "crunch" launch — remaining work is deploy migration + scheduler wiring + QA, scoped in `plan.md`.
 - **Expected initial scale:** 10-30 clubs, 200-500 students in the first 30 days (medium launch; informs the performance posture — query limits + basic pagination, not full virtualization).
-- **Launch domain:** `zothub.app` (already owned; DNS re-point required as part of the Lovable → Vercel migration).
-- **Support model:** Founder-led support via a designated support/admin email, plus the in-app `/admin` approval queue (see below) as an ongoing operational responsibility, not just a one-time launch task.
+- **Launch domain:** `zothub.app` (owned; DNS cutover to Vercel still pending — see Known Issues).
+- **Support model:** Founder-led support via a designated support/admin email, plus the in-app `/admin` approval queue as an ongoing operational responsibility, not just a one-time launch task.
 
 ### Success criteria
 **Primary metric:** Number of opportunities posted (supply-side health).
@@ -71,32 +66,30 @@ This document (`prd.md`) is the **product spec** — vision, users, journeys, su
 
 ## 🔐 Access Model — Gated Beta
 
-The platform now uses a **waitlist-gated signup flow**, a deliberate evolution beyond the original MVP's "manual club approval via SQL" plan:
+The platform uses a **waitlist-gated signup flow**:
 
 1. A new user visits `/signup`, selects their role (student or club).
-2. They verify their email via a one-time-passcode flow (`send-otp` / `verify-otp` Edge Functions) — this replaces relying solely on Supabase's default auth email and gives an extra identity-verification step.
+2. They verify their email via a one-time-passcode flow (`send-otp` / `verify-otp` Edge Functions).
 3. A `waitlist` row is created with `status = 'pending'`.
 4. The user sees a "you're on the waitlist" screen (`/waitlist`) and can check back; the page polls for status changes.
 5. An admin reviews pending entries at `/admin` (`AdminDashboard`) and approves or rejects each one, optionally with a rejection reason.
 6. Approved users get full access to their role's dashboard. Rejected users land on `/waitlist-rejected`.
 
-**Why this matters operationally:** unlike the old plan (spot-check clubs against the UCI directory via raw SQL), this is now a proper UI-driven queue that applies to **both students and clubs**. But it also means **the admin queue must be checked regularly** post-launch — an unapproved user is fully blocked, so a stale queue directly blocks growth. Whoever holds the admin role should treat `/admin` as a standing operational responsibility, not a one-time setup step.
+**Why this matters operationally:** this is a UI-driven queue applying to **both students and clubs**. The admin queue must be checked regularly — an unapproved user is fully blocked, so a stale queue directly blocks growth. Whoever holds the admin role should treat `/admin` as a standing operational responsibility.
 
-**Planned evolution:** once the beta has validated core flows (see `plan.md`), the recommended next step is to relax this to **open `@uci.edu` signup** (keep OTP verification and the DB-level email-domain trigger as the only gates, remove the manual approval requirement) so growth isn't bottlenecked on manual review. This is a deliberate, documented future toggle — not urgent for initial launch.
+**Planned evolution:** once the beta has validated core flows, the recommended next step is to relax this to **open `@uci.edu` signup** (keep OTP verification and the DB-level email-domain trigger as the only gates, remove the manual approval requirement) so growth isn't bottlenecked on manual review. Not urgent for initial launch.
 
 ---
 
-## 📦 Feature Implementation Status
-
-The platform has grown substantially past the original MVP feature list through iterative development. As of the latest audit (28 database migrations, 4 Supabase Edge Functions), the following are **implemented and wired end-to-end** in the live codebase:
+## 📦 Implemented Features
 
 ### Core marketplace
-- ✅ UCI-restricted signup (client-side check; DB-level enforcement is a remaining hardening item — see `plan.md`)
-- ✅ Waitlist + OTP + admin-approval access gate (described above)
+- ✅ UCI-restricted signup (client-side check; DB-level enforcement is a known open item — see below)
+- ✅ Waitlist + OTP + admin-approval access gate
 - ✅ Student & club profiles (skills, interests, resume/portfolio links; club logo, category, social links)
 - ✅ Opportunity posting with custom application-question builder (text, textarea, single-select, multi-select)
 - ✅ Event posting with capacity limits
-- ✅ Applications with status workflow (pending → reviewed → accepted/rejected), duplicate-application prevention (unique constraint), and **correct question-label rendering** (the historical "Unknown question" bug is fixed)
+- ✅ Applications with status workflow (pending → reviewed → accepted/rejected), duplicate-application prevention, correct question-label rendering
 - ✅ RSVPs with optional custom RSVP-question forms and an optional club approval workflow (`requires_approval`, pending/approved/declined)
 - ✅ Bidirectional messaging (student ↔ club)
 - ✅ In-app notifications with a preferences UI
@@ -104,7 +97,7 @@ The platform has grown substantially past the original MVP feature list through 
 - ✅ Club team roster with custom display ordering (up/down reorder)
 - ✅ Club analytics dashboard (views, applications, RSVPs)
 
-### Discovery & engagement (originally tracked as the "22 features")
+### Discovery & engagement
 - ✅ Full-text keyword search (opportunities, events, clubs)
 - ✅ Smart sort (newest / deadline approaching / most popular)
 - ✅ Unread-count badges in navigation (messages, notifications), real-time
@@ -118,73 +111,86 @@ The platform has grown substantially past the original MVP feature list through 
 - ✅ File uploads wired into the application form (resume/portfolio)
 
 ### Email & scheduled jobs
-- ✅ **Wired and running.** Four Supabase Edge Functions are deployed to the self-owned project (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), `RESEND_API_KEY` is set, the `zothub.app` sending domain is verified with Resend, and an hourly `send-reminders-hourly` cron job is active. Not yet explicitly re-confirmed: the nightly `archive_past_events()` auto-archive job, and observed idempotency of reminder sends under live cron.
+- ✅ Four Supabase Edge Functions deployed (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), `RESEND_API_KEY` set, `zothub.app` sending domain verified with Resend, sender address `notifications@zothub.app`.
+- ✅ Hourly `send-reminders-hourly` cron job active (event reminders, deadline reminders, new-post notifications, all with idempotency via `reminder_logs`).
+- 🟡 Not yet explicitly re-confirmed: the nightly `archive_past_events()` auto-archive job.
 
-### What's genuinely left (all detailed in `plan.md`)
-1. ~~Migrate hosting off Lovable to Vercel~~ — ✅ done. **DNS re-point for `zothub.app` at Vercel is the one remaining piece** (deliberately untouched throughout the migration so far).
-2. ~~Wire the `pg_cron` scheduler~~ — ✅ done.
-3. **Add a DB-level trigger enforcing `@uci.edu`** on `auth.users` (currently client-side only, bypassable via direct API calls) — still open.
-4. ~~Deploy hardening~~ — ✅ done (SPA rewrite, `lovable-tagger` removed, single lockfile, `.env` untracked).
-5. **A full end-to-end QA pass** — partially done: OTP signup, account creation, login, and manual waitlist approval confirmed working; two bugs found in the process (see "Known Issues" above / `plan.md`); remaining flows not yet explicitly walked.
-6. **Minor code-quality cleanup** (ESLint errors — no runtime impact) — still open.
+### Infrastructure
+- ✅ Hosting: Vercel (migrated from Lovable).
+- ✅ Backend: self-owned Supabase project (migrated from Lovable Cloud).
+- ✅ Storage: `club-assets` (public) and `student-resumes` (private) buckets, full RLS, files migrated, stored URLs rewritten.
 
-**No new product features are required before launch.** The remaining work is deployment, operational wiring, security hardening, and verification — not net-new feature development.
+---
+
+## 🐞 Known Issues / QA Gaps
+
+Full detail and desired-behavior specs live in `plan.md`'s Known Issues table (which also seeds the Phase 1 Bug Inventory). Summary:
+
+| # | Issue | Type |
+|---|---|---|
+| 1 | Student profile setup fails with a raw validation error (`"Expected array, received null"`) when `interests`/`skills` are left empty | Bug |
+| 2 | An orphaned/deleted user still appears as a club team member (root cause: `auth.users` was never migrated from Lovable Cloud) | Bug |
+| 3 | `zothub.app` DNS has not yet been cut over to Vercel | Infra gap |
+| 4 | DB-level `@uci.edu` signup enforcement not yet added (client-side only today) | Infra gap |
+| 5 | Full end-to-end QA beyond core auth/waitlist flows has not been completed | Process gap — this is the explicit subject of `plan.md`'s Phase 1 |
+
+**No new bugs should be fixed ad hoc.** Per `plan.md`, any additional issues found should be added to the Bug Inventory there before being fixed, so the next coding pass is coordinated.
 
 ---
 
 ## 👥 Core User Journeys
 
-These describe the target experience end-to-end; use them as acceptance criteria during the final QA pass.
+These describe the target experience end-to-end; use them as the audit script for `plan.md`'s Phase 1.
 
-### Journey 0 (new): Signup → Verification → Approval
+### Journey 0: Signup → Verification → Approval
 1. Visitor lands on `/signup`, picks Student or Club.
 2. Enters basic details; requests an OTP; enters the code to verify their email.
 3. Lands on `/waitlist` with a "pending" status; the page polls periodically.
 4. Admin reviews the entry in `/admin`, approves (or rejects with a reason).
-5. Approved: user is redirected to their role's dashboard on next visit/poll. Rejected: user sees `/waitlist-rejected` with the stated reason.
+5. Approved: user is redirected to their role's dashboard. Rejected: user sees `/waitlist-rejected` with the stated reason.
 
-**Success criteria:** verification email arrives within ~1 minute; admin approval reliably unblocks the user without requiring them to re-signup; rejection reasons are clear enough to act on (e.g., resubmit with corrected info) if applicable.
+**Success criteria:** verification email arrives within ~1 minute; admin approval reliably unblocks the user; rejection reasons are clear enough to act on.
 
 ### Journey 1 — Club: Post → Receive Applications → Select Candidate
-1. **Signup & approval** (Journey 0) as a club; complete club profile (name, description, logo, category, social links).
-2. **Post an opportunity**: title, type, description, requirements, deadline, optional flyer image; build a custom application form (text/textarea/select/multi-select questions); optionally toggle "show application count to students"; publish.
-3. **Receive applications**: in-app + email notification per new application; review in the applications dashboard — filter by opportunity, read answers against correctly-labeled questions, download resumes, use bulk accept/reject for high-volume opportunities, export to CSV for offline review.
-4. **Select candidates**: update statuses (reviewed → accepted/rejected); students are notified in-app + email; message accepted candidates directly to coordinate next steps.
+1. **Signup & approval** (Journey 0) as a club; complete club profile.
+2. **Post an opportunity**: title, type, description, requirements, deadline, optional flyer; custom application form; optional application-count visibility; publish.
+3. **Receive applications**: in-app + email notification per application; review — filter by opportunity, read correctly-labeled answers, download resumes, bulk accept/reject, export CSV.
+4. **Select candidates**: update statuses; students notified in-app + email; message accepted candidates directly.
 
-**Success criteria:** posting an opportunity takes under 5 minutes; the review UI makes it easy to compare candidates at a glance; question/answer pairs are always correctly labeled.
+**Success criteria:** posting an opportunity takes under 5 minutes; the review UI makes it easy to compare candidates; question/answer pairs always correctly labeled.
 
 ### Journey 2 — Student: Discover → Apply → Track
-1. **Signup & approval** (Journey 0) as a student; optional profile completion (major, year, skills, interests, resume).
+1. **Signup & approval** (Journey 0); optional profile completion.
 2. **Discover**: search by keyword, filter by type/category, sort by deadline/popularity/newest; bookmark items of interest.
-3. **Apply**: custom application form pre-fills the student's resume where available; submit; see a success confirmation modal; cannot submit a duplicate application to the same opportunity.
-4. **Track**: dashboard shows live status; in-app + email notifications on every status change; message the club directly; follow the club to get notified of future postings.
+3. **Apply**: form pre-fills resume where available; submit; success modal; duplicate applications blocked.
+4. **Track**: dashboard shows live status; notifications on every status change; message the club; follow for future postings.
 
-**Success criteria:** a relevant opportunity is discoverable within a few clicks; the application form is clear and submits without friction; notifications are timely (ideally within the hour, once the scheduler is wired).
+**Success criteria:** a relevant opportunity is discoverable within a few clicks; the application form submits without friction; notifications are timely.
 
 ### Journey 3 — Student: RSVP → Attend
 1. Browse events; view detail (date, time, location, capacity).
-2. RSVP — optionally answering a custom RSVP form (e.g., dietary restrictions) if the club configured one; if the event `requires_approval`, the RSVP starts `pending` until the club approves it.
-3. Add the event to a personal calendar via the .ics download.
-4. Receive an automated reminder email ~24 hours before the event (**depends on the scheduler being wired — see remaining work**).
-5. Cancel anytime before the event to free the capacity slot for others.
+2. RSVP — optionally answering a custom RSVP form; if the event `requires_approval`, starts `pending`.
+3. Add to personal calendar via .ics download.
+4. Receive an automated reminder email ~24 hours before.
+5. Cancel anytime before the event to free the capacity slot.
 
-**Success criteria:** RSVPing takes under 10 seconds for the common (no-approval) case; reminders are reliable once scheduled; capacity/approval logic behaves correctly under concurrent RSVPs.
+**Success criteria:** RSVPing takes under 10 seconds for the common case; reminders are reliable; capacity/approval logic behaves correctly under concurrent RSVPs.
 
 ---
 
 ## 🛠️ Technical Overview
 
 ### Tech stack
-React 18.3 + TypeScript + Vite 5 (SWC) · Tailwind CSS + shadcn/ui (Radix primitives) · react-router-dom v6 (BrowserRouter) · TanStack Query (installed; not yet the primary data-fetching pattern — most fetching is direct Supabase calls in hooks) · react-hook-form + zod · sonner (toasts) · framer-motion · recharts · Supabase (Postgres, Row Level Security, Storage, Auth, Edge Functions, `pg_cron`/`pg_net`).
+React 18.3 + TypeScript + Vite 5 (SWC) · Tailwind CSS + shadcn/ui (Radix primitives) · react-router-dom v6 (BrowserRouter) · TanStack Query (installed; most fetching is still direct Supabase calls in hooks) · react-hook-form + zod · sonner (toasts) · framer-motion · recharts · Supabase (Postgres, Row Level Security, Storage, Auth, Edge Functions, `pg_cron`/`pg_net`).
 
 ### Data model (high-level)
-Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`, `events`, `applications`, `rsvps`, `bookmarks`, `messages`, `notifications`, `notification_preferences`, `club_team_members`, `waitlist`. Row Level Security is enabled on every table. Notable JSONB columns: `opportunities.application_questions`, `applications.answers`, `events.rsvp_questions`, `rsvps.answers`. See `plan.md` for the specific columns added in recent work (`show_application_count`, `requires_approval`, `display_order`, etc.) and any outstanding RLS review items.
+Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`, `events`, `applications`, `rsvps`, `bookmarks`, `messages`, `notifications`, `notification_preferences`, `club_team_members`, `club_followers`, `waitlist`, `email_verifications`, `page_views`, `reminder_logs`. Row Level Security is enabled on every table. Notable JSONB columns: `opportunities.application_questions`, `applications.answers`, `events.rsvp_questions`, `rsvps.answers`.
 
 ### Infrastructure
-- **Hosting:** migrating from Lovable to Vercel (see `plan.md`, Phase A) — this is the top-priority remaining step, since the Lovable subscription has lapsed.
-- **Backend:** Supabase, managed going forward via the Supabase CLI (not the Lovable-integrated workflow).
-- **Email:** Resend, invoked from Supabase Edge Functions.
-- **Domain:** `zothub.app`.
+- **Hosting:** Vercel.
+- **Backend:** Self-owned Supabase project (`fguzpscguulkfctipeih`), managed via the Supabase CLI/dashboard.
+- **Email:** Resend, invoked from Supabase Edge Functions, sending from a verified `zothub.app` domain.
+- **Domain:** `zothub.app` (registered at Name.com; DNS cutover to Vercel still pending).
 
 ---
 
@@ -192,85 +198,67 @@ Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`,
 
 ### Current posture
 - Row Level Security enforced on all tables.
-- UCI email restriction: enforced client-side today; a DB-level trigger is planned (see `plan.md`) to close the gap where a user could bypass the client check via a direct API call.
+- UCI email restriction: enforced client-side today; a DB-level trigger is a known open item (see Known Issues).
 - File uploads (resumes, logos, flyers) go through Supabase Storage with bucket-level access policies.
-- Secrets: Resend API key and any service-role credentials belong only in Supabase Edge Function secrets — never in the client bundle or committed to git. Verify `.env` is not tracked in git (flagged previously; re-check as part of the deploy migration).
+- Secrets: Resend API key and service-role credentials live only in Supabase Edge Function secrets — never in the client bundle or committed to git.
 
 ### Data visibility
-- When a student applies to an opportunity or RSVPs to an event, their name, email, and relevant profile/application data become visible to that club — this should be disclosed at the point of application/RSVP.
+- When a student applies to an opportunity or RSVPs to an event, their name, email, and relevant profile/application data become visible to that club.
 - Clubs cannot see data for opportunities/events they don't own (RLS-enforced).
 - Admins (via the `/admin` role) can see waitlist entries for approval purposes.
 
 ### Data retention & privacy policy
-No self-service account deletion exists yet; deletion requests are handled manually (email the admin/support address). A privacy policy is expected to be live at `/privacy` — verify its content matches (or update it to match) the outline in Appendix D, and that it accurately describes the current data flows (waitlist, OTP, Resend as an email processor, Vercel + Supabase as infrastructure processors — no longer Lovable).
+No self-service account deletion exists yet; deletion requests are handled manually. A privacy policy is live at `/privacy` — verify its content stays accurate as infrastructure changes (Resend, Vercel, Supabase are the current processors — no longer Lovable).
 
 ---
 
 ## 📊 Analytics & Success Metrics
 
 ### Primary metric
-**Number of opportunities posted** (supply-side health) — target 50-100 in the first 30 days from 10-30 clubs. Supply drives the marketplace; without opportunities, students have no reason to return.
+**Number of opportunities posted** (supply-side health) — target 50-100 in the first 30 days from 10-30 clubs.
 
 ### Secondary metrics
 1. **Application volume** — target 200-500 in 30 days.
-2. **Applications per opportunity** — target 5-10; low signals a discovery problem, high signals healthy demand.
-3. **Student weekly retention** — target 30%+ week-over-week return rate among students who took any action (apply, RSVP, bookmark, search).
-4. **Club satisfaction** — informal survey after 30 days ("Did ZotHub help you find quality candidates?"); target 70%+ positive.
+2. **Applications per opportunity** — target 5-10.
+3. **Student weekly retention** — target 30%+ week-over-week return rate.
+4. **Club satisfaction** — informal survey after 30 days; target 70%+ positive.
 
 ### Instrumentation
-No dedicated analytics platform is required for this scale — derive metrics from direct Supabase queries (see Appendix B for ready-to-run SQL). If a unified event stream becomes valuable later, consider adding a lightweight `analytics_events` table, but this is not needed for launch.
+No dedicated analytics platform required at this scale — derive metrics from direct Supabase queries (see Appendix B). Consider a lightweight `analytics_events` table only if a unified event stream becomes valuable later.
 
 ---
 
-## 🚀 Launch Operations
+## ✅ Launch Readiness Criteria
 
-### Pre-launch (owner: you / admin)
-- Complete the deploy migration and remaining engineering items in `plan.md`.
-- Confirm `/privacy` is live and accurate.
-- Decide who holds the `admin` role and commit to a check-in cadence for the `/admin` waitlist queue (daily, at minimum, during the first weeks).
-- Set up a support contact (email or a designated inbox) for user-facing issues.
-
-### Launch day
-- Cut DNS over to Vercel; confirm `zothub.app` resolves correctly with valid TLS.
-- Do a final smoke test of Journeys 0-3 against production.
-- Monitor Supabase logs and the `/admin` queue closely for the first 24-48 hours.
-
-### Ongoing operations
-- **Waitlist queue:** check `/admin` regularly; approvals unblock users, so a stale queue directly throttles growth.
-- **Weekly metrics report:** run the Appendix B queries to track the success metrics above.
-- **Support:** respond to user issues via the designated contact; common early scenarios (can't sign up, didn't receive OTP/reminder email, application stuck) should have quick, templated responses — see Appendix for prior response templates as a starting point, updated for the new waitlist/OTP flow.
-- **Scheduler health:** once wired (per `plan.md`), periodically confirm `select * from cron.job;` shows active jobs and that reminder emails are actually being delivered (check Resend's dashboard for delivery/bounce rates).
+- [ ] `plan.md` Phase 1 (Full Product Audit) complete, with a full Bug Inventory
+- [ ] All Blocker/High-severity items from the Bug Inventory fixed and verified
+- [ ] Known Issues #1 and #2 (above) resolved
+- [ ] `zothub.app` DNS cut over to Vercel and confirmed serving correctly with valid TLS
+- [ ] DB-level `@uci.edu` enforcement trigger in place
+- [ ] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
+- [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly
+- [ ] Support contact live and documented
+- [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent
 
 ---
 
 ## 📅 Post-Launch Roadmap
 
 ### Near-term (after validating initial usage)
-- Relax the access model from gated-approval to open `@uci.edu` signup (keep OTP + DB-level domain enforcement as the sole gates) once the beta has validated core flows and abuse risk is well understood.
+- Relax the access model from gated-approval to open `@uci.edu` signup.
 - Self-service account deletion (privacy/compliance).
 - Email digest (weekly summary of new opportunities from followed clubs).
 - Enhanced analytics (funnel analysis, cohort retention).
-- Automated end-to-end tests (Playwright config already exists in the repo — expand coverage).
+- Automated end-to-end tests (a Playwright config exists in the repo but currently references an unavailable package — needs repair before it's usable; expand coverage once fixed).
 
 ### Medium-term (if traction grows meaningfully: 100+ clubs, 2,000+ students)
-- **Comprehensive UI/UX revision** (see `plan.md`'s deferred Phase 5) — design-system consistency audit, full empty/loading/error-state pass, mobile-specific optimization, accessibility audit, and a possible visual refresh. Deliberately scoped for *after* launch, informed by real usage data rather than planned blind.
+- **Comprehensive UI/UX revision** — design-system consistency audit, full empty/loading/error-state pass, mobile-specific optimization, accessibility audit, possible visual refresh. Deliberately scoped for *after* launch, informed by real usage data.
 - Error monitoring (e.g., Sentry) for proactive bug detection.
 - Personalized/matched recommendations.
 - Multi-campus expansion.
 
 ### Long-term (if monetization is pursued)
 - Premium club features, paid event ticketing, sponsored/promoted opportunities.
-
----
-
-## ✅ Launch Readiness Checklist
-
-- [ ] All `plan.md` remaining-work items complete (deploy migration, scheduler wiring, DB-level UCI trigger, deploy hardening)
-- [ ] Full QA walkthrough of Journeys 0-3 against a live Vercel deploy, with no console errors and correct DB state
-- [ ] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
-- [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly
-- [ ] Support contact live and documented
-- [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent
 
 ---
 
@@ -288,7 +276,7 @@ No dedicated analytics platform is required for this scale — derive metrics fr
 | **Waitlist** | The pending-approval state a new signup sits in until an admin approves or rejects it |
 | **RLS (Row Level Security)** | A Postgres/Supabase feature restricting data access based on the requesting user's role/identity |
 | **Cron Job** | A scheduled task (via `pg_cron`) that runs automatically at a fixed interval — e.g., hourly reminder emails |
-| **.ics File** | The iCalendar file format used for the "Add to Calendar" feature (Google Calendar, Outlook, Apple Calendar) |
+| **.ics File** | The iCalendar file format used for the "Add to Calendar" feature |
 
 ### B. Key Metrics Dashboard (SQL Queries)
 
@@ -337,6 +325,11 @@ SELECT
   COUNT(*) FILTER (WHERE status = 'pending') AS pending_count,
   MIN(requested_at) FILTER (WHERE status = 'pending') AS oldest_pending
 FROM waitlist;
+
+-- Orphaned auth references (Known Issue #2) -- check other tables too
+SELECT ctm.* FROM club_team_members ctm
+LEFT JOIN auth.users u ON ctm.user_id = u.id
+WHERE ctm.user_id IS NOT NULL AND u.id IS NULL;
 ```
 
 ### C. Email Templates (content reference for the Edge Functions)
@@ -436,4 +429,5 @@ Welcome aboard!
 | 1.0 | 2026-01-20 | Initial PRD based on stakeholder interview | Claude |
 | 1.1 | 2026-01-20 | Added 8 UX features from manual testing feedback | Claude |
 | 1.2 | 2026-01-21 | Added 14 more features from codebase analysis (22 total); framed as a 1-week crunch launch | Claude |
-| **2.0** | **2026-07-08** | **Full reconciliation against the live codebase after a fresh audit.** Nearly all 22 tracked features confirmed implemented and wired; the "Unknown question" blocker confirmed fixed. Removed stale crunch/timeline framing and the exhaustive build checklist (moved to `plan.md`). Added the newly-built waitlist/OTP/admin-approval access model as a first-class section. Reframed remaining work around deploy migration (Lovable → Vercel), scheduler wiring, and DB-level security hardening — not new feature development. Updated domain references from `zothub.lovable.app` to `zothub.app` throughout. Added a UI/UX revision item to the post-launch roadmap, deliberately deferred past launch per product decision. | Claude |
+| 2.0 | 2026-07-08 | Full reconciliation against the live codebase; removed crunch/timeline framing; documented waitlist/OTP/admin-approval access model | Claude |
+| **3.0** | **2026-07-08** | **Post-migration cleanup rewrite.** Migration status condensed to a single infrastructure note (full history moved to `docs/archive/MIGRATION.md`). Added a dedicated Known Issues / QA Gaps section and a Launch Readiness Criteria checklist. Reframed the roadmap around `plan.md`'s new Full Product Audit & Bug Inventory phase rather than deploy-migration tasks. Removed all remaining stale migration-status phrasing. | Claude |

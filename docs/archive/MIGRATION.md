@@ -1,5 +1,7 @@
 # ZotHub: Lovable Cloud → Self-Owned Supabase Migration Runbook
 
+> **📦 ARCHIVED — historical reference only.** This migration is complete. It is no longer an active execution document; `plan.md` at the repo root is the current source of truth for engineering work. Kept here for historical record of exactly how the Lovable Cloud → self-owned Supabase/Vercel migration was carried out.
+
 ## 📍 Migration Status (updated 2026-07-08)
 
 **The migration is functionally complete and the app is live on owned infrastructure.** Vercel now serves the frontend, pointing at the new self-owned Supabase project (`fguzpscguulkfctipeih`), with core auth/data/email flows verified working. Two known bugs remain, tracked in **Known Issues** below — neither blocks the migration itself.

@@ -1,5 +1,7 @@
 # Migrate ZotHub from Lovable Cloud to Your Own Supabase
 
+> **📦 ARCHIVED — historical reference only.** Originally `.lovable/plan.md`, Lovable's own AI-generated planning doc for the same migration documented in `docs/archive/MIGRATION.md`. Moved here (and renamed) to avoid colliding with the repo-root `plan.md`, which is the current, active engineering plan. This migration is complete; some details below (e.g. the auth-user migration strategy) describe the original intent and don't necessarily match exactly what was executed — see `docs/archive/MIGRATION.md`'s status table for what actually happened.
+
 You've confirmed: new Supabase project already created, migrate everything (schema + all data + auth users + storage files + edge functions + auth config + cron).
 
 ---
