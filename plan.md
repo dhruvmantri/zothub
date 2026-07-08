@@ -10,7 +10,7 @@
 
 **What ZotHub is:** A two-sided UCI campus marketplace connecting students (leadership roles, internships, projects, volunteer positions, events) with UCI clubs (posting opportunities, managing applications, building community). Stack: React 18.3 + Vite 5 + TypeScript + Tailwind/shadcn + react-router-dom v6 (BrowserRouter) + Supabase (Postgres, RLS, Storage, Auth, Edge Functions, pg_cron/pg_net) + react-hook-form/zod + sonner + framer-motion + recharts.
 
-**Where things stand:** Built on Lovable Dec 2025 → Jan 2026 across several sprints. As of this audit (28 migrations, latest dated 2026-01-29), the codebase has grown well past the original 22-feature PRD list: it now includes a full access-control system (waitlist signup → OTP email verification → admin approval → role-based access), 4 Supabase Edge Functions (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), CSV export, bulk application actions, resume prefill, RSVP forms + approval, share links, add-to-calendar, and success modals — all wired into the UI. The Lovable subscription has ended, so **hosting must move** before anything else, and a handful of concrete gaps remain (below).
+**Where things stand:** Built on Lovable Dec 2025 → Jan 2026 across several sprints. As of this audit (28 migrations, latest dated 2026-01-29), the codebase has grown well past the original 22-feature PRD list: it now includes a full access-control system (waitlist signup → OTP email verification → admin approval → role-based access), 4 Supabase Edge Functions (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), CSV export, bulk application actions, resume prefill, RSVP forms + approval, share links, add-to-calendar, and success modals — all wired into the UI. The Lovable subscription has ended, and although `zothub.app` is currently still resolving and serving the live site, **this is not a stable state — see "Why the site is still up, and why that won't last" below** — so **hosting migration remains the top-priority remaining item**, and a handful of other concrete gaps remain (below).
 
 **Decisions carried forward:**
 1. **Scope = finish what's left**, not rebuild — see "Remaining work" below. It's a short list.
@@ -26,6 +26,20 @@
 - No SPA rewrite config (`vercel.json`/`_redirects`) exists — required for BrowserRouter on Vercel/Netlify.
 - `lovable-tagger` is still wired into `vite.config.ts` and `package.json`; three lockfiles coexist (`bun.lock`, `bun.lockb`, `package-lock.json`).
 - UCI `@uci.edu` restriction is still **client-side only** (no DB-level trigger on `auth.users`).
+
+---
+
+## Why the site is still up, and why that won't last
+
+You correctly observed that `zothub.app` is currently resolving and serving the live app even though the Lovable subscription has ended. This was worth verifying rather than assuming — here's what's actually true, based on Lovable's own documentation:
+
+- **Custom domains are an explicitly paid-plan-only feature on Lovable.** Their own FAQ states that when a subscription lapses and the account drops to the free tier, the custom domain "reverts to pointing elsewhere (or expires)," and explicitly warns not to rely on continued custom-domain functionality without an active paid plan.
+- **The site currently working is most likely a temporary grace-period or cancellation-timing artifact** (e.g., access typically continues until the end of the current billing period even after cancellation), **not a stable free-tier guarantee.** It could stop resolving/serving with no further warning.
+- **Good news on domain control:** domains purchased "through Lovable" are actually registered with **Name.com** (Lovable facilitates the purchase; Name.com is the ICANN-accredited registrar of record) and connected to Lovable's hosting via **Entri**, an automated DNS-setup tool. This means **the domain registration itself is very likely independent of the Lovable subscription** — it's a separate Name.com service relationship. You are almost certainly *not* locked out of DNS control by the lapsed Lovable subscription; you just need to log into the Name.com account tied to the original purchase (check the email used at signup for a Name.com confirmation/welcome email) and update the DNS records there once Vercel is ready.
+
+**Action for you before Phase 0:** log into your Lovable account and check Settings → Billing/Subscription for the actual state (fully downgraded already vs. still inside a paid period with an end date) — this tells you how much runway you actually have. Separately, confirm you can log into Name.com (or whatever shows as the registrar in a WHOIS lookup for `zothub.app`) — that account, not Lovable, is where DNS gets re-pointed in Phase 0 step 6.
+
+**Bottom line:** it's fine that you haven't migrated yet — nothing is broken today — but this should not be deprioritized or treated as "not urgent because it's still working." Treat the current uptime as borrowed time, not a stable state, and complete Phase 0 promptly.
 
 ---
 
@@ -47,7 +61,7 @@ Operationally, this means: you (or another designated admin) must **check `/admi
 3. Pick one package manager (recommend **npm**, matches `package-lock.json` and is Vercel's default); delete `bun.lock` and `bun.lockb`.
 4. Verify `.env` is untracked (`git rm --cached .env` if not); add a fail-fast check in `src/integrations/supabase/client.ts` if `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are missing.
 5. Create Vercel project: framework preset Vite, build `npm run build`, output `dist`. Set env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) for Production + Preview.
-6. Point `zothub.app` (+ `www`) DNS at Vercel; remove old Lovable DNS records once cut over.
+6. Log into the **Name.com** account tied to the domain purchase (not Lovable) and point `zothub.app` (+ `www`) DNS at Vercel; remove the old Lovable/Entri-created A and TXT records once cut over.
 7. `supabase login` → `supabase link --project-ref alpmifyiwwrkolixwyvz` → `supabase db pull` to catch any drift → `supabase migration list` to confirm local == remote **before pushing any new migration**.
 8. Supabase Auth → URL config: Site URL `https://zothub.app`, redirect allow-list `https://zothub.app/**` + Vercel preview pattern. Update Google OAuth redirect URIs in Google Cloud Console.
 
@@ -118,11 +132,12 @@ No large schema changes remain — the bulk of the schema work (RSVP forms/appro
 
 ## Highest-risk items & ordering
 
-1. **Migration drift check (Phase 0.7) before any new migration** — still the top risk, unchanged from before.
-2. **Confirm `send-reminders` has idempotency before wiring the cron job** (Phase B.2) — an hourly job with no dedup will spam users.
-3. **DNS + Resend domain verification has propagation lag** — start early, in parallel with other Phase 0 work.
-4. **Confirm the access-model decision (gated vs. open)** before doing the QA pass — it changes what "done" looks like for the new-user flow.
-5. Everything else is additive/low-risk cleanup, not architecture change.
+1. **The site could go down without further notice at any time** — Lovable's own docs say custom-domain hosting on a lapsed subscription is not something to rely on; the current uptime is very likely a grace-period artifact. Don't deprioritize Phase 0 because "it's still working."
+2. **Migration drift check (Phase 0.7) before any new migration** — still the top engineering risk, unchanged from before.
+3. **Confirm `send-reminders` has idempotency before wiring the cron job** (Phase B.2) — an hourly job with no dedup will spam users.
+4. **DNS + Resend domain verification has propagation lag** — start early, in parallel with other Phase 0 work. Note DNS is managed via **Name.com** (the actual registrar), not Lovable directly.
+5. **Confirm the access-model decision (gated vs. open)** before doing the QA pass — it changes what "done" looks like for the new-user flow.
+6. Everything else is additive/low-risk cleanup, not architecture change.
 
 ---
 
