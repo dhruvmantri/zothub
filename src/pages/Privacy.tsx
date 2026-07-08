@@ -142,7 +142,7 @@ export default function Privacy() {
                 <p className="text-foreground font-medium">ZotHub</p>
                 <p className="text-muted-foreground">University of California, Irvine</p>
                 <p className="text-muted-foreground">Irvine, CA 92697</p>
-                <p className="text-primary mt-2">privacy@zothub.lovable.app</p>
+                <p className="text-primary mt-2">privacy@zothub.app</p>
               </div>
             </section>
 

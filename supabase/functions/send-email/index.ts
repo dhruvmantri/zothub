@@ -19,8 +19,8 @@ const getEmailFooter = (type: string) => `
   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
     <p style="color: #71717a; font-size: 12px; margin: 0;">
       You received this email because you have an account on ZotHub.<br/>
-      <a href="https://zothub.lovable.app/unsubscribe?type=${type}" style="color: #3b82f6;">Unsubscribe from ${type.replace(/_/g, " ")} emails</a> | 
-      <a href="https://zothub.lovable.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
+      <a href="https://zothub.app/unsubscribe?type=${type}" style="color: #3b82f6;">Unsubscribe from ${type.replace(/_/g, " ")} emails</a> | 
+      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
     </p>
     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
       ZotHub • University of California, Irvine • Irvine, CA 92697
@@ -154,7 +154,7 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
             </div>
             <p>We apologize for any inconvenience. Check out other events on ZotHub!</p>
             <div style="margin: 24px 0;">
-              <a href="https://zothub.lovable.app/events" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px;">Browse Events</a>
+              <a href="https://zothub.app/events" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px;">Browse Events</a>
             </div>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("event_reminders")}
@@ -195,7 +195,7 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
               <p style="margin: 0; font-weight: 600; color: #b45309;">What happens next?</p>
               <p style="margin: 8px 0 0 0;">We'll review your signup and send you an email once you're approved. This usually takes 1-2 business days.</p>
             </div>
-            <p>In the meantime, you can explore <a href="https://zothub.lovable.app" style="color: #3b82f6;">ZotHub</a> to see what's available.</p>
+            <p>In the meantime, you can explore <a href="https://zothub.app" style="color: #3b82f6;">ZotHub</a> to see what's available.</p>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("application_updates")}
           </div>
@@ -211,7 +211,7 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
             <p>Great news! Your ZotHub account has been approved.</p>
             <p>You can now log in and access all features as a <strong>${data.role}</strong>.</p>
             <div style="margin: 24px 0;">
-              <a href="https://zothub.lovable.app/login" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px;">Log In Now</a>
+              <a href="https://zothub.app/login" style="display: inline-block; padding: 12px 24px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px;">Log In Now</a>
             </div>
             ${data.role === "club" ? `
             <p>As a club, you can now:</p>
