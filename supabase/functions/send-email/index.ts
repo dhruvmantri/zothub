@@ -302,7 +302,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { subject, html } = getEmailContent(type, data);
 
     const emailResponse = await resend.emails.send({
-      from: "ZotHub <notifications@resend.dev>",
+      from: "ZotHub <notifications@zothub.app>",
       to: [to],
       subject,
       html,

@@ -78,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           try {
             await resend.emails.send({
-              from: "ZotHub <notifications@resend.dev>",
+              from: "ZotHub <notifications@zothub.app>",
               to: [studentProfile.email],
               subject: `Reminder: ${event.title} is tomorrow!`,
               html: `
@@ -178,7 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           try {
             await resend.emails.send({
-              from: "ZotHub <notifications@resend.dev>",
+              from: "ZotHub <notifications@zothub.app>",
               to: [student.email],
               subject: `Deadline Approaching: ${opportunity.title}`,
               html: `
@@ -283,7 +283,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           try {
             await resend.emails.send({
-              from: "ZotHub <notifications@resend.dev>",
+              from: "ZotHub <notifications@zothub.app>",
               to: [student.email],
               subject: `New opportunity from ${clubProfile.club_name}`,
               html: `
@@ -377,7 +377,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           try {
             await resend.emails.send({
-              from: "ZotHub <notifications@resend.dev>",
+              from: "ZotHub <notifications@zothub.app>",
               to: [student.email],
               subject: `New event from ${clubProfile.club_name}`,
               html: `
