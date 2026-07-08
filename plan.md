@@ -1,294 +1,144 @@
-# ZotHub — Full Working & Deployable Website Plan
+# ZotHub — Build & Deployment Plan
 
-> This is the **authoritative build roadmap** for finishing and shipping ZotHub. It is written to be executed by an AI coding model (Claude Code / Fable 5) phase by phase. Each phase has concrete files, schema changes, and verification steps.
+> **Engineering execution doc.** This is what should drive the remaining build (Fable 5 / Claude Code). `prd.md` is the companion product spec (vision, users, journeys, metrics, launch ops) — read it for *why*, read this for *what's left and how*.
 >
-> **Relationship to `prd.md`:** `prd.md` is the *product* spec (vision, users, value prop, competitive landscape, launch/marketing, support ops) and remains useful as background/reference. `plan.md` (this file) is the *engineering execution* spec and is what should drive the build. Where the two overlapped, this plan is the source of truth; the still-valuable product context and concrete assets from the PRD (user journeys, success metrics, email-template copy, privacy-policy outline) are summarized or referenced below so nothing is lost. Note the PRD contains **stale launch framing** ("1-week crunch", "zothub.lovable.app", "launch tonight") that this plan supersedes.
+> **Reconciliation note (this revision):** A fresh audit of `main` (post-merge, post-PR#4) found the app is **far more complete than the previous version of this plan assumed**. Nearly all 22 originally-tracked features are implemented and wired, the "Unknown question" blocker is fixed, and a new **waitlist/admin-approval/OTP access-gate** has been built that wasn't in scope before. This revision reflects the *true* current state and narrows the remaining work to what's actually left.
 
 ---
 
 ## Context
 
-**What ZotHub is:** A two-sided UCI campus marketplace connecting students (seeking leadership roles, internships, projects, volunteer positions, events) with UCI clubs (posting opportunities, managing applications, building community). Stack: React 18.3 + Vite 5 + TypeScript + Tailwind/shadcn + react-router-dom v6 (BrowserRouter) + Supabase (Postgres, RLS, Storage, Auth) + react-hook-form/zod + sonner + framer-motion + recharts.
+**What ZotHub is:** A two-sided UCI campus marketplace connecting students (leadership roles, internships, projects, volunteer positions, events) with UCI clubs (posting opportunities, managing applications, building community). Stack: React 18.3 + Vite 5 + TypeScript + Tailwind/shadcn + react-router-dom v6 (BrowserRouter) + Supabase (Postgres, RLS, Storage, Auth, Edge Functions, pg_cron/pg_net) + react-hook-form/zod + sonner + framer-motion + recharts.
 
-**Why this plan exists / where we left off:** The app's backend and core UI were built on Lovable in a Dec 23–24, 2025 sprint (12 of 14 migrations, full schema, RLS, storage, in-app notifications, team roster, analytics). Work then stopped. A PRD (v1.2) promised **22 "must-have" UX features**, but only **3 shipped** (keyword search, club category filtering, real-time unread nav badges). The remaining **19 were never built**, several backend jobs are defined-but-unwired, there is a launch-blocking bug in application review, and the Lovable subscription has ended — so hosting must move. This plan takes the app from "partially built, Lovable-hosted" to "fully working, self-hosted, production-ready."
+**Where things stand:** Built on Lovable Dec 2025 → Jan 2026 across several sprints. As of this audit (28 migrations, latest dated 2026-01-29), the codebase has grown well past the original 22-feature PRD list: it now includes a full access-control system (waitlist signup → OTP email verification → admin approval → role-based access), 4 Supabase Edge Functions (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), CSV export, bulk application actions, resume prefill, RSVP forms + approval, share links, add-to-calendar, and success modals — all wired into the UI. The Lovable subscription has ended, so **hosting must move** before anything else, and a handful of concrete gaps remain (below).
 
-**Intended outcome:** All remaining features implemented, all critical bugs fixed, real transactional email + scheduled jobs live, app migrated off Lovable to Vercel with custom domain `zothub.app`, and performance/security hardened for a medium launch (10–30 clubs, 200–500 students).
+**Decisions carried forward:**
+1. **Scope = finish what's left**, not rebuild — see "Remaining work" below. It's a short list.
+2. **Email = already real** — Resend-backed Edge Functions exist; what's missing is the **scheduler** (cron jobs were never created) and a review of the templates.
+3. **Deploy = migrate off Lovable → Vercel**, re-point `zothub.app`, backend managed via Supabase CLI.
+4. **Access model = gated beta now, open @uci.edu signup later** (assumption — confirm/adjust; see "Access model" below).
+5. **UI/UX = light coherence pass now; comprehensive redesign is an explicit post-launch phase** (see Phase 5).
 
-**Decisions locked in:**
-1. **Scope = Everything** — all remaining features + all bug/perf/security fixes.
-2. **Email = Real transactional email** — Resend + Supabase edge functions + pg_cron. Custom SMTP for auth emails.
-3. **Deploy = Migrate off Lovable → Vercel**, re-point `zothub.app`, backend via Supabase CLI.
-4. **Scale = Medium** — query limits + pagination + `useMemo` + DB indexes. No virtualization.
-
-**Open decision (needs your call — see Phase 1.4):** Whether new clubs require **manual approval** before they can post (PRD's original intent) or are **auto-approved** on signup (current live behavior). This plan defaults to a lightweight approval gate but flags it.
-
-**Key backend facts (audited):**
-- `notify_deadline_approaching()` has a real body but is **never attached to a trigger** (migration `20251223160240`).
-- `archive_past_events()` exists but is **never scheduled** (no pg_cron) (migration `20251223162738`).
-- "Following a club" = a row in `bookmarks` with `club_id` set (no separate follows table).
-- `.env` is **committed to git**; the key is the publishable/anon key (RLS-protected, safe) — untrack it, no forced rotation.
-- Supabase project ref: `alpmifyiwwrkolixwyvz` (from `supabase/config.toml`).
-
-**Pre-work while Lovable is still accessible:** (a) confirm the Supabase project is under your own Supabase account (full dashboard access); (b) run `supabase db pull` to capture any schema drift Lovable applied via its UI before building on top.
+**Key backend facts (re-audited):**
+- Supabase project ref: `alpmifyiwwrkolixwyvz` (`supabase/config.toml`).
+- `pg_cron` + `pg_net` extensions **are enabled** (migration `20260121010216`) but **zero `cron.schedule` calls exist anywhere** — no job is actually scheduled. `send-reminders` and `archive_past_events()` are both wired code with no trigger to run them.
+- `.env` handling: re-verify it's untracked (`git ls-files | grep .env`) — this was flagged before and may or may not have been fixed since.
+- No SPA rewrite config (`vercel.json`/`_redirects`) exists — required for BrowserRouter on Vercel/Netlify.
+- `lovable-tagger` is still wired into `vite.config.ts` and `package.json`; three lockfiles coexist (`bun.lock`, `bun.lockb`, `package-lock.json`).
+- UCI `@uci.edu` restriction is still **client-side only** (no DB-level trigger on `auth.users`).
 
 ---
 
-## Feature status (22 tracked + gaps recovered from PRD)
+## Access model (confirm before building)
 
-**Done (3):** keyword search · club category filtering · unread nav badges.
+The app has been built out with a **waitlist-gated signup flow**: user picks role → verifies email via OTP (`send-otp`/`verify-otp` functions) → a `waitlist` row is created (`status: pending`) → an admin reviews and approves/rejects from `/admin` (`AdminDashboard.tsx`, `useWaitlistAdmin`) → approved users get full access; rejected users land on `/waitlist-rejected`.
 
-**Remaining (19):** (1) team messaging · (2) application-count visibility toggle · (3) auto-archive expired content · (4) event RSVP custom forms · (5) RSVP approval workflow · (6) application question-label fix *(BLOCKER BUG)* · (7) application filtering by opportunity · (8) team display-order sorting · (10) smart sort dropdown · (13) event reminder emails · (14) deadline-approaching notifications · (15) new-opportunity notifications · (16) resume prefill · (17) success confirmation modals · (18) post-publication confirmation · (19) auto-archive scheduler · (20) share/copy-link · (21) bulk application actions · (22) CSV export. Plus **file uploads in the application form**.
+This plan **assumes "gated now, open later"**: keep the waitlist/admin/OTP system for the beta launch (it gives you control over who's on the platform while validating), and treat "open @uci.edu signup" as a documented future toggle (disable the gate, keep OTP + DB-level `@uci.edu` enforcement as the sole gate). **If your intent was different — e.g. the waitlist was a stopgap you want removed before launch, or you want it permanent — say so and this section (plus the Phase 1 items below) should be adjusted.**
 
-**Recovered from PRD (were missing from the 22-list — now in scope):**
-- (R1) **Add to Calendar (.ics)** on events + in reminder emails.
-- (R2) **Event cancellation → email all RSVP'd students** when a club cancels/deletes an event.
-- (R3) **Club approval gate** (`club_profiles.status` pending/active) — *see Phase 1.4 decision*.
-- (R4) **Duplicate-application prevention** — verify it's enforced (unique constraint on `applications(opportunity_id, student_id)`); add if missing.
+Operationally, this means: you (or another designated admin) must **check `/admin` regularly** to approve pending signups, or beta users are stuck waiting indefinitely. This replaces the old PRD's "manual club approval via SQL" — it's now a proper UI-driven approval queue for *both* students and clubs, and is a stronger foundation than what was originally planned.
 
 ---
 
-## Core user journeys (target UX — build to these)
+## Remaining work (the real punch list)
 
-Condensed from the PRD; use these as the acceptance narrative for the build.
+### A. Deploy migration (do first — Phase 0)
+1. Add `vercel.json` SPA rewrite (`{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`) — without this, refreshing any deep link (e.g. `/club/dashboard`) 404s on Vercel.
+2. Remove `lovable-tagger` from `vite.config.ts` (plugin import + usage) and `package.json`.
+3. Pick one package manager (recommend **npm**, matches `package-lock.json` and is Vercel's default); delete `bun.lock` and `bun.lockb`.
+4. Verify `.env` is untracked (`git rm --cached .env` if not); add a fail-fast check in `src/integrations/supabase/client.ts` if `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are missing.
+5. Create Vercel project: framework preset Vite, build `npm run build`, output `dist`. Set env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) for Production + Preview.
+6. Point `zothub.app` (+ `www`) DNS at Vercel; remove old Lovable DNS records once cut over.
+7. `supabase login` → `supabase link --project-ref alpmifyiwwrkolixwyvz` → `supabase db pull` to catch any drift → `supabase migration list` to confirm local == remote **before pushing any new migration**.
+8. Supabase Auth → URL config: Site URL `https://zothub.app`, redirect allow-list `https://zothub.app/**` + Vercel preview pattern. Update Google OAuth redirect URIs in Google Cloud Console.
 
-- **Club: post → receive → hire.** Signup (@uci.edu) → [approval gate] → create profile → post opportunity with a custom application form → receive in-app+email on each application → review answers + download resume → mark Reviewed → Accept/Reject (student notified in-app+email) → message accepted candidates. *Target: post an opportunity in <5 min; review UI makes candidates easy to compare.*
-- **Student: discover → apply → track.** Signup (@uci.edu) → optional profile → search + filter + sort opportunities → view detail → apply (custom form, resume prefilled/uploaded, duplicate blocked) → success modal + confirmation → track status changes (in-app+email) → follow club → get new-opportunity notifications. *Target: relevant opportunity within 3 clicks; notifications < ~1h.*
-- **Student: RSVP → attend.** Browse events → RSVP (optional custom RSVP form; approval if required) → appears in dashboard → **Add to Calendar (.ics)** → **email reminder 24h before** → attend. Cancel frees capacity + stops reminders; **club cancellation emails all attendees**. *Target: RSVP < 10s; reminders reliable.*
+**Verification:** `npm run build` succeeds locally; `https://zothub.app` loads; hard-refresh on `/opportunities` does not 404; Google + email/password login both land on the new domain; `supabase migration list` shows no drift.
 
----
+### B. Wire the scheduler — the only functionally-missing piece (Phase 1)
+The Edge Functions and DB functions exist; they're just never invoked automatically.
+1. Create a migration adding `cron.schedule(...)` jobs:
+   - **Event reminders / deadline reminders**: hourly job that calls `send-reminders` via `net.http_post`, passing a service-role/shared-secret bearer header.
+   - **Auto-archive**: nightly job (`0 8 * * *`, ≈ midnight PT) that runs `archive_past_events()` directly in SQL (no HTTP needed — it's already a Postgres function).
+   - Store the function URL + bearer token via Supabase Vault or a small `private.app_config` table so it isn't hardcoded into the migration.
+2. Read `supabase/functions/send-reminders/index.ts` closely first — confirm what window/query it uses (e.g. "next 24h") and what idempotency check it does (does it check `notifications` or similar before sending, to avoid duplicate emails on every hourly run?). If idempotency is missing, add a guard before wiring the cron job, or you will spam users hourly.
+3. Confirm Resend sending domain (`zothub.app`) has DKIM/SPF/DMARC verified, and that `RESEND_API_KEY` is set via `supabase secrets set` (not committed anywhere).
+4. Optional but recommended: point Supabase Auth's custom SMTP at Resend so password-reset/magic-link emails aren't rate-limited by the default shared SMTP.
 
-## PHASE 0 — Migrate off Lovable, harden deploy, reconcile backend (DO FIRST)
+**Verification:** `select * from cron.job;` shows the jobs. Manually invoke `send-reminders` twice in a row — second call sends nothing new (idempotent). Create a test event ~24h out with an RSVP, wait for/trigger the cron, confirm exactly one email arrives with a working "Add to Calendar" link.
 
-Own the repo + backend and get a verifiable production deploy before touching features.
+### C. DB-level UCI enforcement (Phase 1)
+Client-side `@uci.edu` checks exist but are bypassable via direct API calls. Add a `BEFORE INSERT` trigger on `auth.users` (SECURITY DEFINER) rejecting non-`@uci.edu` emails (allow-list exceptions if needed for staff/partners). Keep the client-side check for fast UX feedback; DB is the source of truth.
 
-### 0.1 Repo / build hygiene
-- Remove Lovable coupling: delete `import { componentTagger } from "lovable-tagger"` in `vite.config.ts:4` and remove it from `plugins` (`vite.config.ts:12`) → `plugins: [react()]`. Remove `lovable-tagger` from `package.json`. Regenerate lockfile.
-- Standardize on **npm** (matches `package-lock.json`, Vercel default). Delete `bun.lockb` (dual lockfiles cause inconsistent installs).
-- Untrack secrets: `git rm --cached .env` (keep local copy; `.gitignore` already lists it). `service_role` key must NEVER be in `.env` or the client bundle — only in edge-function secrets (Phase 2).
-- Env-var validation: `src/integrations/supabase/client.ts` reads `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` with no guard → silent white screen if unset on the new host. Add a fail-fast `throw` with a clear message if either is missing.
+**Verification:** attempt signup with a non-UCI email — rejected at the DB layer even if the client check is bypassed (e.g. via direct `supabase.auth.signUp` call in devtools).
 
-### 0.2 Host = Vercel
-Zero-config Vite preset, first-class SPA rewrites, per-branch preview deploys, simple env UI, auto-TLS custom domains. (Netlify is an equivalent fallback.)
-- Build settings: framework preset **Vite**, build `npm run build`, output `dist`, install `npm install`.
-- **SPA rewrite** (BrowserRouter deep links 404 without it) — add `vercel.json`:
-  ```json
-  { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
-  ```
-  (Netlify equivalent: `public/_redirects` → `/*  /index.html  200`.)
-- Env vars (Production + Preview): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`. Build-time (Vite inlines them) → redeploy after any change.
+### D. Cleanup & hardening (Phase 1, low-risk, do alongside B/C)
+1. Fix the 26 ESLint errors surfaced by `npm run lint` — mostly `@typescript-eslint/no-explicit-any` in `StudentFeed.tsx`, `ClubFeed.tsx`; `no-case-declarations` in `supabase/functions/send-email/index.ts`; a `require()` import in `tailwind.config.ts`. None are runtime blockers, but they should be clean before calling this "done."
+2. Run `supabase db pull` (part of Phase 0.7) and check for any RLS gaps on the newer tables (`waitlist`, and the new columns on `opportunities`/`events`/`rsvps`/`club_team_members`) — confirm policies exist and are scoped correctly (e.g., only admins can update `waitlist.status`; only the owning student can see their own `rsvps.answers`).
+3. Re-check `.limit()` / `useMemo` usage on `Opportunities.tsx`/`Events.tsx`/`useMessages.ts` — some of this may already have landed with the recent work; verify before redoing it, only patch what's actually missing.
 
-### 0.3 DNS re-point for zothub.app
-Add `zothub.app` + `www` in Vercel; set the apex A/ALIAS to Vercel's target and `www` CNAME to `cname.vercel-dns.com` (exact values Vercel shows). Remove old Lovable DNS records. Add Resend DKIM/SPF/DMARC records (Phase 2.2) at the same time to absorb propagation lag. **Keep Lovable reachable until `zothub.app` resolves to Vercel with valid TLS, then flip.**
+### E. QA pass on the full flow (Phase 2 — before calling it launch-ready)
+The build compiles cleanly and the known blocker bug is fixed, but a full runtime walkthrough hasn't been done against a live Supabase instance since the recent burst of work landed. Walk these end-to-end on a Vercel preview deploy:
+- **New-user flow:** signup → role select → OTP email → verify → waitlist "pending" screen → admin approves from `/admin` → user lands on the correct dashboard.
+- **Club flow:** post opportunity (with custom form + app-count toggle) → receive application → review (question labels correct, resume downloadable) → bulk accept/reject → CSV export → student notified.
+- **Student flow:** search/sort/filter opportunities → apply (resume prefilled) → track status → RSVP to event with a custom form → (if `requires_approval`) see pending state → get approved → Add-to-Calendar → cancel RSVP frees capacity.
+- **Messaging & notifications:** team messaging (if wired to individual members), in-app notification badges update in real time, notification preferences save and are respected.
+- **Admin flow:** approve/reject a waitlist entry, confirm the user is notified and unblocked/blocked accordingly.
 
-### 0.4 Supabase CLI linking + migration reconciliation
-`supabase login` → `supabase link --project-ref alpmifyiwwrkolixwyvz`. Then reconcile drift: `supabase db pull` (captures any remote-only schema into a new migration), `supabase migration list` (compare local vs remote). **Local must equal remote before writing any new migration in later phases.** Workflow: `supabase migration new <name>` → `supabase db push`.
-
-### 0.5 Supabase Auth config for new domain
-Auth → URL config: Site URL `https://zothub.app`; redirect allow-list `https://zothub.app/**` + the Vercel preview pattern. Update Google OAuth authorized redirect URIs in Google Cloud to the Supabase callback + new domain.
-
-### Verification
-- Local: clean `npm install` (no lovable-tagger), `npm run build` + `npm run dev` succeed; Supabase reads work.
-- Prod: `https://zothub.app` loads; hard-refresh `/opportunities` → no 404 (SPA rewrite works); email/password AND Google login both land on zothub.app. `git ls-files | grep .env` returns nothing.
-- Backend: `supabase migration list` shows local == remote.
-
-### Risk
-**Migration drift is the single highest risk of the project.** If `db pull` surfaces remote-only objects, capture them into a migration first; do not push new migrations until reconciled.
-
----
-
-## PHASE 1 — Critical bug fixes (blockers) + security + gating
-
-### 1.1 (Feat 6) "Unknown question" blocker
-Root cause: `ApplicationForm.tsx:124-130` writes answers as `{question_id, question, answer}`; `ApplicationReview.tsx:445` reads `response.questionId` (undefined) → `getQuestionText` (line 207) returns `"Unknown question"`. Correct text is already stored in `response.question`.
-**Fix in `ApplicationReview.tsx`:** render `response.question` directly, with fallback `response.question ?? getQuestionText(response.question_id, questions) ?? "Question"`. Update the answer interface (`~line 47`) to `{ question?: string; question_id?: string; answer: ... }`. Repairs legacy rows too.
-
-### 1.2 UCI @uci.edu enforcement at DB layer
-Today only client-side and only on OAuth; email/password signup accepts any domain. Add a `BEFORE INSERT` trigger on `auth.users` (SECURITY DEFINER) that raises unless `NEW.email ILIKE '%@uci.edu'` (optionally allow-list admin exceptions). Keep the client-side check in `Signup.tsx`/`Login.tsx` for fast UX; DB is source of truth.
-
-### 1.3 (R4) Duplicate-application prevention
-Verify a unique constraint exists on `applications(opportunity_id, student_id)`; if not, add it (migration) and surface a friendly "You've already applied" message in `ApplicationForm.tsx`.
-
-### 1.4 (R3) Club approval gate — **DECISION REQUIRED**
-Current live behavior: clubs can post immediately (no gate). PRD intent: manual approval. **Recommended default:** add `club_profiles.status` (`pending` | `active` | `rejected`, default `pending`); block posting opportunities/events while `pending`; show a "Pending approval" banner; approve via an admin action (SQL or a minimal admin screen). If you prefer frictionless growth, set default `active` (auto-approve) and treat moderation as reactive. *Confirm which before building; the schema column is cheap to add either way.*
-
-### 1.5 Perf quick wins (no schema)
-Add `.limit()` + explicit ordering to unbounded fetches in `Opportunities.tsx` (~line 48), `Events.tsx` (~line 45), `useMessages.ts` (~line 43). Full pagination + `useMemo` in Phase 4.
-
-### Verification
-Club opens an application → sees real question text + answers (new AND pre-existing). Non-`@uci.edu` signup rejected by DB. Re-applying blocked. If approval gate on: `pending` club cannot post; `active` can.
+**Verification:** each flow completes without console errors, without stuck loading states, and with the correct data ending up in the DB (spot-check via Supabase table editor).
 
 ---
 
-## PHASE 2 — Email + scheduled-job infrastructure
+## Phase 5 (post-launch, explicitly deferred) — Comprehensive UI/UX revision
 
-### 2.1 Extensions (migration)
-`create extension if not exists pg_cron;` and `create extension if not exists pg_net;` (pg_net lets SQL invoke edge functions over HTTP; pg_cron jobs live in `cron.job`).
+Per your instruction, a full design revision is **out of scope for the pre-launch build** and should happen after the app is live and you have real usage data. When you're ready to run it, scope should include:
+- Design-system audit (are shadcn components used consistently? any one-off styling drift?)
+- Full empty/loading/error state pass across every page (not just the light Phase-1-D fixes)
+- Mobile-specific UX pass (the app is responsive but not mobile-optimized — small touch targets, dense forms)
+- Accessibility audit (ARIA labels, keyboard nav, contrast)
+- Visual refresh if desired (branding, typography, spacing system)
+- Onboarding/empty-state polish informed by where real users actually drop off
 
-### 2.2 Resend
-Create account; verify the `zothub.app` sending domain (DKIM/SPF/DMARC, added with Phase 0.3 DNS). Senders: `noreply@zothub.app`, `team@zothub.app`. Store the key as an edge-function secret only: `supabase secrets set RESEND_API_KEY=...`.
-
-### 2.3 Edge functions (`supabase/functions/`)
-Deno + supabase-js (service role) + `fetch` POST to `https://api.resend.com/emails`. **Email copy:** use the PRD Appendix C templates (event reminder, application status, new application, etc.) as the starting HTML content.
-1. **`send-email`** — shared core (`_shared/resend.ts`): `{ to, subject, html, from? }`; single Resend call + one HTML layout helper.
-2. **`send-event-reminders`** (cron; feat 13, R1) — `events` with `event_date` in the next 24–25h and `is_active=true`; confirmed-RSVP emails; include **Add-to-Calendar (.ics)** link; idempotency row (2.5).
-3. **`send-deadline-reminders`** (cron; feat 14) — `opportunities` with `deadline` within 24h and `is_active=true`; notify followers/bookmarkers (in-app + email); idempotent per (opportunity, user, day).
-4. **`notify-new-opportunity`** (event-driven; feat 15) — fan out to followers (`bookmarks` where `club_id` = that club) → in-app + email. Invoke via a DB `AFTER INSERT` trigger on `opportunities` using pg_net.
-5. **`send-team-invite`** (team email invites) — called from `TeamManagement.tsx` after inserting a pending `club_team_members` row; emails invitee a signup/accept link. Fixes today's gap where inviting a not-yet-registered user sends nothing.
-6. **`notify-event-cancelled`** (R2) — called when a club cancels/deletes an event; emails all confirmed RSVPs. (Client-invoked from `EventManagement.tsx`, or DB trigger on status change.)
-7. Auto-archive stays pure SQL in pg_cron (2.4).
-
-Deploy with `supabase functions deploy <name>`. `verify_jwt=false` for cron-invoked functions (service-role/shared-secret header); keep JWT on for client-invoked ones.
-
-### 2.4 pg_cron schedules (migration)
-- **Nightly archive** (feats 3/19): existing `archive_past_events()` + new `archive_expired_opportunities()` (sets `opportunities.is_active=false` where `deadline < now()`) → `cron.schedule('nightly-archive','0 8 * * *', ...)` (08:00 UTC ≈ midnight PT).
-- **Event reminders**: hourly `cron.schedule('event-reminders','0 * * * *', ...)` via `net.http_post(...)` to `send-event-reminders` with auth header.
-- **Deadline reminders**: hourly/daily → `send-deadline-reminders`.
-- Store the function URL + bearer via Supabase `vault` or a small `private.app_config` table so cron SQL isn't hardcoded.
-
-### 2.5 Idempotency via `notifications` table
-Reuse `notifications` (`id,user_id,type,title,message,is_read,related_id,created_at`) as a send-ledger. Before sending, check for a matching row (`type`,`related_id`,`user_id`); skip if present; insert atomically with the send. Types: `event_reminder_24h`, `deadline_reminder` (per opportunity+user+day), `new_opportunity`. Doubles as the in-app notification feeding `useNavigationCounts`.
-
-### 2.6 Custom SMTP for Supabase Auth emails
-Auth → SMTP: point confirm-signup / magic-link / password-reset (`ForgotPassword.tsx`) at `smtp.resend.com` (port 465/587, user `resend`, password = `RESEND_API_KEY`, sender `noreply@zothub.app`). Removes default rate limits + unbranded sender.
-
-### Verification
-Invoke `send-event-reminders` twice → second run sends nothing (idempotency). `select * from cron.job;` shows schedules. Event 24h out + RSVP → reminder arrives once with a working .ics. Live password reset → email via Resend (DKIM pass). Publish opportunity a student follows → follower gets in-app + email. Cancel an event → all attendees emailed.
-
-### Risk
-cron→edge auth (pg_net bearer) is a silent-failure hotspot — verify `net.http_post` manually first. Resend DKIM propagation can take hours — start DNS early.
+This is intentionally not detailed further here — it should be scoped fresh, informed by post-launch analytics and user feedback, not planned blind before launch.
 
 ---
 
-## PHASE 3 — Feature batches (grouped by shared surface area)
+## Consolidated remaining schema/infra changes
 
-### Batch A — Application review & content mgmt (feats 2, 7, 21, 22 + app file uploads)
-Surface: `ApplicationReview.tsx`, `OpportunityManagement.tsx`, `ApplicationForm.tsx`, `opportunities`.
-- **(7) Filter by opportunity:** `Select` dropdown in `ApplicationReview.tsx` listing the club's opportunities; filter loaded list client-side. No schema.
-- **(21) Bulk actions:** row checkboxes + action bar (Accept / Reject / Mark reviewed); batch `.update(...).in('id', ids)`. Existing `notify_application_status_change` trigger fires per row. No schema.
-- **(22) CSV export:** client-side Blob download of filtered applications (name/email/major/year/status/answers). No schema.
-- **(2) Application-count visibility:** migration `opportunities + show_application_count boolean DEFAULT true`; respect in public renders (`OpportunityCard.tsx`, `Opportunities.tsx`, `OpportunityDetail.tsx`); club always sees counts. Toggle in `CreateOpportunity.tsx`/`EditOpportunity.tsx`.
-- **App file uploads:** wire existing `src/components/ui/file-upload.tsx` into `ApplicationForm.tsx` (~lines 277-290); upload to student-resumes bucket; store URL in `resume_url` (already flows to `applications.resume_url`). Reuse profile-upload pattern.
+| Change | Why | Risk |
+|---|---|---|
+| `vercel.json` SPA rewrite | Deploy blocker | none |
+| Remove `lovable-tagger`, pick one lockfile | Clean deploy | none |
+| `cron.schedule` jobs (reminders hourly, archive nightly) | Nothing currently fires the existing functions | Low — additive |
+| `auth.users` BEFORE INSERT `@uci.edu` trigger | Security gap | Low — additive, test against existing rows first |
+| RLS review on `waitlist` + new columns | Confirm no gaps introduced by recent work | Verify only, likely no change needed |
+| ESLint cleanup (26 errors) | Code quality | None — no schema |
 
-### Batch B — Events: RSVP forms, approval, calendar, cancellation (feats 4, 5, R1, R2)
-Surface: `events`, `rsvps`, `EventDetail.tsx`, `EventManagement.tsx`, `CreateEvent.tsx`/`EditEvent.tsx`.
-- Migration: `events + rsvp_questions jsonb DEFAULT '[]'`, `+ rsvp_requires_approval boolean DEFAULT false`; `rsvps + answers jsonb DEFAULT '{}'`; widen `rsvps.status` CHECK to add `pending`/`approved`/`declined` (**drop-and-recreate constraint — the only non-additive change; snapshot + test existing rows**).
-- **(4) Custom forms:** reuse `ApplicationQuestionsBuilder.tsx` to author `rsvp_questions`; extract a shared `<QuestionRenderer>` from `ApplicationForm.tsx` and use it in an RSVP dialog on `EventDetail.tsx`; store answers on `rsvps.answers`.
-- **(5) Approval:** when required, new RSVPs `status='pending'`; club approves/declines in `EventManagement.tsx` (reuse ApplicationReview approve/reject UI). New trigger `notify_rsvp_status_change` (model on `notify_application_status_change`) + optional email. Respect `events.capacity` on approval.
-- **(R1) Add to Calendar (.ics):** client-side .ics generation + download button on `EventDetail.tsx` and in reminder emails. No schema.
-- **(R2) Cancellation emails:** on club cancel/delete of an event with RSVPs, call `notify-event-cancelled` to email all confirmed attendees.
-
-### Batch C — Team collaboration (feats 1, 8; email invite built in Phase 2.3)
-Surface: `club_team_members`, `TeamManagement.tsx`, messaging stack.
-- **(8) Display-order sort:** migration `club_team_members + display_order integer DEFAULT 0`; up/down arrows in `TeamManagement.tsx` **reusing the `moveQuestion` swap pattern from `ApplicationQuestionsBuilder.tsx:161-181`**; order by `display_order`.
-- **(1) Team messaging:** reuse `useMessages.ts`, `MessageThread`, `MessageComposer`, `messages` table. Club opens a thread with an accepted member (`club_team_members.status='accepted'` has `user_id`). Verify/extend `messages` RLS for club↔member. Entry point: "Message" button in `TeamManagement.tsx`.
-
-### Batch D — Search/discovery & engagement (feats 10, 16, 17, 18, 20)
-- **(10) Smart sort dropdown** (deadline / popularity / newest): `Select` on `Opportunities.tsx` + `Events.tsx`; sort inside the Phase 4 `useMemo`. Popularity = count of already-fetched `applications`/`rsvps`. No schema.
-- **(16) Resume prefill:** in `ApplicationForm.tsx`, fetch `student_profiles` on open (already queried at submit ~lines 112-116) and prefill `resume_url`. Combine with Batch A upload.
-- **(17) Success modals:** reusable `<SuccessModal>` (shadcn Dialog) after apply / RSVP / publish, augmenting the bare `toast.success`.
-- **(18) Post-publication confirmation:** success modal after `CreateOpportunity.tsx`/`CreateEvent.tsx` + optional club confirmation email; publish also triggers `notify-new-opportunity` fan-out.
-- **(20) Share/copy-link:** `<ShareButton>` copying the canonical `https://zothub.app/...` URL via `navigator.clipboard` + sonner toast, on `OpportunityDetail.tsx`, `EventDetail.tsx`, `ClubDetail.tsx`, and cards. No schema.
-
-### Verification (per batch)
-- **A:** filter narrows list; bulk-accept updates N rows + notifies; CSV opens; count toggle hides public counts only; resume upload attaches + is club-downloadable.
-- **B:** custom RSVP form saves; approval pending→approve→student notified; capacity respected; .ics imports correctly into Google/Apple Calendar; cancel emails all attendees.
-- **C:** reorder persists across reload; club messages an accepted member.
-- **D:** each sort reorders; resume prefilled; modals appear; copy-link yields a working deep link (re-validates the Phase 0 SPA rewrite).
+No large schema changes remain — the bulk of the schema work (RSVP forms/approval, app-count toggle, team display-order, waitlist) is already in place.
 
 ---
 
-## PHASE 4 — Performance / scale (Medium; no virtualization)
+## Highest-risk items & ordering
 
-- **`useMemo` filtering/sorting:** apply the existing memoized pattern from `Clubs.tsx` to `Opportunities.tsx` and `Events.tsx`.
-- **Pagination:** reuse `src/components/ui/pagination.tsx` on `Opportunities.tsx`, `Events.tsx`, `Clubs.tsx`, backed by `.range(from,to)` + a count query; keep the Phase 1.5 `.limit()` as page size.
-- **Messages:** `.limit()` + load-more in `useMessages.ts`.
-- **Indexes (migration):** `opportunities(is_active, created_at desc)`, `opportunities(deadline)`, `opportunities(club_id)`; `events(is_active, event_date)`, `events(club_id)`; `applications(opportunity_id)`, `applications(student_id)`; `rsvps(event_id)`, `rsvps(student_id)`; `bookmarks(club_id)`; `notifications(user_id, is_read)`; a `messages` conversation key.
-- **Optional (do LAST, if at all):** adopt `@tanstack/react-query` (installed + provider mounted, currently zero usage) for browse fetches.
-
-### Verification
-Pages paginate; network shows bounded row counts; Supabase advisor / `explain analyze` shows index usage; no filter/sort regressions.
-
----
-
-## PHASE 5 — QA, hardening, launch
-
-- **End-to-end on LIVE zothub.app** — walk the three Core User Journeys above (club post→hire; student discover→apply→track; student RSVP→attend), including emails and notifications.
-- **Scheduled jobs:** `cron.job` fires (check logs); reminder arrives exactly once (idempotency); nightly archive flips past events + expired opportunities.
-- **Security:** `.env` untracked; `service_role` only in function secrets; RLS spot-checks for new columns (RSVP answers, app counts, club status); DB @uci.edu block confirmed.
-- Review Supabase security + performance advisors; confirm migrations == remote.
-- **Rollback:** Vercel instant deploy rollback; DB changes additive/defaulted (low risk); snapshot before the Batch B `rsvps.status` constraint change.
-
----
-
-## Analytics & success metrics (from PRD — track post-launch)
-
-**Events worth capturing** (already derivable from tables; add an `analytics_events` table only if you want a unified funnel): application submitted, event RSVP, bookmark/save.
-
-**Primary metric:** # of opportunities posted (supply-side health) — target 50–100 in first 30 days.
-**Secondary:** application volume (200–500/mo), applications per opportunity (5–10), weekly returning students (30%+), club satisfaction survey (70%+ "yes").
-
-**Weekly report:** run the SQL in `prd.md` Appendix B (signups, opportunities, applications, RSVPs, top opportunities, retention) against Supabase.
-
----
-
-## Launch deliverables (non-code)
-
-- **Privacy Policy** — publish before launch (student PII/FERPA-adjacent). Use `prd.md` Appendix D outline; link in footer + signup. Update processor list to reflect Vercel + Resend + Supabase.
-- **Email template copy** — `prd.md` Appendix C (event reminder, application status, new application, etc.) is the content source for the Phase 2 edge functions; every notification email needs an unsubscribe link (CAN-SPAM).
-- **Support** — designate a support email (e.g. `support@zothub.app` via Resend/forwarding); keep the PRD's common-scenario response templates.
-- **Club approval SOP** (if approval gate enabled in 1.4) — verification checklist + approve/reject SQL (see `prd.md` "Club Approval Process").
-
----
-
-## Consolidated DB schema changes
-
-| Change | Feature |
-|---|---|
-| `auth.users` BEFORE INSERT trigger enforcing `email ILIKE '%@uci.edu'` | 1.2 |
-| Unique constraint `applications(opportunity_id, student_id)` (if missing) | 1.3 / R4 |
-| `club_profiles + status` (`pending`/`active`/`rejected`, default per 1.4 decision) | R3 |
-| `opportunities + show_application_count boolean DEFAULT true` | 2 |
-| new fn `archive_expired_opportunities()` (`is_active=false` where `deadline < now()`) | 3/19 |
-| `events + rsvp_questions jsonb DEFAULT '[]'`, `+ rsvp_requires_approval boolean DEFAULT false` | 4/5 |
-| `rsvps + answers jsonb DEFAULT '{}'`; widen `status` CHECK → `pending/approved/declined`; trigger `notify_rsvp_status_change` | 5 |
-| `club_team_members + display_order integer DEFAULT 0` + index `(club_id, display_order)` | 8 |
-| `opportunities` AFTER INSERT trigger → pg_net → `notify-new-opportunity` | 15 |
-| Drive deadline reminders via `send-deadline-reminders` cron (preferred over wiring the existing fn) | 14 |
-| Schedule `archive_past_events()` + `archive_expired_opportunities()` via pg_cron | 3/19 |
-| Extensions `pg_cron`, `pg_net`; Phase 4 indexes | infra/perf |
-
-No new columns for feats 1, 6, 7, 10, 16, 17, 18, 20, 21, 22, R1, R2 (logic/UI/reuse only; R2 reuses `send-email`, R1 is client-side .ics).
-
----
-
-## Highest-risk items & ordering constraints
-
-1. **Phase 0 `db pull` reconciliation MUST precede any new migration** — else pushes conflict with untracked remote drift. *(Highest risk.)*
-2. **Phase 2 email infra MUST precede feats 13/14/15/18, R2, + team invites.** Custom SMTP (2.6) live before relying on auth emails.
-3. **DNS + Resend domain verification (0.3 / 2.2) has propagation lag — start early.**
-4. **RSVP `status` CHECK change (Batch B) is the only non-additive schema edit** — drop-and-recreate, test existing rows, snapshot first.
-5. **cron→edge pg_net auth is a silent-failure hotspot** — verify `net.http_post` manually first.
-6. **Bug fix 1.1 (application labels) is a launch blocker** — before any club-facing QA.
-7. **Confirm the Phase 1.4 club-approval decision** before building the gate.
-8. **Optional react-query refactor LAST**, if at all.
+1. **Migration drift check (Phase 0.7) before any new migration** — still the top risk, unchanged from before.
+2. **Confirm `send-reminders` has idempotency before wiring the cron job** (Phase B.2) — an hourly job with no dedup will spam users.
+3. **DNS + Resend domain verification has propagation lag** — start early, in parallel with other Phase 0 work.
+4. **Confirm the access-model decision (gated vs. open)** before doing the QA pass — it changes what "done" looks like for the new-user flow.
+5. Everything else is additive/low-risk cleanup, not architecture change.
 
 ---
 
 ## Critical files
 
-- `src/components/dashboard/ApplicationReview.tsx` — bug 6, feats 7/21/22/2
-- `src/components/ApplicationForm.tsx` — bug 6 source, file upload, feat 16, shared `<QuestionRenderer>`
-- `src/components/dashboard/ApplicationQuestionsBuilder.tsx` — reusable `moveQuestion` (feat 8) + RSVP form authoring (feat 4)
-- `src/components/dashboard/TeamManagement.tsx` — feats 1, 8, team invite entry point
-- `src/pages/EventDetail.tsx`, `src/components/dashboard/EventManagement.tsx` — Batch B (RSVP forms/approval/.ics/cancellation)
-- `src/pages/Opportunities.tsx`, `src/pages/Events.tsx` — sort (10), limits (1.5), useMemo + pagination (Phase 4)
-- `src/integrations/supabase/client.ts` — env validation (Phase 0)
-- `vite.config.ts` + `package.json` — remove lovable-tagger, lockfile (Phase 0)
-- `supabase/migrations/` — schema + pg_cron + triggers; **new** `supabase/functions/` — edge functions (Phase 2)
-- **new** `vercel.json` — SPA rewrite (Phase 0)
+- `vercel.json` (new) — SPA rewrite, Phase 0
+- `vite.config.ts`, `package.json` — remove lovable-tagger, pick one lockfile, Phase 0
+- `src/integrations/supabase/client.ts` — env validation, Phase 0
+- `supabase/functions/send-reminders/index.ts` — read closely for idempotency before scheduling, Phase B
+- **new migration** in `supabase/migrations/` — `cron.schedule` jobs, Phase B
+- **new migration** in `supabase/migrations/` — `auth.users` UCI trigger, Phase C
+- `src/pages/admin/AdminDashboard.tsx`, `src/hooks/useWaitlistAdmin.ts` — your operational approval queue going forward
+- `src/pages/Waitlist.tsx`, `src/pages/WaitlistRejected.tsx`, `src/pages/Signup.tsx` — the new-user gated flow to QA
 
 ---
 
-## Suggested execution order (for the Fable 5 build prompt)
+## Suggested execution order
 
-Phase 0 → Phase 1 → Phase 2 → Phase 3 (Batch A → B → C → D) → Phase 4 → Phase 5. Ship a Vercel preview deploy after each phase for incremental verification. **Do not batch multiple phases into one prompt** — each phase has its own verification gate. When generating the Fable 5 prompt, target one phase at a time (start with Phase 0), or produce a master prompt that explicitly instructs stopping to verify between phases.
+**Phase 0** (deploy migration) → **Phase 1** (scheduler + UCI trigger + cleanup, items B/C/D above, can run in parallel with each other) → **Phase 2** (full QA pass, item E) → **Launch** → **Phase 5** (UI/UX revision, post-launch, separately scoped). Ship a Vercel preview after Phase 0 so Phases 1-2 are verified against the real deploy target, not just localhost.
