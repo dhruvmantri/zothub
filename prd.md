@@ -18,7 +18,11 @@ Create a single, searchable hub where every UCI student has equal access to all 
 This document (`prd.md`) is the **product spec** — vision, users, journeys, success metrics, and launch operations. `plan.md` is the **engineering execution plan** — the concrete remaining build/deploy work, file paths, and verification steps. Read this for *why* and *what "done" looks like*; read `plan.md` for *what's left and how to finish it*.
 
 ### Where the product stands today
-The core platform is **built and feature-complete** relative to the original MVP feature set (see "Feature Implementation Status" below). What remains is **deployment migration** (off Lovable, onto Vercel with the `zothub.app` domain), **wiring the email scheduler** (the sending infrastructure exists; nothing currently triggers it automatically), a **DB-level security hardening pass**, and a **final end-to-end QA walkthrough**. This is meaningfully further along than a typical "MVP kickoff" — treat this launch as *finishing and shipping* an already-substantial product, not building one from scratch.
+**Update (2026-07-08): the Lovable Cloud → self-owned Supabase/Vercel migration is functionally complete.** The app now runs on Vercel with a self-owned Supabase project (`fguzpscguulkfctipeih`) replacing Lovable Cloud — schema, data, storage, and all 4 edge functions migrated; the hourly reminder cron job is active; OTP signup, account creation, login, and manual waitlist approval are all confirmed working. Full step-by-step status is tracked in `MIGRATION.md`.
+
+**Two known bugs surfaced during migration QA** (not blockers, tracked as cleanup items in `plan.md`/`MIGRATION.md`): (1) student profile setup fails with a raw validation error when `interests`/`skills` are left empty, and (2) a deleted/orphaned user (left over from `auth.users` intentionally not being migrated) still shows up as a club team member.
+
+**Still open:** re-pointing `zothub.app`'s DNS at Vercel (not yet done — the domain isn't confirmed to be serving the new app yet), a DB-level `@uci.edu` enforcement trigger (currently client-side only), and a full end-to-end QA pass beyond the flows already confirmed above.
 
 ### Launch scope
 - **Access model:** Gated beta — new users go through a waitlist (signup → email OTP verification → admin approval) rather than fully open signup. See "Access Model" below.
@@ -114,15 +118,15 @@ The platform has grown substantially past the original MVP feature list through 
 - ✅ File uploads wired into the application form (resume/portfolio)
 
 ### Email & scheduled jobs
-- 🟡 **Infrastructure exists, not yet scheduled.** Four Supabase Edge Functions are implemented (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), and the `pg_cron`/`pg_net` Postgres extensions are enabled — but **no cron job currently invokes them**. This is the single largest functional gap left (see `plan.md`, item B). Until this is wired, event reminders, deadline-approaching notifications, and the nightly auto-archive job will not run automatically.
+- ✅ **Wired and running.** Four Supabase Edge Functions are deployed to the self-owned project (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), `RESEND_API_KEY` is set, the `zothub.app` sending domain is verified with Resend, and an hourly `send-reminders-hourly` cron job is active. Not yet explicitly re-confirmed: the nightly `archive_past_events()` auto-archive job, and observed idempotency of reminder sends under live cron.
 
 ### What's genuinely left (all detailed in `plan.md`)
-1. **Migrate hosting off Lovable to Vercel** and re-point `zothub.app` (Lovable subscription has ended).
-2. **Wire the `pg_cron` scheduler** to actually invoke `send-reminders` (hourly) and `archive_past_events()` (nightly) — the code exists, it's just never triggered.
-3. **Add a DB-level trigger enforcing `@uci.edu`** on `auth.users` (currently client-side only, bypassable via direct API calls).
-4. **Deploy hardening**: SPA rewrite config for Vercel, remove `lovable-tagger`, consolidate to one lockfile, verify `.env` isn't committed.
-5. **A full end-to-end QA pass** against a live Vercel preview deploy — the app builds cleanly and compiles without errors, but a fresh runtime walkthrough of every flow hasn't been done since the most recent burst of feature work landed.
-6. **Minor code-quality cleanup** (ESLint errors — no runtime impact).
+1. ~~Migrate hosting off Lovable to Vercel~~ — ✅ done. **DNS re-point for `zothub.app` at Vercel is the one remaining piece** (deliberately untouched throughout the migration so far).
+2. ~~Wire the `pg_cron` scheduler~~ — ✅ done.
+3. **Add a DB-level trigger enforcing `@uci.edu`** on `auth.users` (currently client-side only, bypassable via direct API calls) — still open.
+4. ~~Deploy hardening~~ — ✅ done (SPA rewrite, `lovable-tagger` removed, single lockfile, `.env` untracked).
+5. **A full end-to-end QA pass** — partially done: OTP signup, account creation, login, and manual waitlist approval confirmed working; two bugs found in the process (see "Known Issues" above / `plan.md`); remaining flows not yet explicitly walked.
+6. **Minor code-quality cleanup** (ESLint errors — no runtime impact) — still open.
 
 **No new product features are required before launch.** The remaining work is deployment, operational wiring, security hardening, and verification — not net-new feature development.
 

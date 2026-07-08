@@ -3,6 +3,8 @@
 > **Engineering execution doc.** This is what should drive the remaining build (Fable 5 / Claude Code). `prd.md` is the companion product spec (vision, users, journeys, metrics, launch ops) — read it for *why*, read this for *what's left and how*.
 >
 > **Reconciliation note (this revision):** A fresh audit of `main` (post-merge, post-PR#4) found the app is **far more complete than the previous version of this plan assumed**. Nearly all 22 originally-tracked features are implemented and wired, the "Unknown question" blocker is fixed, and a new **waitlist/admin-approval/OTP access-gate** has been built that wasn't in scope before. This revision reflects the *true* current state and narrows the remaining work to what's actually left.
+>
+> **Update (2026-07-08): Phases A and B below are now complete.** The app migrated off Lovable entirely — Vercel hosts the frontend, a self-owned Supabase project (`fguzpscguulkfctipeih`) replaced Lovable Cloud (schema/data/storage/edge functions all migrated), and the `send-reminders-hourly` cron job is active. See `MIGRATION.md` for the detailed step-by-step status. What's left is Phase C (DB-level UCI enforcement), Phase D (cleanup), and Phase E (QA) — plus two bugs found during QA, added below under **Known Issues**.
 
 ---
 
@@ -19,27 +21,25 @@
 4. **Access model = gated beta now, open @uci.edu signup later** (assumption — confirm/adjust; see "Access model" below).
 5. **UI/UX = light coherence pass now; comprehensive redesign is an explicit post-launch phase** (see Phase 5).
 
-**Key backend facts (re-audited):**
-- Supabase project ref: `alpmifyiwwrkolixwyvz` (`supabase/config.toml`).
-- `pg_cron` + `pg_net` extensions **are enabled** (migration `20260121010216`) but **zero `cron.schedule` calls exist anywhere** — no job is actually scheduled. `send-reminders` and `archive_past_events()` are both wired code with no trigger to run them.
-- `.env` handling: re-verify it's untracked (`git ls-files | grep .env`) — this was flagged before and may or may not have been fixed since.
-- No SPA rewrite config (`vercel.json`/`_redirects`) exists — required for BrowserRouter on Vercel/Netlify.
-- `lovable-tagger` is still wired into `vite.config.ts` and `package.json`; three lockfiles coexist (`bun.lock`, `bun.lockb`, `package-lock.json`).
-- UCI `@uci.edu` restriction is still **client-side only** (no DB-level trigger on `auth.users`).
+**Key backend facts (superseded — kept for history; see MIGRATION.md for current state):**
+- ~~Supabase project ref: `alpmifyiwwrkolixwyvz`~~ → **now `fguzpscguulkfctipeih`** (own project, not Lovable Cloud), `supabase/config.toml` updated to match.
+- ~~zero `cron.schedule` calls exist~~ → **`send-reminders-hourly` cron job is now active** on the new project.
+- ~~No SPA rewrite config~~ → **`vercel.json` added.**
+- ~~`lovable-tagger` still wired in~~ → **removed** from `vite.config.ts`/`package.json`; consolidated to a single lockfile (`package-lock.json`).
+- ~~.env handling~~ → untracked, fail-fast env validation added to `src/integrations/supabase/client.ts`.
+- UCI `@uci.edu` restriction is **still client-side only** (no DB-level trigger on `auth.users`) — this one item has **not** been done yet (Phase C below).
 
 ---
 
-## Why the site is still up, and why that won't last
+## Why the site is still up, and why that won't last (mostly resolved — one open item)
 
-You correctly observed that `zothub.app` is currently resolving and serving the live app even though the Lovable subscription has ended. This was worth verifying rather than assuming — here's what's actually true, based on Lovable's own documentation:
+*Kept for context on why Phase 0 was originally treated as urgent.*
 
-- **Custom domains are an explicitly paid-plan-only feature on Lovable.** Their own FAQ states that when a subscription lapses and the account drops to the free tier, the custom domain "reverts to pointing elsewhere (or expires)," and explicitly warns not to rely on continued custom-domain functionality without an active paid plan.
-- **The site currently working is most likely a temporary grace-period or cancellation-timing artifact** (e.g., access typically continues until the end of the current billing period even after cancellation), **not a stable free-tier guarantee.** It could stop resolving/serving with no further warning.
-- **Good news on domain control:** domains purchased "through Lovable" are actually registered with **Name.com** (Lovable facilitates the purchase; Name.com is the ICANN-accredited registrar of record) and connected to Lovable's hosting via **Entri**, an automated DNS-setup tool. This means **the domain registration itself is very likely independent of the Lovable subscription** — it's a separate Name.com service relationship. You are almost certainly *not* locked out of DNS control by the lapsed Lovable subscription; you just need to log into the Name.com account tied to the original purchase (check the email used at signup for a Name.com confirmation/welcome email) and update the DNS records there once Vercel is ready.
+You correctly observed that `zothub.app` was resolving and serving the live app even though the Lovable subscription had ended, and asked whether that meant migration wasn't urgent. It was urgent: Lovable's own docs state custom-domain hosting on a lapsed subscription isn't something to rely on, and the uptime at the time was very likely a grace-period artifact, not a stable state.
 
-**Action for you before Phase 0:** log into your Lovable account and check Settings → Billing/Subscription for the actual state (fully downgraded already vs. still inside a paid period with an end date) — this tells you how much runway you actually have. Separately, confirm you can log into Name.com (or whatever shows as the registrar in a WHOIS lookup for `zothub.app`) — that account, not Lovable, is where DNS gets re-pointed in Phase 0 step 6.
+**Hosting/backend migration itself is done** — Vercel now hosts the app and its environment variables point at the new, self-owned Supabase project (`fguzpscguulkfctipeih`), replacing Lovable Cloud entirely.
 
-**Bottom line:** it's fine that you haven't migrated yet — nothing is broken today — but this should not be deprioritized or treated as "not urgent because it's still working." Treat the current uptime as borrowed time, not a stable state, and complete Phase 0 promptly.
+**⚠️ DNS itself is a separate, still-open item.** Every migration step so far has explicitly excluded touching DNS (by your own instruction each time). That means it's **not confirmed** whether `zothub.app`'s DNS records currently point at Vercel or still point at Lovable's old hosting. Until DNS is re-pointed, the public `zothub.app` domain may still be serving the old Lovable-hosted app (or nothing, if that's already been decommissioned) — the new Vercel-hosted app is likely only reachable today via Vercel's own assigned domain (e.g. `*.vercel.app`), not yet at `zothub.app`. The domain registration itself is held at **Name.com** (not Lovable), so DNS control isn't blocked by the lapsed subscription whenever you're ready to do this step.
 
 ---
 
@@ -55,29 +55,26 @@ Operationally, this means: you (or another designated admin) must **check `/admi
 
 ## Remaining work (the real punch list)
 
-### A. Deploy migration (do first — Phase 0)
-1. Add `vercel.json` SPA rewrite (`{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`) — without this, refreshing any deep link (e.g. `/club/dashboard`) 404s on Vercel.
-2. Remove `lovable-tagger` from `vite.config.ts` (plugin import + usage) and `package.json`.
-3. Pick one package manager (recommend **npm**, matches `package-lock.json` and is Vercel's default); delete `bun.lock` and `bun.lockb`.
-4. Verify `.env` is untracked (`git rm --cached .env` if not); add a fail-fast check in `src/integrations/supabase/client.ts` if `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are missing.
-5. Create Vercel project: framework preset Vite, build `npm run build`, output `dist`. Set env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) for Production + Preview.
-6. Log into the **Name.com** account tied to the domain purchase (not Lovable) and point `zothub.app` (+ `www`) DNS at Vercel; remove the old Lovable/Entri-created A and TXT records once cut over.
-7. `supabase login` → `supabase link --project-ref alpmifyiwwrkolixwyvz` → `supabase db pull` to catch any drift → `supabase migration list` to confirm local == remote **before pushing any new migration**.
-8. Supabase Auth → URL config: Site URL `https://zothub.app`, redirect allow-list `https://zothub.app/**` + Vercel preview pattern. Update Google OAuth redirect URIs in Google Cloud Console.
+### A. Deploy migration (do first — Phase 0) — items below individually marked
 
-**Verification:** `npm run build` succeeds locally; `https://zothub.app` loads; hard-refresh on `/opportunities` does not 404; Google + email/password login both land on the new domain; `supabase migration list` shows no drift.
+1. ✅ Add `vercel.json` SPA rewrite — done.
+2. ✅ Remove `lovable-tagger` from `vite.config.ts`/`package.json` — done.
+3. ✅ Pick one package manager (npm) — done.
+4. ✅ Untrack `.env`, add fail-fast env validation — done.
+5. ✅ Vercel project created, deployed, env vars set and now pointing at the new Supabase project — done.
+6. ❌ **Point `zothub.app` DNS at Vercel via Name.com — NOT done.** Every migration step so far has explicitly excluded DNS changes. This is the one remaining item in Phase A. Until this happens, the live `zothub.app` domain isn't necessarily serving the new Vercel-hosted app yet (see note above).
+7. 🟡 **Unconfirmed:** `supabase link`/`db pull`/`migration list` drift check was never completed this way — the schema was instead restored via `pg_restore` from a Lovable Cloud backup (see `MIGRATION.md`), not via `supabase db push` from tracked migrations. `supabase/config.toml` now points at the new project ref, but whether `supabase migration list` shows local==remote hasn't been explicitly verified. Low urgency unless/until new migrations need to be pushed via the CLI.
+8. 🟡 **Assumed working, not explicitly re-verified:** Supabase Auth URL config (Site URL, redirect allow-list) and Google OAuth redirect URIs on the new project. OTP signup + login both work, which implies the basics are fine, but the exact settings haven't been checked against this checklist.
 
-### B. Wire the scheduler — the only functionally-missing piece (Phase 1)
-The Edge Functions and DB functions exist; they're just never invoked automatically.
-1. Create a migration adding `cron.schedule(...)` jobs:
-   - **Event reminders / deadline reminders**: hourly job that calls `send-reminders` via `net.http_post`, passing a service-role/shared-secret bearer header.
-   - **Auto-archive**: nightly job (`0 8 * * *`, ≈ midnight PT) that runs `archive_past_events()` directly in SQL (no HTTP needed — it's already a Postgres function).
-   - Store the function URL + bearer token via Supabase Vault or a small `private.app_config` table so it isn't hardcoded into the migration.
-2. Read `supabase/functions/send-reminders/index.ts` closely first — confirm what window/query it uses (e.g. "next 24h") and what idempotency check it does (does it check `notifications` or similar before sending, to avoid duplicate emails on every hourly run?). If idempotency is missing, add a guard before wiring the cron job, or you will spam users hourly.
-3. Confirm Resend sending domain (`zothub.app`) has DKIM/SPF/DMARC verified, and that `RESEND_API_KEY` is set via `supabase secrets set` (not committed anywhere).
-4. Optional but recommended: point Supabase Auth's custom SMTP at Resend so password-reset/magic-link emails aren't rate-limited by the default shared SMTP.
+**Verification:** `npm run build` succeeds locally (confirmed). `https://zothub.app` loading the new app depends on item 6 (DNS) — not yet verifiable. Hard-refresh deep-link behavior, Google login redirect, and `supabase migration list` drift — not yet explicitly re-verified.
 
-**Verification:** `select * from cron.job;` shows the jobs. Manually invoke `send-reminders` twice in a row — second call sends nothing new (idempotent). Create a test event ~24h out with an RSVP, wait for/trigger the cron, confirm exactly one email arrives with a working "Add to Calendar" link.
+### B. Wire the scheduler — ✅ DONE
+
+`send-reminders-hourly` cron job is confirmed active on the new project (`fguzpscguulkfctipeih`). `RESEND_API_KEY` is set, the Resend sending domain (`zothub.app`) is verified, and the sender address is `notifications@zothub.app` (updated from the shared `resend.dev` sandbox domain).
+
+**Not yet confirmed:** whether the idempotency check (`reminder_logs` table lookups before each send — this logic already exists in `send-reminders/index.ts`) has been observed working in practice under the live cron job, and whether Supabase Auth's custom SMTP was pointed at Resend (optional item, for password-reset/magic-link emails specifically — separate from the `send-reminders` function).
+
+**Verification still worth doing:** `select * from cron.job;` on the new project to confirm the schedule details; create a test event ~24h out with an RSVP and confirm exactly one reminder email arrives (not zero, not duplicates).
 
 ### C. DB-level UCI enforcement (Phase 1)
 Client-side `@uci.edu` checks exist but are bypassable via direct API calls. Add a `BEFORE INSERT` trigger on `auth.users` (SECURITY DEFINER) rejecting non-`@uci.edu` emails (allow-list exceptions if needed for staff/partners). Keep the client-side check for fast UX feedback; DB is the source of truth.
@@ -98,6 +95,17 @@ The build compiles cleanly and the known blocker bug is fixed, but a full runtim
 - **Admin flow:** approve/reject a waitlist entry, confirm the user is notified and unblocked/blocked accordingly.
 
 **Verification:** each flow completes without console errors, without stuck loading states, and with the correct data ending up in the DB (spot-check via Supabase table editor).
+
+---
+
+## Known Issues (found during migration QA — not yet fixed)
+
+Two bugs surfaced while smoke-testing the migrated app. Full detail (symptom, likely cause, desired behavior) is in `MIGRATION.md`'s Known Issues section — summarized here since they're now part of the engineering punch list:
+
+1. **Student profile setup validation error.** Saving a profile with only a name filled in fails with the raw error `"Expected array, received null. Expected array, received null."` — `interests`/`skills` are being treated as required arrays in the validation schema. Fix: make them optional, normalize `null` → `[]`, and surface human-readable validation errors instead of raw schema error text.
+2. **Orphaned/deleted user still shows as a club team member.** Root cause: `auth.users` was intentionally not migrated from Lovable Cloud (see `MIGRATION.md` Step 3), so `club_team_members` rows referencing the old Lovable Cloud auth UUID for a deleted test account now point at an ID with no corresponding row in the new project's `auth.users`. Fix: orphan-cleanup SQL pass, better `ON DELETE` cascade behavior on these FKs, and/or UI-level filtering to hide references to nonexistent users.
+
+Neither blocks the migration itself — both are product/data-quality cleanup items for a future pass.
 
 ---
 
@@ -132,11 +140,11 @@ No large schema changes remain — the bulk of the schema work (RSVP forms/appro
 
 ## Highest-risk items & ordering
 
-1. **The site could go down without further notice at any time** — Lovable's own docs say custom-domain hosting on a lapsed subscription is not something to rely on; the current uptime is very likely a grace-period artifact. Don't deprioritize Phase 0 because "it's still working."
-2. **Migration drift check (Phase 0.7) before any new migration** — still the top engineering risk, unchanged from before.
-3. **Confirm `send-reminders` has idempotency before wiring the cron job** (Phase B.2) — an hourly job with no dedup will spam users.
-4. **DNS + Resend domain verification has propagation lag** — start early, in parallel with other Phase 0 work. Note DNS is managed via **Name.com** (the actual registrar), not Lovable directly.
-5. **Confirm the access-model decision (gated vs. open)** before doing the QA pass — it changes what "done" looks like for the new-user flow.
+1. ~~The site could go down without further notice at any time~~ — **RESOLVED.** Hosting has moved to Vercel and the backend to a self-owned Supabase project; no longer dependent on the lapsed Lovable subscription.
+2. **DNS for `zothub.app` still needs to be re-pointed at Vercel via Name.com** — the one open item from Phase A. Resend's domain verification for `zothub.app` succeeded independently (via DNS records already added), so this is specifically about the *app-serving* DNS record(s), not email.
+3. **`auth.users` was never migrated** — a deliberate decision, but it means any old `public.*` row referencing a Lovable Cloud auth UUID is now an orphaned reference. Known to affect `club_team_members` (see Known Issues); other tables with user-ID foreign keys should be checked too before assuming this is fully contained.
+4. **Migration drift check** (Phase A.7) was never done in the originally-planned form (`supabase link`/`db pull`/`migration list`) — schema instead came from a `pg_restore` of a Lovable Cloud backup. Low urgency unless/until new migrations need to be pushed via the CLI, but worth reconciling before doing so.
+5. **Confirm the access-model decision (gated vs. open)** before doing the full QA pass — it changes what "done" looks like for the new-user flow.
 6. Everything else is additive/low-risk cleanup, not architecture change.
 
 ---
