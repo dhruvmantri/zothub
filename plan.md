@@ -25,11 +25,13 @@ These were found during migration QA and are not yet fixed. They should be the f
 | 2 | Orphaned/deleted user (old migrated "Dhruv Mantri" account) still appears as a club team member | `club_team_members` and any other table with a `user_id`-style FK into `auth.users` | Rows referencing an `auth.users` ID that no longer exists should be removed or hidden from UI, not displayed as if the user were real/active. Root cause: `auth.users` was intentionally never migrated from Lovable Cloud (fresh OTP signups were used instead), so old `public.*` rows referencing the old Lovable Cloud auth UUIDs are now orphaned references. |
 
 ### Infrastructure / Hardening Gaps
+> **Update 2026-07-09 (post-cutover):** items 3–5 below are the *original* migration-QA notes, kept for history. Current status: **#3 DNS cutover is DONE** (`zothub.app` + `www.zothub.app` live on Vercel with valid TLS); **#4 is DONE** (`BEFORE INSERT` trigger on `auth.users`, Phase 2); **#5 is DONE** (Phase 1 audit + Phase 2/2b/2c). Two infra-cleanup items remain open and are tracked below: **Supabase migration-history repair** (audit-only section near the end of this doc — not yet executed) and **Lovable decommission** (kept as fallback a few days; deliberate future manual step).
+
 | # | Item | Status |
 |---|---|---|
-| 3 | `zothub.app` DNS cutover to Vercel | **Not done.** Every migration step deliberately excluded DNS changes. Domain registration is held at Name.com (not Lovable), so this isn't blocked — just not yet executed. |
-| 4 | DB-level `@uci.edu` enforcement | **Not done.** Signup restriction is currently client-side only, bypassable via a direct API call. Needs a `BEFORE INSERT` trigger on `auth.users`. |
-| 5 | Full end-to-end QA | **Partially done.** Core auth/waitlist flows confirmed working; everything else (applications, events/RSVP, messaging, notifications, storage, email content, mobile) has not been systematically walked. **This is exactly what Phase 1 below exists to complete.** |
+| 3 | `zothub.app` DNS cutover to Vercel | ✅ **Done (2026-07-09).** `zothub.app` and `www.zothub.app` verified serving on Vercel with valid TLS; Resend DNS records preserved. |
+| 4 | DB-level `@uci.edu` enforcement | ✅ **Done (Phase 2).** `BEFORE INSERT` trigger on `auth.users` (`enforce_uci_email()`), plus server-side check in `send-otp`. |
+| 5 | Full end-to-end QA | ✅ **Done.** Phase 1 audit + Phase 2/2b/2c live-QA fix passes; production smoke test on `zothub.app` passed. |
 
 ---
 
@@ -110,11 +112,11 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Suspected location:** `club_team_members` table; `src/hooks/useClubTeam.ts`.
 - **Status:** Found (not yet fixed). Root cause confirmed this pass.
 
-#### [Infra] `zothub.app` DNS not cut over to Vercel — *Known Item #3*
-- **Severity:** High (blocks launch; also breaks all outbound email links today)
-- **Detail:** Still not done. Newly observed impact: **every** email (`send-email` + `send-reminders`) hardcodes `https://zothub.app/...` links, the privacy contact is `privacy@zothub.app`, and OAuth/site redirects target `zothub.app`. Until DNS + the `zothub.app` mail/domain are live and serving, all email CTAs, unsubscribe links, and the support address are dead. (Sending domain is already verified with Resend per migration notes, but the site/links resolve nowhere yet.)
+#### [Infra] `zothub.app` DNS cut over to Vercel — *Known Item #3*
+- **Severity:** High (was blocking launch)
+- **Detail:** The `https://zothub.app/...` links hardcoded in `send-email`/`send-reminders`, the `privacy@zothub.app` contact, and the OAuth/site redirects now all resolve, because DNS is live. Sending domain remains verified with Resend and its DNS records were preserved through the cutover.
 - **Suspected location:** DNS at Name.com / Vercel; hardcoded URLs in `supabase/functions/send-email`, `supabase/functions/send-reminders`, `src/pages/Privacy.tsx`.
-- **Status:** Found (not yet fixed). Execution item, no further audit needed.
+- **Status:** ✅ **Done (2026-07-09).** `zothub.app` + `www.zothub.app` serving on Vercel with valid TLS; production smoke test passed.
 
 #### [Infra/Security] DB-level `@uci.edu` enforcement missing — *Known Item #4*
 - **Severity:** High (security / access-control)
@@ -421,12 +423,80 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
 
 ---
 
+## Supabase migration-history repair (audit — 2026-07-09, NOT executed)
+
+**Status: audit only. No `migration repair`, no `db push`, no reset has been run. Every command below is for review; the ones that touch production are called out and still need explicit approval before anyone runs them.**
+
+### Why this is needed
+Production was built by `pg_restore` (from the Lovable Cloud dump), not by the Supabase CLI, so the CLI's history table `supabase_migrations.schema_migrations` does **not** record the migrations whose objects already exist in the DB. As a result `npx supabase db push --linked` tries to replay every local migration from the beginning and fails on the first already-existing object (observed: `type "public.user_role" already exists`, from the very first migration `20251223013805`). The five 2026-07-09 migrations were then applied **manually as raw SQL**, so they aren't recorded either. Net: the schema is correct and current, but the history table is empty/incomplete, so the CLI's model of "what's applied" is wrong.
+
+### 1. Which local migrations exist (read-only, already verified here)
+34 files in `supabase/migrations/`, all named `<version>_<slug>.sql` where `<version>` is the 14-digit timestamp prefix. Two groups:
+
+- **29 historical** (present in prod via `pg_restore`), versions:
+  `20251223013805 20251223083053 20251223083142 20251223083413 20251223160240 20251223162738 20251223165608 20251223170908 20251223171146 20251224045225 20251224050002 20251224051950 20260109015222 20260115000013 20260121001924 20260121010020 20260121010216 20260121030837 20260121031036 20260121031500 20260121064141 20260121064212 20260121205820 20260121210558 20260121235823 20260128210854 20260128213952 20260128214112 20260129012302`
+- **5 new** (applied manually as SQL on 2026-07-09), versions:
+  `20260709000100 20260709000200 20260709000300 20260709000400 20260709000500`
+
+### 2. Which versions production currently thinks are applied (needs a read-only prod check — run this first, it only reads)
+Either of these is non-destructive and read-only; run one and share the output before doing any repair:
+
+```bash
+# Compare local files against the remote history table (safest, CLI-native):
+npx supabase migration list --linked
+```
+```sql
+-- Or query the history table directly (read-only):
+select version, name from supabase_migrations.schema_migrations order by version;
+```
+Expected given the pg_restore history: the remote/history column is **empty or near-empty**, while all 34 show as local. (If some rows *are* already present, only repair the ones that are missing — see risks.)
+
+### 3. Which migrations are effectively already present in production
+**All 34.** The 29 historical ones came in with the `pg_restore` schema; the 5 new ones were applied manually. So the correct end state is "all 34 marked applied," and **nothing should actually execute against the schema** during repair — repair only writes rows into the history table, it does not run migration SQL.
+
+### 4. Exact non-destructive repair commands (DO NOT RUN until approved)
+`supabase migration repair --status applied <version…>` inserts history rows **without executing** the migration bodies. Mark all 34 applied (safe to include ones already recorded — repair is idempotent per version):
+
+```bash
+# One command, all 34 versions (CLI accepts multiple versions):
+npx supabase migration repair --status applied \
+  20251223013805 20251223083053 20251223083142 20251223083413 20251223160240 \
+  20251223162738 20251223165608 20251223170908 20251223171146 20251224045225 \
+  20251224050002 20251224051950 20260109015222 20260115000013 20260121001924 \
+  20260121010020 20260121010216 20260121030837 20260121031036 20260121031500 \
+  20260121064141 20260121064212 20260121205820 20260121210558 20260121235823 \
+  20260128210854 20260128213952 20260128214112 20260129012302 \
+  20260709000100 20260709000200 20260709000300 20260709000400 20260709000500
+```
+(If the installed CLI rejects multiple versions in one call, run it once per version — same effect. `--status applied` is the only status used here; never `reverted`.)
+
+### 5. Risks & uncertainties (review before running)
+- **Confirm the manual SQL actually ran** before marking `20260709000100–000500` applied, otherwise the history would claim an un-applied migration is done. Quick read-only checks (all should return a row / true):
+  - `000100`: `select 1 from pg_constraint where conname='rsvps_status_check' and pg_get_constraintdef(oid) ilike '%pending%';`
+  - `000200`: `select 1 from pg_policies where tablename='user_roles' and policyname='Admins can insert user roles';`
+  - `000300`: `select 1 from pg_trigger where tgname='enforce_uci_email_on_signup';`
+  - `000400`: `select 1 from pg_trigger where tgname='on_rsvp_status_change';`
+  - `000500`: `select 1 from pg_policies where tablename='rsvps' and policyname='Clubs can update RSVPs for their events';`
+- **Version-format match:** repair must use the exact 14-digit filename prefixes (above). A mismatch would leave a migration looking "pending" and get replayed on the next push. Verify with `migration list` afterward.
+- **Partial existing history:** if step 2 shows some versions already recorded, including them again is harmless (idempotent), but do not *remove* anything. No `--status reverted`, ever, in this repair.
+- **This does not change schema/data** — `repair` only writes to `supabase_migrations.schema_migrations`. It is non-destructive by design. Still, take a routine backup/snapshot beforehand as standard practice.
+- **Uncertainty:** the exact contents of the remote history table can't be inspected from this environment (no prod access here); step 2 must be run by someone with linked CLI access, and its output may slightly change the version list in step 4 (only ever shrinking it).
+
+### 6. How to verify afterward that `db push` only applies new work
+```bash
+npx supabase migration list --linked   # every one of the 34 should show applied both locally and remotely
+npx supabase db push --linked --dry-run # should report NOTHING to apply
+```
+After that, a future genuinely-new migration file is the only thing `db push` will apply. If `db push` ever again tries to replay an old version, the repair for that version didn't take (re-check the version string).
+
+---
+
 ## Anticipated Next Phases (provisional — to be finalized from Phase 1's findings)
 
 These are *not* fully scoped yet on purpose — real priorities should come from what Phase 1 actually finds, not be guessed in advance.
 
 - **Phase 2: Prioritized bug-fix pass.** Work the Bug Inventory in severity order. Blockers first, then High, then Medium/Low as time allows.
-- **Phase 3: Close remaining infra/hardening gaps.** DNS cutover, DB-level `@uci.edu` trigger — these are well-understood and don't need further audit, just execution, whenever prioritized.
+- **Phase 3: Close remaining infra/hardening gaps.** ✅ DNS cutover done (2026-07-09); ✅ DB-level `@uci.edu` trigger done (Phase 2). Remaining infra cleanup: **Supabase migration-history repair** (audit drafted below, not executed) and **Lovable decommission** (kept as fallback a few days).
 - **Phase 4 (deferred, post-launch): Comprehensive UI/UX revision.** Design-system consistency audit, full empty/loading/error-state pass beyond bug-level fixes, mobile-specific optimization, accessibility audit, possible visual refresh. Deliberately scoped for after real usage data exists — not planned blind.
 - **Access model transition:** once the beta has run for a while and core flows are validated, consider relaxing from gated waitlist-approval to open `@uci.edu` signup (keep OTP + the DB-level domain trigger as the sole gates).
 
@@ -442,4 +512,4 @@ These are *not* fully scoped yet on purpose — real priorities should come from
 
 ## Suggested execution order
 
-**Phase 1** (Full Product Audit & Bug Inventory — do this first, in full, before fixing anything) → **Phase 2** (prioritized fixes from the inventory) → **Phase 3** (DNS + DB-trigger hardening, can run in parallel with Phase 2) → **Phase 4** (UI/UX revision, deferred, post-launch, separately scoped).
+**Phase 1** (Full Product Audit & Bug Inventory — ✅ done) → **Phase 2 / 2b / 2c** (prioritized fixes from the inventory + live-QA rounds — ✅ done) → **Phase 3** (DNS ✅ + DB-trigger hardening ✅ done; migration-history repair + Lovable decommission still open) → **Phase 4** (UI/UX revision, deferred, post-launch, separately scoped).

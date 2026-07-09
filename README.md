@@ -176,7 +176,7 @@ The application uses the following main tables:
 
 ## Deployment
 
-ZotHub is deployed on **Vercel**, backed by a self-owned Supabase project (this repo previously ran on Lovable Cloud/Lovable hosting during initial development — that migration is complete; see \`docs/archive/MIGRATION.md\` for history).
+ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.app) (and [www.zothub.app](https://www.zothub.app)) — DNS cutover to Vercel is complete with valid TLS — backed by a self-owned Supabase project. This repo previously ran on Lovable Cloud/Lovable hosting during initial development; that migration is complete and **Lovable no longer serves production traffic** (it is being kept untouched for a short fallback window; decommission is a future manual step). See \`docs/archive/MIGRATION.md\` for history and \`plan.md\` for current engineering status, including the open Supabase migration-history repair item.
 
 1. Build the project:
    \`\`\`bash
