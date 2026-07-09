@@ -198,10 +198,15 @@ export function RSVPReview() {
   const updateRsvpStatus = async (rsvpId: string, newStatus: string) => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase
+      // .select() so we can confirm a row actually changed. Without this an
+      // RLS-filtered update returns success with 0 rows, which previously made
+      // the UI show "confirmed" and send the approval email while the DB never
+      // changed (row reverted to pending on refresh).
+      const { data: updated, error } = await supabase
         .from("rsvps")
         .update({ status: newStatus })
-        .eq("id", rsvpId);
+        .eq("id", rsvpId)
+        .select("id");
 
       if (error) {
         console.error("Error updating RSVP:", error);
@@ -209,9 +214,15 @@ export function RSVPReview() {
         return;
       }
 
+      if (!updated || updated.length === 0) {
+        console.error("RSVP update affected 0 rows (RLS or missing row):", rsvpId);
+        toast.error("Could not update this RSVP. Please refresh and try again.");
+        return;
+      }
+
       // Find the RSVP to get details for email
       const rsvp = rsvps.find(r => r.id === rsvpId);
-      
+
       // Send email notification for status change (only for confirm/cancel)
       if (rsvp && (newStatus === "confirmed" || newStatus === "cancelled")) {
         sendRSVPStatusEmail(
@@ -253,11 +264,12 @@ export function RSVPReview() {
     setIsBulkUpdating(true);
     try {
       const idsToUpdate = Array.from(selectedIds);
-      
-      const { error } = await supabase
+
+      const { data: updated, error } = await supabase
         .from("rsvps")
         .update({ status: newStatus })
-        .in("id", idsToUpdate);
+        .in("id", idsToUpdate)
+        .select("id");
 
       if (error) {
         console.error("Error updating RSVPs:", error);
@@ -265,9 +277,16 @@ export function RSVPReview() {
         return;
       }
 
-      // Send email notifications for each updated RSVP (only for confirm/cancel)
+      const updatedIds = new Set((updated || []).map((r) => r.id));
+      if (updatedIds.size === 0) {
+        console.error("Bulk RSVP update affected 0 rows (RLS or missing rows)");
+        toast.error("Could not update these RSVPs. Please refresh and try again.");
+        return;
+      }
+
+      // Send email notifications only for the RSVPs that actually changed
       if (newStatus === "confirmed" || newStatus === "cancelled") {
-        const rsvpsToNotify = rsvps.filter(r => selectedIds.has(r.id));
+        const rsvpsToNotify = rsvps.filter(r => updatedIds.has(r.id));
         for (const rsvp of rsvpsToNotify) {
           sendRSVPStatusEmail(
             rsvp.id,
@@ -282,14 +301,14 @@ export function RSVPReview() {
         }
       }
 
-      // Update local state
-      setRsvps(prev => 
-        prev.map(rsvp => 
-          selectedIds.has(rsvp.id) ? { ...rsvp, status: newStatus } : rsvp
+      // Update local state (only rows that actually changed)
+      setRsvps(prev =>
+        prev.map(rsvp =>
+          updatedIds.has(rsvp.id) ? { ...rsvp, status: newStatus } : rsvp
         )
       );
 
-      toast.success(`${selectedIds.size} RSVPs ${newStatus}`);
+      toast.success(`${updatedIds.size} RSVPs ${newStatus}`);
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Error:", err);

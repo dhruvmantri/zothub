@@ -33,6 +33,7 @@ export default function ClubHome() {
   const location = useLocation();
   const navigate = useNavigate();
   const [applicationCount, setApplicationCount] = useState(0);
+  const [rsvpCount, setRsvpCount] = useState(0);
   
   const {
     clubId,
@@ -84,6 +85,15 @@ export default function ClubHome() {
           .eq("status", "pending");
 
         setApplicationCount(count || 0);
+
+        // Pending RSVPs awaiting the club's approval (mirrors applications)
+        const { count: pendingRsvps } = await supabase
+          .from("rsvps")
+          .select("*, events!inner(club_id)", { count: "exact", head: true })
+          .eq("events.club_id", clubProfile.id)
+          .eq("status", "pending");
+
+        setRsvpCount(pendingRsvps || 0);
       }
     };
 
@@ -302,7 +312,7 @@ export default function ClubHome() {
 
   return (
     <ClubLayout>
-      <DashboardTabs applicationCount={applicationCount} />
+      <DashboardTabs applicationCount={applicationCount} rsvpCount={rsvpCount} />
       {renderContent()}
     </ClubLayout>
   );

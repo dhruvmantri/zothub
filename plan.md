@@ -303,6 +303,49 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 
 ---
 
+## Live QA follow-up findings (2026-07-09, Phase 2c)
+
+Second live-QA round after the Phase 2b deploy (`main` @ `1760fbe`). Key discovery: several "still broken" symptoms are two different classes — a **stale frontend deploy** and a **real RLS gap** — so they needed opposite responses.
+
+#### [Deploy] "Resume shows raw URL" (#1) and "View My Applications 404" (#2) — and likely the Unread freeze (#3) — are a stale frontend, not code
+- **Severity:** High (release/deploy process)
+- **Finding:** The Phase 2b fixes for these are present in `main` at the deployed commit `1760fbe` **and in the production build** — verified by grepping `dist/assets/*.js` after `vite build`: it contains `Resume (optional)` (the FileUpload UI) and `/student/dashboard` (the corrected route), and there is only **one** `ApplicationForm` / one "View My Applications" in the tree (no duplicate component). The Unread-filter freeze (#3) shares the exact root cause fixed in 2b (the `useTeamInvitations` render loop — `useCallback` + effect guard are in current source): the loop froze *all* interactions on the page (Preferences and the Unread tab alike), and it only manifested with ≥1 notification.
+- **Why the live site still showed the old behavior:** the browser/CDN was serving the pre-2b bundle. No service worker exists, and `vercel.json` is a plain SPA rewrite with no long-cache override, so this is a deployment-propagation / hard-refresh issue rather than a source bug.
+- **Action:** no code change (the fixes are already correct and built). **Redeploy this branch on Vercel and confirm the production alias points at the new deployment, then hard-refresh** (see deployment steps in the PR/commit). If it still reproduces on a cache-busted load, capture the served JS filename hash to compare against the built asset.
+- **Status:** **Verified fixed in source + build (Phase 2b).** Live requires a fresh deploy / cache bust.
+
+#### [Events/RLS] Club RSVP approval never persisted — missing club UPDATE policy on `rsvps` (#4, #6)
+- **Severity:** Blocker (event approval workflow)
+- **Repro / live DB evidence:** after a club "approved" an RSVP the row stayed `pending`/`cancelled`; no `confirmed` row ever appeared, yet the club UI showed success and the student got the approval email.
+- **Root cause (confirmed against schema + reproduced under RLS):** `rsvps` had UPDATE policies for the **owning student only** ("Students can update their own RSVPs"). There was **no policy letting a club update RSVPs for events it owns** — unlike `applications`, which *does* have "Clubs can update applications to their opportunities" (which is why application accept/reject worked and RSVP approval didn't). So the club's `update(status='confirmed')` was RLS-filtered to **0 rows with no error**; supabase-js reported success, the UI optimistically flipped to confirmed and the email fired, but the DB never changed (reverted to pending on refresh) and the approval-notification trigger never ran. This is the "RLS blocks update while UI shows optimistic success" class.
+- **Fix (Phase 2c):**
+  - Migration `20260709000500` adds `"Clubs can update RSVPs for their events"` (UPDATE, USING + WITH CHECK = event owned by the club). Idempotent (`DROP POLICY IF EXISTS` first).
+  - `RSVPReview.updateRsvpStatus` / `handleBulkStatusUpdate` now `.select()` the updated rows and **only** send email / show success / update local state when a row actually changed; a 0-row result shows a real error ("Could not update this RSVP…"). This prevents false success even if a policy is ever missing again.
+  - Verified under simulated RLS: the owning club's approval now persists `pending → confirmed` and fires the `rsvp_update` notification; a **different** club still updates 0 rows (RLS intact).
+- **Suspected location:** `rsvps` UPDATE policy (added); `src/components/dashboard/RSVPReview.tsx`.
+- **Status:** **Fixed (Phase 2c).**
+
+#### [Events] Re-RSVP after cancellation failed with "Failed to process RSVP" (#7)
+- **Severity:** High
+- **Root cause:** RSVP rows are never deleted (cancel = `status='cancelled'`), and both RSVP entry points did a plain `insert`, so re-RSVPing hit the `(event_id, student_id)` unique key.
+- **Fix (Phase 2c):** `useEventRSVP.handleRSVP` and `RSVPForm.handleSubmit` now `upsert(..., { onConflict: "event_id,student_id" })`, reusing the existing row and flipping it back to `pending`/`confirmed` (per `requires_approval`). Verified under student RLS: cancel → re-RSVP leaves exactly one row, no unique violation.
+- **Suspected location:** `src/hooks/useEventRSVP.ts`, `src/components/RSVPForm.tsx`.
+- **Status:** **Fixed (Phase 2c).**
+
+#### [Events] Club dashboard had no pending-RSVP badge (#5)
+- **Severity:** Medium
+- **Fix (Phase 2c):** `ClubHome` now also fetches the pending-RSVP count (rsvps `pending` for the club's events) and passes it to `DashboardTabs`, which renders a badge on the **RSVPs** tab exactly like the Applications tab. Same query shape as the existing application count.
+- **Suspected location:** `src/pages/club/ClubHome.tsx`, `src/components/club/DashboardTabs.tsx`.
+- **Status:** **Fixed (Phase 2c).**
+
+#### Systemic sweep (Phase 2c)
+- **Other silent-update-by-RLS risks:** audited every club-side `.update()`. `applications` already has the club UPDATE policy (works). `waitlist` has admin policies (Phase 2). `club_team_members`, `opportunities`, `events` updates are gated by owner policies. The only missing one was `rsvps` (now fixed). RSVP approval is the one spot hardened with a post-update `.select()` check; the applications path was left as-is because its policy exists and it works.
+- **Dead nav targets:** swept all `navigate("…")` / `to="…"` string targets against the routes in `App.tsx` — none dead (the two Phase 2b offenders `/dashboard` and `/club/home` are gone; only `/signup?role=…` query-param variants remain, which are valid).
+- **Status vocabulary:** the app consistently uses `rsvps.status ∈ {pending, confirmed, cancelled}` end-to-end (CHECK extended in Phase 2). Approve→`confirmed`, decline→`cancelled`. No approved/declined drift in `rsvps`. (PRD prose still says "approved/declined" — cosmetic doc mismatch, not code.)
+- **Remaining (still open, unchanged severity):** `rsvps` is not in the realtime publication, so a student's already-open event page won't flip to "registered" until they refresh (the in-app notification now prompts them); club-decline of an RSVP still isn't notified in-app (indistinguishable from self-cancel at the row level).
+
+---
+
 ## Live QA follow-up findings (2026-07-09, Phase 2b)
 
 Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this pass; #7–#8 documented only.

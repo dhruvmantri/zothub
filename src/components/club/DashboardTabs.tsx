@@ -23,10 +23,17 @@ const tabs = [
 
 interface DashboardTabsProps {
   applicationCount?: number;
+  rsvpCount?: number;
 }
 
-export function DashboardTabs({ applicationCount = 0 }: DashboardTabsProps) {
+export function DashboardTabs({ applicationCount = 0, rsvpCount = 0 }: DashboardTabsProps) {
   const location = useLocation();
+
+  const badgeCount = (href: string): number => {
+    if (href === "/club/dashboard/applications") return applicationCount;
+    if (href === "/club/dashboard/rsvps") return rsvpCount;
+    return 0;
+  };
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -54,14 +61,14 @@ export function DashboardTabs({ applicationCount = 0 }: DashboardTabsProps) {
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                {tab.href === "/club/dashboard/applications" && applicationCount > 0 && (
+                {badgeCount(tab.href) > 0 && (
                   <span className={cn(
                     "ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full",
-                    active 
-                      ? "bg-primary-foreground/20 text-primary-foreground" 
+                    active
+                      ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-destructive text-destructive-foreground"
                   )}>
-                    {applicationCount > 9 ? "9+" : applicationCount}
+                    {badgeCount(tab.href) > 9 ? "9+" : badgeCount(tab.href)}
                   </span>
                 )}
               </Link>
