@@ -146,16 +146,11 @@ const handler = async (req: Request): Promise<Response> => {
     const userId = authData.user.id;
     const role = verification.role;
 
-    // Create user role
-    const { error: roleError } = await supabase.from("user_roles").insert({
-      user_id: userId,
-      role: role,
-    });
-
-    if (roleError) {
-      console.error("Error creating user role:", roleError);
-      // Continue anyway - role can be added later
-    }
+    // NOTE: the user_roles row is intentionally NOT created here. Roles are
+    // granted by the admin at waitlist approval (useWaitlist.approveUser).
+    // Inserting the role at signup caused approval to fail with a duplicate
+    // key and trapped pending users in a redirect loop (see plan.md Bug
+    // Inventory, Phase 2 fixes).
 
     // Add to waitlist
     const { error: waitlistError } = await supabase.from("waitlist").insert({

@@ -12,8 +12,18 @@ export default function Waitlist() {
   const { user, signOut, role } = useAuth();
   const { status, entry, isLoading, refetch } = useWaitlist();
 
-  // If user has a role (approved), redirect to dashboard
+  // Redirect based on role — but never while the waitlist entry is still
+  // pending. A pending user who somehow holds a role (e.g. legacy accounts
+  // created before roles were moved to approval time) would otherwise bounce
+  // between the dashboard and this page in an infinite loop, because
+  // ProtectedRoute sends pending users back here.
   useEffect(() => {
+    if (isLoading) return;
+    if (status === "rejected") {
+      navigate("/waitlist-rejected", { replace: true });
+      return;
+    }
+    if (status === "pending") return;
     if (role === "student") {
       navigate("/student/dashboard", { replace: true });
     } else if (role === "club") {
@@ -21,14 +31,7 @@ export default function Waitlist() {
     } else if (role === "admin") {
       navigate("/admin", { replace: true });
     }
-  }, [role, navigate]);
-
-  // If status becomes approved, role should update and trigger redirect above
-  useEffect(() => {
-    if (status === "rejected") {
-      navigate("/waitlist-rejected", { replace: true });
-    }
-  }, [status, navigate]);
+  }, [role, status, isLoading, navigate]);
 
   // Poll for status updates every 30 seconds
   useEffect(() => {

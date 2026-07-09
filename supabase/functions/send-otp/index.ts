@@ -53,6 +53,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Server-side UCI email enforcement (the DB has an authoritative
+    // BEFORE INSERT trigger on auth.users; this check just fails fast with a
+    // friendly message before an OTP is ever sent). Allowlist must stay in
+    // sync with ADMIN_ALLOWED_EMAILS in src/lib/constants.ts and the
+    // enforce_uci_email() trigger.
+    const normalizedEmail = email.toLowerCase();
+    const ADMIN_ALLOWED_EMAILS = ["zothub.uci@gmail.com"];
+    if (
+      !normalizedEmail.endsWith("@uci.edu") &&
+      !ADMIN_ALLOWED_EMAILS.includes(normalizedEmail)
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Please use your @uci.edu email address to sign up." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
