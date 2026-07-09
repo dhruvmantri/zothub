@@ -96,20 +96,22 @@ export function RSVPForm({
 
       const status = event.requires_approval ? "pending" : "confirmed";
 
-      const { error } = await supabase.from("rsvps").insert({
-        event_id: event.id,
-        student_id: studentProfileId,
-        answers: formattedAnswers,
-        status,
-      });
+      // Upsert, not insert: a previously-cancelled RSVP leaves a row behind, so
+      // a plain insert would hit the (event_id, student_id) unique key. Upsert
+      // reuses the existing row (re-RSVP after cancel) and records the answers.
+      const { error } = await supabase.from("rsvps").upsert(
+        {
+          event_id: event.id,
+          student_id: studentProfileId,
+          answers: formattedAnswers,
+          status,
+        },
+        { onConflict: "event_id,student_id" }
+      );
 
       if (error) {
         console.error("Error submitting RSVP:", error);
-        if (error.code === "23505") {
-          toast.error("You have already RSVP'd to this event");
-        } else {
-          toast.error("Failed to submit RSVP");
-        }
+        toast.error("Failed to submit RSVP");
         return;
       }
 

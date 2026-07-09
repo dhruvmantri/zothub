@@ -134,14 +134,22 @@ export function useEventRSVP(
 
         const status = event.requires_approval ? "pending" : "confirmed";
 
+        // Upsert, not insert: a previously-cancelled RSVP leaves a row behind
+        // (rows are never deleted), so a plain insert hits the
+        // (event_id, student_id) unique key and fails with "Failed to process
+        // RSVP". Upserting reuses the existing row and flips it back to
+        // pending/confirmed.
         const { error } = await supabase
           .from("rsvps")
-          .insert({ 
-            event_id: eventId, 
-            student_id: studentProfileId,
-            status,
-            answers: [],
-          });
+          .upsert(
+            {
+              event_id: eventId,
+              student_id: studentProfileId,
+              status,
+              answers: [],
+            },
+            { onConflict: "event_id,student_id" }
+          );
 
         if (error) throw error;
         setHasRSVP(true);
