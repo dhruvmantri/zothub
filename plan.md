@@ -86,6 +86,8 @@ Every workflow above has been walked and has either a "no issues found" note or 
 
 **Phase 2 update (2026-07-09):** the Blocker/High fix pass is done. All three Blockers, the resume-access High, Known Bug #1, and Known Item #4 (DB-level `@uci.edu` trigger) are **fixed** — each entry below carries a "Fixed in Phase 2" status with what changed. Three new migrations were added (`20260709000100` RSVP status CHECK, `20260709000200` role-on-approval policies + legacy-role cleanup, `20260709000300` UCI email trigger); every fix was re-verified against a local Postgres with all migrations applied (RLS simulated per-role with `SET ROLE authenticated` + JWT claims), plus `tsc`/`vite build` clean and a headless-browser smoke of the touched pages. Deployment requires `supabase db push` + redeploying the `send-otp`/`verify-otp` edge functions — see the Phase 2 deployment notes in the commit/PR description. Out of scope by instruction: DNS cutover, Lovable decommission, UI redesign, and all Medium/Low entries (still open below).
 
+**Live QA follow-up (2026-07-09, Phase 2b):** after deploying the Blocker/High pass, live testing surfaced 8 more issues. Six code/data bugs (#1–#6) are **fixed**; #7–#8 are operational items **documented** (no destructive action taken). Details in the "Live QA follow-up findings" section below. Two more migrations were added (`20260709000400` RSVP-approval notification; the club/student profile-save and notifications fixes are code-only). Verified against a local Postgres with **all migrations applied cleanly**, the RSVP-approval trigger and profile upsert exercised directly in SQL, the notifications-freeze root cause reproduced and fixed in a faithful headless-browser harness, and `tsc`/`vite build` clean.
+
 **How this audit was run:** the app was built (`vite build` ✓), typechecked (`tsc --noEmit` ✓) and linted; a local Postgres 16 was stood up and **all 29 migrations applied cleanly** so schema/RLS/constraints/triggers could be queried directly; the dev server was driven with headless Chromium across every major route at desktop (1280px) and phone (375px) widths to capture console output, render, and responsive behavior. Several findings were **reproduced against the live schema** (noted per entry). Direct calls to the hosted Supabase project and `zothub.app` are blocked by this environment's egress policy, so authenticated end-to-end flows and live `cron.job`/data-dependent behavior were verified by reading source + schema + triggers rather than clicking through a logged-in session; those entries are marked "verification limited to code/schema."
 
 Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (core workflow broken or data/security impact), **Medium** (feature degraded or partially broken), **Low** (polish / minor / non-blocking).
@@ -298,6 +300,81 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Cron reminders:** `send-reminders` idempotency is solid (`reminder_logs` + `unique_reminder` unique constraint) and it correctly respects `notification_preferences`; deadline reminders correctly key off bookmarks.
 - **Storage RLS design:** `club-assets` intentionally public; `student-resumes` private with correct owner + applied-club SELECT policies (the only resume problem is the client using the wrong URL type — see the High finding above).
 - **Migrations:** all 29 apply cleanly against a fresh Postgres 16; `build`, `tsc --noEmit` pass.
+
+---
+
+## Live QA follow-up findings (2026-07-09, Phase 2b)
+
+Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this pass; #7–#8 documented only.
+
+#### [Club] Club profile setup reports success but saves nothing
+- **Severity:** High
+- **Repro:** As a club, complete profile setup → success toast, but `select * from club_profiles where user_id=…` returns 0 rows; opportunity creation then fails with "Club profile not found."
+- **Root cause:** `ClubProfileSetup.handleSave` used `.update().eq("user_id", …)`. If the row was missing (e.g. removed during orphan cleanup, or never created), update affects 0 rows and returns no error → false "success."
+- **Fix (Phase 2b):** switched to `.upsert(..., { onConflict: "user_id" })` including the required `user_id`/`email` columns, and the error toast now shows the real message. The same latent bug in `StudentProfileSetup.handleSave` was fixed identically. Verified in SQL: upsert creates the row when missing, updates when present, always leaving exactly one row.
+- **Suspected location:** `src/pages/ClubProfileSetup.tsx`, `src/pages/StudentProfileSetup.tsx`.
+- **Status:** **Fixed (Phase 2b).**
+
+#### [Applications] Post-submit "View Application" button 404s
+- **Severity:** Medium
+- **Repro:** Submit an application → success modal → "View My Applications" → 404.
+- **Root cause:** `OpportunityDetail` success modal navigated to `/dashboard`, which is not a route.
+- **Fix (Phase 2b):** routes to `/student/dashboard` (the existing application-tracking page). Confirmed no other `/dashboard` references remain.
+- **Suspected location:** `src/pages/OpportunityDetail.tsx`.
+- **Status:** **Fixed (Phase 2b).**
+
+#### [Applications] Resume shown as a raw URL on the application form
+- **Severity:** Medium
+- **Repro:** With a resume on the student profile, the application form prefilled it into a raw "Resume URL" text box.
+- **Desired/Fix (Phase 2b):** replaced the raw URL input with the shared `FileUpload` (variant `file`, `student-resumes` bucket) which renders the resume as an attached file with a "View file" link (opens via the signed-URL helper from Phase 2) and a Replace/Remove control. It defaults to the profile resume with helper text ("Using the resume from your profile…") and lets the student upload/replace a resume for that specific application. The chosen URL is stored on the application as before.
+- **Suspected location:** `src/components/ApplicationForm.tsx`.
+- **Status:** **Fixed (Phase 2b).**
+
+#### [Notifications] Preferences dialog freezes the page
+- **Severity:** High
+- **Repro:** On the notifications page (student or club), clicking Preferences appeared to do nothing and then all buttons stopped working until refresh — but only when the user actually had notifications.
+- **Root cause (reproduced):** `useTeamInvitations` returned **new function references every render** (no `useCallback`). The Notifications effect that fetches invitation statuses depended on `checkInvitationStatus` and called `setInvitationStatuses(...)`, so with `notifications.length > 0` it re-ran every render → set state → re-render → an update loop that starved the UI (the dialog opened behind the thrash / clicks were dropped). With zero notifications the effect early-returned, which is why it only showed up with real data. Confirmed in a faithful headless-browser harness: empty notifications = clean; one notification = clicks blocked; after the fix = clean.
+- **Fix (Phase 2b):** wrapped `useTeamInvitations`'s returned functions in `useCallback` (stable refs), and hardened the Notifications effect to run only when there are actual team-invitation notifications (with a cancellation guard). Re-verified: dialog opens/closes, `pointer-events` restored, other controls keep working, no loop.
+- **Suspected location:** `src/hooks/useTeamInvitations.ts`, `src/pages/Notifications.tsx`.
+- **Status:** **Fixed (Phase 2b).**
+
+#### [Navigation] Club notifications page loses role-aware navigation
+- **Severity:** Medium
+- **Repro:** As a club on `/notifications`, the ZotHub logo linked to `/club/home` (404), and the normal club nav/back options were gone.
+- **Root cause:** the page rendered a bespoke club header (with a wrong `/club/home` link) instead of the shared club layout.
+- **Fix (Phase 2b):** the page now renders inside `RoleBasedLayout`, so clubs get `ClubLayout` and students get `StudentLayout` — full role-aware top/bottom nav, correct logo/dashboard links, on both roles. Removed the bespoke header and the dead `/club/home` link.
+- **Suspected location:** `src/pages/Notifications.tsx`.
+- **Status:** **Fixed (Phase 2b).**
+
+#### [Events] RSVP approval not reflected to the student in-app
+- **Severity:** Medium
+- **Repro:** Club approves a pending RSVP; student gets the approval email, but the site didn't show the RSVP as approved and no in-app notification appeared.
+- **Root cause:** there was no in-app notification on RSVP approval (unlike application status changes, which have a trigger). `EventDetail` *does* render "You're registered!" once the RSVP is `confirmed`, so the UI reflects it on next load — the missing piece was the notification + a prompt to refresh. (The live auto-refresh gap is the separate, still-open Medium: `rsvps` isn't in the realtime publication.)
+- **Fix (Phase 2b):** migration `20260709000400` adds an `AFTER UPDATE` trigger on `rsvps` that, on a `pending → confirmed` transition (only a club approval can do that), inserts an in-app notification for the student, respecting the `event_reminders` preference. Declines (`pending → cancelled`) are intentionally not notified because they're indistinguishable at the row level from a student self-cancel — noted as a follow-up. Verified in SQL: approval creates exactly one `rsvp_update` notification; a self-cancel creates none.
+- **Suspected location:** `rsvps` trigger (added); `src/components/dashboard/RSVPReview.tsx` (already emails); `src/pages/EventDetail.tsx` (already renders confirmed state).
+- **Status:** **Fixed (Phase 2b).** Follow-up (open, Low): notify on club decline; add `rsvps` to the realtime publication so the student's open page updates without a manual refresh.
+
+#### [Infra] Supabase migration history is unreconciled with the restored prod DB
+- **Severity:** High (operational — blocks safe `db push`)
+- **Detail:** Production schema was created by `pg_restore`, not by the CLI, so `supabase_migrations.schema_migrations` doesn't record the historical migrations. `npx supabase db push --linked` therefore tries to replay all old migrations. During this QA the three Phase 2 SQL files were applied manually instead.
+- **Safest next step (documented, not executed here):** backfill the migration-history table so the CLI treats the pre-existing migrations as already applied, then push only the new ones. Non-destructive, no reset:
+  1. `npx supabase migration list --linked` to see local-vs-remote state.
+  2. For every migration **already present in prod** (everything up to and including `20260129012302…`), mark it applied without running it:
+     `npx supabase migration repair --status applied <version>` (repeat per version, or pass several). `<version>` is the numeric timestamp prefix of each file.
+     Equivalent manual form if preferred: `INSERT INTO supabase_migrations.schema_migrations (version) VALUES ('20251223013805'), … ON CONFLICT DO NOTHING;`
+  3. Confirm the only migrations still "pending" are the Phase 2 / 2b ones (`20260709000100`–`20260709000400`), then `npx supabase db push --linked` to apply just those.
+  - **Do not** run `supabase db reset` against prod (destructive). If `000100`–`000300` were already applied manually, also `migration repair --status applied` those three so push doesn't re-run them; only `20260709000400` should remain to apply.
+- **Status:** Documented (operational runbook above). No repo change.
+
+#### [Data] Orphaned migrated users were manually cleaned
+- **Severity:** Medium (data hygiene)
+- **Detail:** `student_profiles`, `club_profiles`, and `club_team_members` had `user_id` values not present in `auth.users` (old Lovable Cloud UUIDs — `auth.users` was never migrated). These orphan rows were deleted manually during QA. Root cause confirmed earlier: `club_team_members.user_id` has **no FK** (and the profile tables' orphans predate the fresh `auth.users`).
+- **Future-safe guidance (documented, not executed — avoids touching active data):**
+  - **Detection query (safe, read-only)** to re-check before any cleanup:
+    `SELECT 'club_team_members' t, ctm.id FROM club_team_members ctm LEFT JOIN auth.users u ON ctm.user_id = u.id WHERE ctm.user_id IS NOT NULL AND u.id IS NULL;` (repeat for `student_profiles`, `club_profiles`).
+  - **Preferred hardening (a future migration, only after confirming the detection query returns 0 rows so it can't fail on live orphans):** add `FK (user_id) REFERENCES auth.users(id) ON DELETE SET NULL` (or `CASCADE` for profiles) to `club_team_members` so future auth deletions can't leave orphans. Not added now because adding an FK while any orphan row exists would error, and the intent is explicitly to not risk active data.
+  - **Alternative / complementary:** UI-level filtering — the team roster (`useClubTeam`) could hide rows whose `user_id` is set but no longer resolves. Deferred (Medium, still open in the audit list).
+- **Status:** Documented. No destructive change made.
 
 ---
 

@@ -146,24 +146,34 @@ export default function ClubProfileSetup() {
     try {
       const validatedData = validationResult.data;
 
+      // Upsert (not update): if the row is missing — e.g. it was never created
+      // or was removed during orphan cleanup — a plain update would affect 0
+      // rows and silently "succeed" without persisting anything, then break
+      // opportunity creation ("Club profile not found"). Upserting on user_id
+      // creates the row when absent and updates it when present. email/user_id
+      // are required (NOT NULL) columns on insert.
       const { error } = await supabase
         .from("club_profiles")
-        .update({
-          club_name: validatedData.club_name,
-          description: validatedData.description,
-          category: validatedData.category,
-          logo_url: validatedData.logo_url,
-          banner_url: validatedData.banner_url,
-          website_url: validatedData.website_url,
-          linkedin_url: validatedData.linkedin_url,
-          instagram_url: validatedData.instagram_url,
-          discord_url: validatedData.discord_url,
-        })
-        .eq("user_id", user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email ?? "",
+            club_name: validatedData.club_name,
+            description: validatedData.description,
+            category: validatedData.category,
+            logo_url: validatedData.logo_url,
+            banner_url: validatedData.banner_url,
+            website_url: validatedData.website_url,
+            linkedin_url: validatedData.linkedin_url,
+            instagram_url: validatedData.instagram_url,
+            discord_url: validatedData.discord_url,
+          },
+          { onConflict: "user_id" }
+        );
 
       if (error) {
-        console.error("Error updating profile:", error);
-        toast.error("Failed to save profile");
+        console.error("Error saving club profile:", error);
+        toast.error(`Failed to save profile: ${error.message}`);
         return;
       }
 

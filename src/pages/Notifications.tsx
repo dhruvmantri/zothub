@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
   Bell,
@@ -36,7 +35,7 @@ import { useTeamInvitations } from "@/hooks/useTeamInvitations";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { StudentLayout } from "@/components/student/StudentLayout";
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import {
   NotificationPreferencesDialog,
   TeamInvitationCard,
@@ -73,29 +72,35 @@ export default function Notifications() {
   const [processingInvitations, setProcessingInvitations] = useState<Set<string>>(new Set());
   const [invitationStatuses, setInvitationStatuses] = useState<Record<string, InvitationStatus>>({});
 
-  // Fetch invitation statuses for team_invitation notifications
+  // Fetch invitation statuses for team_invitation notifications.
+  // Only runs when there are actual team invitations — previously this ran on
+  // every notification set (and re-ran on every render because
+  // checkInvitationStatus was an unstable reference), setting state each time
+  // and thrashing the page into an update loop that blocked the UI.
   useEffect(() => {
-    const fetchStatuses = async () => {
-      const teamInvitations = notifications.filter(
-        (n) => n.type === "team_invitation" && n.related_id
-      );
+    const teamInvitations = notifications.filter(
+      (n) => n.type === "team_invitation" && n.related_id
+    );
 
+    if (teamInvitations.length === 0) return;
+
+    let cancelled = false;
+    const fetchStatuses = async () => {
       const statuses: Record<string, InvitationStatus> = {};
       await Promise.all(
         teamInvitations.map(async (n) => {
           if (n.related_id) {
-            const status = await checkInvitationStatus(n.related_id);
-            statuses[n.id] = status;
+            statuses[n.id] = await checkInvitationStatus(n.related_id);
           }
         })
       );
-
-      setInvitationStatuses(statuses);
+      if (!cancelled) setInvitationStatuses(statuses);
     };
 
-    if (notifications.length > 0) {
-      fetchStatuses();
-    }
+    fetchStatuses();
+    return () => {
+      cancelled = true;
+    };
   }, [notifications, checkInvitationStatus]);
 
   const getNotificationIcon = (type: string) => {
@@ -370,28 +375,15 @@ export default function Notifications() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <RoleBasedLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </RoleBasedLayout>
     );
   }
 
-  // Render with appropriate layout based on user role
-  if (role === "student") {
-    return <StudentLayout>{content}</StudentLayout>;
-  }
-
-  // For clubs, show a simple header
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
-          <Link to="/club/home" className="font-display font-bold text-xl text-primary">
-            ZotHub
-          </Link>
-        </div>
-      </header>
-      {content}
-    </div>
-  );
+  // Render inside the role-aware layout so both students and clubs keep their
+  // normal top/bottom navigation (logo, dashboard, back) on this page.
+  return <RoleBasedLayout>{content}</RoleBasedLayout>;
 }
