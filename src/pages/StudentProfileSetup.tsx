@@ -127,25 +127,33 @@ export default function StudentProfileSetup() {
     try {
       const validatedData = validationResult.data;
 
+      // Upsert (not update): a plain update affects 0 rows and silently
+      // "succeeds" if the profile row is missing (e.g. removed during orphan
+      // cleanup). Upserting on user_id creates it when absent. user_id/email
+      // are required (NOT NULL) on insert.
       const { error } = await supabase
         .from("student_profiles")
-        .update({
-          full_name: validatedData.full_name,
-          major: validatedData.major,
-          year: validatedData.year,
-          graduation_date: validatedData.graduation_date,
-          skills: validatedData.skills,
-          interests: validatedData.interests,
-          resume_url: validatedData.resume_url,
-          linkedin_url: validatedData.linkedin_url,
-          github_url: validatedData.github_url,
-          portfolio_url: validatedData.portfolio_url,
-        })
-        .eq("user_id", user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email ?? "",
+            full_name: validatedData.full_name,
+            major: validatedData.major,
+            year: validatedData.year,
+            graduation_date: validatedData.graduation_date,
+            skills: validatedData.skills,
+            interests: validatedData.interests,
+            resume_url: validatedData.resume_url,
+            linkedin_url: validatedData.linkedin_url,
+            github_url: validatedData.github_url,
+            portfolio_url: validatedData.portfolio_url,
+          },
+          { onConflict: "user_id" }
+        );
 
       if (error) {
-        console.error("Error updating profile:", error);
-        toast.error("Failed to save profile");
+        console.error("Error saving student profile:", error);
+        toast.error(`Failed to save profile: ${error.message}`);
         return;
       }
 

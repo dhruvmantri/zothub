@@ -544,7 +544,7 @@ export default function OpportunityDetail() {
         description={`Your application to ${opportunity?.title} has been successfully submitted. You'll be notified when ${opportunity?.club_profiles?.club_name} reviews your application.`}
         primaryAction={{
           label: "View My Applications",
-          onClick: () => navigate("/dashboard"),
+          onClick: () => navigate("/student/dashboard"),
         }}
         secondaryAction={{
           label: "Browse More Opportunities",

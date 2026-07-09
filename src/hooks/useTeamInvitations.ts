@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ export function useTeamInvitations() {
   /**
    * Fetches team member info for a given notification's related_id
    */
-  const getTeamMemberInfo = async (teamMemberId: string): Promise<TeamMemberInfo | null> => {
+  const getTeamMemberInfo = useCallback(async (teamMemberId: string): Promise<TeamMemberInfo | null> => {
     const { data, error } = await supabase
       .from("club_team_members")
       .select(`
@@ -39,13 +39,13 @@ export function useTeamInvitations() {
     }
 
     return data as TeamMemberInfo | null;
-  };
+  }, []);
 
   /**
    * Accept a team invitation - updates team member status to 'active'
    * and updates the notification message to reflect acceptance
    */
-  const acceptInvitation = async (
+  const acceptInvitation = useCallback(async (
     teamMemberId: string,
     notificationId: string
   ): Promise<boolean> => {
@@ -113,13 +113,13 @@ export function useTeamInvitations() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [user, getTeamMemberInfo]);
 
   /**
    * Decline a team invitation - updates team member status to 'declined'
    * and updates the notification message to reflect decline
    */
-  const declineInvitation = async (
+  const declineInvitation = useCallback(async (
     teamMemberId: string,
     notificationId: string
   ): Promise<boolean> => {
@@ -186,13 +186,13 @@ export function useTeamInvitations() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [user, getTeamMemberInfo]);
 
   /**
    * Check the status of a team invitation by its ID
    * Returns the current status or null if not found
    */
-  const checkInvitationStatus = async (
+  const checkInvitationStatus = useCallback(async (
     teamMemberId: string
   ): Promise<"pending" | "active" | "declined" | null> => {
     const { data, error } = await supabase
@@ -206,7 +206,7 @@ export function useTeamInvitations() {
     }
 
     return data.status as "pending" | "active" | "declined";
-  };
+  }, []);
 
   return {
     acceptInvitation,

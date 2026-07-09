@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -17,6 +16,7 @@ import { Loader2, Send, FileText } from "lucide-react";
 import { applicationSchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { sendApplicationConfirmation } from "@/lib/emailService";
 import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
+import { FileUpload } from "@/components/ui/file-upload";
 import type { FormQuestion, OpportunityForForm } from "@/types";
 
 interface ApplicationFormProps {
@@ -36,6 +36,7 @@ export function ApplicationForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [resumeUrl, setResumeUrl] = useState("");
+  const [resumeFromProfile, setResumeFromProfile] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [studentEmail, setStudentEmail] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -57,6 +58,7 @@ export function ApplicationForm({
         setStudentName(data.full_name || "");
         if (data.resume_url && !resumeUrl) {
           setResumeUrl(data.resume_url);
+          setResumeFromProfile(true);
         }
       }
     };
@@ -178,18 +180,31 @@ export function ApplicationForm({
 
         <ScrollArea className="max-h-[60vh]">
           <div className="px-6 py-6 space-y-6">
-            {/* Resume URL (optional) */}
+            {/* Resume (optional) — defaults to the resume on the student's
+                profile, shown as an attached file; can be replaced per-application */}
             <div className="space-y-2">
-              <Label htmlFor="resumeUrl">Resume URL (optional)</Label>
-              <Input
-                id="resumeUrl"
-                type="url"
-                placeholder="https://drive.google.com/your-resume"
-                value={resumeUrl}
-                onChange={(e) => setResumeUrl(e.target.value)}
+              <Label>Resume (optional)</Label>
+              <FileUpload
+                bucket="student-resumes"
+                folder={user?.id || ""}
+                accept=".pdf,.doc,.docx"
+                maxSizeMB={10}
+                currentUrl={resumeUrl}
+                onUploadComplete={(url) => {
+                  setResumeUrl(url);
+                  setResumeFromProfile(false);
+                }}
+                onRemove={() => {
+                  setResumeUrl("");
+                  setResumeFromProfile(false);
+                }}
+                variant="file"
+                placeholder="Upload your resume (PDF, DOC, DOCX)"
               />
               <p className="text-xs text-muted-foreground">
-                Share a link to your resume (Google Drive, Dropbox, etc.)
+                {resumeUrl && resumeFromProfile
+                  ? "Using the resume from your profile. Upload a different file to replace it for this application."
+                  : "Attach a resume for this application (optional)."}
               </p>
             </div>
 
