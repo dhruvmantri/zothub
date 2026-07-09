@@ -35,10 +35,14 @@ const futureDateSchema = z.string().refine(
   { message: "Date must be in the future" }
 );
 
-// Array of strings with length validation
+// Array of strings with length validation.
+// Must accept null as well as undefined: callers (e.g. StudentProfileSetup)
+// normalize empty lists to null, and a bare `.optional()` array rejects null
+// with the raw "Expected array, received null" Zod error.
 const stringArraySchema = (maxItems: number, maxItemLength: number) =>
   z.array(z.string().max(maxItemLength, { message: `Each item must be less than ${maxItemLength} characters` }))
     .max(maxItems, { message: `Maximum ${maxItems} items allowed` })
+    .nullable()
     .optional()
     .transform(val => val && val.length > 0 ? val : null);
 

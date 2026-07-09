@@ -84,6 +84,8 @@ Every workflow above has been walked and has either a "no issues found" note or 
 
 **Status:** Phase 1 audit complete (2026-07-08). Every workflow listed in Phase 1 has been walked and recorded below.
 
+**Phase 2 update (2026-07-09):** the Blocker/High fix pass is done. All three Blockers, the resume-access High, Known Bug #1, and Known Item #4 (DB-level `@uci.edu` trigger) are **fixed** — each entry below carries a "Fixed in Phase 2" status with what changed. Three new migrations were added (`20260709000100` RSVP status CHECK, `20260709000200` role-on-approval policies + legacy-role cleanup, `20260709000300` UCI email trigger); every fix was re-verified against a local Postgres with all migrations applied (RLS simulated per-role with `SET ROLE authenticated` + JWT claims), plus `tsc`/`vite build` clean and a headless-browser smoke of the touched pages. Deployment requires `supabase db push` + redeploying the `send-otp`/`verify-otp` edge functions — see the Phase 2 deployment notes in the commit/PR description. Out of scope by instruction: DNS cutover, Lovable decommission, UI redesign, and all Medium/Low entries (still open below).
+
 **How this audit was run:** the app was built (`vite build` ✓), typechecked (`tsc --noEmit` ✓) and linted; a local Postgres 16 was stood up and **all 29 migrations applied cleanly** so schema/RLS/constraints/triggers could be queried directly; the dev server was driven with headless Chromium across every major route at desktop (1280px) and phone (375px) widths to capture console output, render, and responsive behavior. Several findings were **reproduced against the live schema** (noted per entry). Direct calls to the hosted Supabase project and `zothub.app` are blocked by this environment's egress policy, so authenticated end-to-end flows and live `cron.job`/data-dependent behavior were verified by reading source + schema + triggers rather than clicking through a logged-in session; those entries are marked "verification limited to code/schema."
 
 Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (core workflow broken or data/security impact), **Medium** (feature degraded or partially broken), **Low** (polish / minor / non-blocking).
@@ -96,7 +98,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Skills/interests are optional; a name-only save should succeed. Instead it fails, and the error is raw schema text, not human-readable.
 - **Root cause (CONFIRMED, reproduced in isolation):** `stringArraySchema` in `src/lib/validation.ts:39-43` is `.optional()` but **not `.nullable()`**. `StudentProfileSetup.handleSave` (`src/pages/StudentProfileSetup.tsx:112-113`) passes `null` for empty skills/interests. Zod rejects `null` for an `.optional()` (undefined-only) array → two `"Expected array, received null"` messages, which `formatValidationErrors` joins with `. `. Empty arrays (`[]`) and `undefined` both pass; only `null` fails. Fix: add `.nullable()` to `stringArraySchema` (and/or normalize `null`→`[]`); also stop surfacing raw Zod messages to users.
 - **Suspected location:** `src/lib/validation.ts` (`stringArraySchema`), `src/pages/StudentProfileSetup.tsx`.
-- **Status:** Found (not yet fixed). Confirmed + root-caused this pass.
+- **Status:** **Fixed in Phase 2 (2026-07-09).** Added `.nullable()` to `stringArraySchema`; `null`, `undefined`, `[]`, and populated arrays all verified passing by executing the real compiled schema. The transform still normalizes empties to `null` for storage.
 
 #### [Data] Orphaned migrated user still shows as a club team member — *Known Bug #2*
 - **Severity:** Medium
@@ -116,7 +118,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Severity:** High (security / access-control)
 - **Detail:** Confirmed client-side only. Newly observed: the **edge functions do not enforce it either** — `send-otp`/`verify-otp` validate `role` but never check the email domain (`supabase/functions/send-otp/index.ts:41-54`, `verify-otp/index.ts:33-38`). So a direct API/edge-function call with any email bypasses the `@uci.edu` gate entirely and creates a real account. Needs a `BEFORE INSERT` trigger on `auth.users` (plus ideally a server-side check in `send-otp`).
 - **Suspected location:** `auth.users` trigger (to add); `supabase/functions/send-otp`, `verify-otp`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in Phase 2 (2026-07-09).** Migration `20260709000300` adds a `BEFORE INSERT` trigger on `auth.users` (`enforce_uci_email()`): case-insensitive `@uci.edu` check with `zothub.uci@gmail.com` allowlisted (keep in sync with `ADMIN_ALLOWED_EMAILS`), INSERT-only so existing users are untouched. `send-otp` now also rejects non-UCI emails up front with a friendly message. Verified locally: non-UCI and lookalike domains rejected; mixed-case UCI and the allowlisted admin address accepted.
 
 #### [Process] Full end-to-end QA — *Known Item #5*
 - **Severity:** n/a (process)
@@ -130,7 +132,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Approving a pending user should grant their role and flip the waitlist to `approved`. Instead it errors and does nothing.
 - **Root cause (CONFIRMED, reproduced against live schema):** `verify-otp` already inserts the `user_roles` row at signup time (`supabase/functions/verify-otp/index.ts:150-153`). `useWaitlistAdmin.approveUser` then does a plain `INSERT` into `user_roles` again (`src/hooks/useWaitlist.ts:106-113`), violating `user_roles_user_id_role_key` (unique on `user_id, role`). `approveUser` returns early on that error, so the waitlist status is never updated. Verified by replaying the exact insert sequence in Postgres → `duplicate key value violates unique constraint "user_roles_user_id_role_key"`. (Google-OAuth signups don't hit this because `handleNewOAuthUser` does *not* insert `user_roles` — which is why migration QA, likely done via OAuth/admin, didn't catch it.) Fix: don't insert the role at OTP signup, or make approval idempotent (`upsert`/`ON CONFLICT DO NOTHING`), and only gate access by waitlist status.
 - **Suspected location:** `supabase/functions/verify-otp/index.ts`, `src/hooks/useWaitlist.ts` (`approveUser`).
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in Phase 2 (2026-07-09).** Roles are now granted only at approval: `verify-otp` no longer inserts `user_roles`; `approveUser` uses an idempotent upsert (`ON CONFLICT DO NOTHING`) so re-approval and legacy accounts can't hit the unique key. Migration `20260709000200` adds the missing admin INSERT (and SELECT) RLS policies on `user_roles` — testing revealed UI approval was *also* blocked by the insert-own-role-only policy — and deletes roles prematurely granted to users whose waitlist entry is pending/rejected (matching-role rows only; admin roles untouched). Approve path verified locally under a simulated `authenticated` admin session.
 
 #### [Auth] Pending email/OTP users hit an infinite redirect loop instead of the waitlist screen
 - **Severity:** Blocker
@@ -138,7 +140,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** A pending user should rest on `/waitlist`. Instead they loop.
 - **Root cause (code/schema analysis; shares the root cause of the entry above):** Because `verify-otp` sets `role` at signup, a pending OTP user has a non-null `role`. `ProtectedRoute` sees `waitlistStatus === "pending"` and redirects dashboards → `/waitlist` (`src/components/ProtectedRoute.tsx:29-31`). But `Waitlist.tsx:16-24` assumes a pending user has **no** role and, seeing `role === "student"|"club"`, immediately `navigate()`s back to the dashboard → loop. The waitlist page's "role only gets set on approval" assumption holds for the OAuth path but is false for the OTP path. Fix is the same as above: don't assign the role until approval. (Browser repro of the loop needs a live authenticated session, which egress policy blocked here; derived from routing logic + confirmed premature-role insert.)
 - **Suspected location:** `src/pages/Waitlist.tsx`, `src/components/ProtectedRoute.tsx`, `supabase/functions/verify-otp/index.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in Phase 2 (2026-07-09).** Root cause removed (no role while pending — see entry above, incl. legacy-role cleanup migration), and `Waitlist.tsx` now only redirects to a dashboard when the waitlist entry is not pending, so even an account that somehow holds a role while pending stays on the waitlist screen instead of looping.
 
 #### [Events] Approval-required RSVP always fails (status CHECK constraint)
 - **Severity:** Blocker (for any event with "requires approval")
@@ -146,7 +148,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** An approval-required RSVP should be stored as `pending` and appear in `RSVPReview` for the club to approve/decline. Instead the insert is rejected.
 - **Root cause (CONFIRMED, reproduced against live schema):** `RSVPForm` inserts `status = "pending"` when `requires_approval` is set (`src/components/RSVPForm.tsx:97-104`), but `rsvps_status_check` only allows `('confirmed','cancelled')` (verified with `\d rsvps`; inserting `'pending'` → `violates check constraint "rsvps_status_check"`). The error code is `23514`, which `RSVPForm` doesn't special-case, so it shows the generic failure. `RSVPReview` is built for a pending→confirm/decline queue (`pending` filter, counts), but no pending row can ever exist. Fix: extend the CHECK to include `pending` (and align approve/decline to `approved`/`declined` or keep `confirmed`/`cancelled`) — reconcile the app statuses with the DB constraint. Note PRD describes RSVP statuses as pending/approved/declined, but the DB only has confirmed/cancelled.
 - **Suspected location:** `rsvps_status_check` (migration); `src/components/RSVPForm.tsx`; `src/components/dashboard/RSVPReview.tsx`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in Phase 2 (2026-07-09).** Migration `20260709000100` extends the CHECK to `('pending','confirmed','cancelled')` — the smallest change that matches what the app already does (RSVPForm/useEventRSVP insert `pending`; RSVPReview approves to `confirmed` / declines to `cancelled`; capacity and reminders already count only `confirmed`). Verified locally: pending insert succeeds and approve-to-confirmed works. The PRD's `approved`/`declined` naming was *not* adopted to keep the change minimal.
 
 #### [Storage] Uploaded resumes are unreadable (public URL for a private bucket)
 - **Severity:** High
@@ -154,7 +156,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** The club should be able to open the applicant's resume (RLS explicitly allows applied-to clubs). Instead the stored URL never resolves.
 - **Root cause (CONFIRMED via schema + code):** `student-resumes` is a **private** bucket (`public=false`, verified). `FileUpload` calls `supabase.storage.from(bucket).getPublicUrl(...)` for *all* buckets (`src/components/ui/file-upload.tsx:72-76`) and stores that public URL. A public URL does not resolve for a private bucket; a **signed URL** (`createSignedUrl`) is required — and `createSignedUrl` appears nowhere in the codebase. Consumers open it directly: `ApplicationReview.tsx:559,662` do `window.open(resume_url)`, and the CSV export writes the same dead URL (`:330`). The RLS itself is correct (owner + applied-club SELECT). Note: the application form's separate "Resume URL" free-text field (external Drive/Dropbox links) still works — only the in-app upload path is broken. Fix: generate signed URLs for `student-resumes` at view time.
 - **Suspected location:** `src/components/ui/file-upload.tsx`, `src/components/dashboard/ApplicationReview.tsx`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in Phase 2 (2026-07-09).** New `src/lib/storageUrls.ts` parses stored storage URLs and mints a 1-hour signed URL for private buckets (`createSignedUrl`, which still runs through storage RLS — clubs can only sign resumes of students who applied to them); external links and public buckets pass through unchanged. Wired into both resume buttons in `ApplicationReview` and the "View file" link in `FileUpload` (tab opened synchronously to survive popup blockers). Stored URLs/data are unchanged, so no backfill is needed. Known remainder (unchanged severity): the CSV export still contains the raw non-signed URL — documented, deliberately out of minimal scope.
 
 #### [Applications] Clubs are not notified of new applications (no in-app notification, no email)
 - **Severity:** Medium
@@ -211,6 +213,14 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Root cause (code/schema):** No capacity check in `RSVPForm` (`src/components/RSVPForm.tsx:99-104`) and no DB trigger/constraint on `rsvps` enforcing count < `events.capacity`. Fix: enforce in a `BEFORE INSERT` trigger (authoritative) in addition to the client gate.
 - **Suspected location:** `src/components/RSVPForm.tsx`; `rsvps` (add trigger).
 - **Status:** Found (not yet fixed).
+
+#### [Events] Re-RSVP after cancelling fails with a duplicate-key error *(found during Phase 2 verification)*
+- **Severity:** Medium
+- **Repro:** RSVP to an event, cancel the RSVP (row becomes `status='cancelled'` — rows are never deleted), then click RSVP again → insert hits `rsvps_event_id_student_id_key` → "Failed to process RSVP".
+- **Expected vs. actual:** Cancelling should free the slot *and* allow re-registering. The unique `(event_id, student_id)` key blocks the second insert.
+- **Root cause:** `useEventRSVP.handleRSVP` and `RSVPForm.handleSubmit` always `insert` for a non-active RSVP; they should update/upsert the existing cancelled row back to `pending`/`confirmed` instead.
+- **Suspected location:** `src/hooks/useEventRSVP.ts`, `src/components/RSVPForm.tsx`.
+- **Status:** Found (not yet fixed) — out of Phase 2's Blocker/High scope; queued with the other Medium items.
 
 #### [Cron] `archive_past_events()` is defined but not scheduled
 - **Severity:** Medium

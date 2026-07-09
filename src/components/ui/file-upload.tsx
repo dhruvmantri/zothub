@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { openFileUrl } from "@/lib/storageUrls";
 import { toast } from "sonner";
 import { Upload, X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -151,14 +152,17 @@ export function FileUpload({
             <p className="text-sm font-medium text-foreground truncate">
               File uploaded
             </p>
-            <a
-              href={currentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() =>
+                openFileUrl(currentUrl).catch(() =>
+                  toast.error("Could not open file")
+                )
+              }
               className="text-xs text-accent hover:underline truncate block"
             >
               View file
-            </a>
+            </button>
           </div>
           <div className="flex gap-1">
             <Button

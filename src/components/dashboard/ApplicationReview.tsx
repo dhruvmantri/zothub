@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
 import { sendApplicationStatusUpdate } from "@/lib/emailService";
+import { openFileUrl } from "@/lib/storageUrls";
 import type { FormQuestion, FormAnswer } from "@/types";
 
 interface Application {
@@ -556,7 +557,9 @@ export function ApplicationReview() {
                     className="gap-1.5"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.open(application.resume_url!, "_blank");
+                      openFileUrl(application.resume_url!).catch(() =>
+                        toast.error("Could not open resume")
+                      );
                     }}
                   >
                     <FileText className="w-4 h-4" />
@@ -659,7 +662,11 @@ export function ApplicationReview() {
                     <Button 
                       variant="outline" 
                       className="gap-2"
-                      onClick={() => window.open(selectedApplication.resume_url!, "_blank")}
+                      onClick={() =>
+                        openFileUrl(selectedApplication.resume_url!).catch(() =>
+                          toast.error("Could not open resume")
+                        )
+                      }
                     >
                       <FileText className="w-4 h-4" />
                       View Resume

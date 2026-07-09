@@ -102,10 +102,15 @@ export function useWaitlistAdmin() {
 
   const approveUser = async (userId: string, email: string, role: "student" | "club") => {
     try {
-      // Insert into user_roles
+      // Grant the role. Idempotent (ON CONFLICT DO NOTHING) so re-approving —
+      // or approving a legacy account that already holds the role — never
+      // fails on the (user_id, role) unique key.
       const { error: roleError } = await supabase
         .from("user_roles")
-        .insert({ user_id: userId, role });
+        .upsert(
+          { user_id: userId, role },
+          { onConflict: "user_id,role", ignoreDuplicates: true }
+        );
 
       if (roleError) {
         console.error("Error inserting role:", roleError);
