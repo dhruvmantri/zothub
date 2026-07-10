@@ -25,30 +25,44 @@
 
 > This is the single recommended next coding pass for a fresh session. Pick this unless a higher-severity production incident has appeared since (in which case triage that first and note it here). The full ranked backlog is in **"Backlog — ranked workstreams."**
 
-> **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** See the completion record at the end of this section and the updated inventory entries. The recommended next pass is **WS2** below.
+> **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
+> **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below. The recommended next pass is **WS3**.
 
-### Workstream 2 — Realtime delivery for messages & RSVP status *(recommended next)*
+### Workstream 3 — Unify follow/bookmark semantics & fire new-post notifications *(recommended next)*
 
-**In one line:** live chat, the unread-message badge, and the student's live RSVP-approval update don't work because the relevant tables aren't in the realtime publication.
+**In one line:** "following" a club is stored as a bookmark, but the new-post notification/email path reads `club_followers` (which the app never writes), so followers get no new-post notifications or emails even though the feed works.
 
 **Why this is next**
-- After WS1, the highest-impact remaining correctness gap is that PRD-promised realtime features silently don't work. `messages` and `rsvps` are **not** in the `supabase_realtime` publication (verified: only `notifications` + `club_team_members` were ever `ALTER PUBLICATION ... ADD`ed), so `useMessages`/`useNavigationCounts`/RSVP subscriptions receive no events.
-- Single root cause, one small migration, easy to verify by subscribing and observing.
+- With WS1 (application notifications) and WS2 (live messages) done, this is the top remaining engagement gap: a student who follows a club silently receives nothing when that club posts. Verified: `notify_followers_on_new_post()` (migration `20260121010020`) and the `send-reminders` new-post emails query `public.club_followers`, but the app only ever writes `bookmarks.club_id` (grep: `club_followers` appears only in generated types).
 
 **Scope (do)**
-1. Add a migration: `ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;` and `... ADD TABLE public.rsvps;`, and set `REPLICA IDENTITY FULL` on each as needed for the client filters used.
-2. Verify a live subscription receives `postgres_changes` for message inserts and RSVP status updates.
+1. Pick ONE mechanism and reconcile: either write `club_followers` on follow/unfollow, or repoint `notify_followers_on_new_post()` + the `send-reminders` new-post query at `bookmarks.club_id`. Inspect `useBookmarks`, `StudentFeed`, `FollowedClubsList` before choosing.
+2. Fix the minor semantic mismatch where the new-post notification/email is gated on the `deadline_reminders` preference.
 
 **Boundaries (do NOT, this pass)**
-- Don't touch the follow/bookmark system (WS3), RSVP capacity/decline email (WS4), or anon browsing (WS5). Note anything you find; don't fix here.
+- Don't touch RSVP integrity/email (WS4) or anon browsing (WS5). Note anything you find; don't fix here.
 
 **Evidence to inspect before coding**
-- `src/hooks/useMessages.ts`, `src/hooks/useNavigationCounts.ts` (subscriptions), the existing `ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications` in `20251223160240_*.sql`, and `pg_publication_tables` for current membership.
+- `src/hooks/useBookmarks.ts`, `src/pages/StudentFeed.tsx`, `src/components/…/FollowedClubsList.tsx`, `notify_followers_on_new_post()` (migration `20260121010020_*`), and `supabase/functions/send-reminders/index.ts` (new-post query).
 
 **Done / verification looks like**
-- `messages` and `rsvps` appear in `pg_publication_tables` for `supabase_realtime`; a subscribed client observes inserts/updates live.
-- `tsc --noEmit` / `vite build` clean; migration applies cleanly on the local harness.
-- **Deployment note:** DB-only change → `supabase db push --linked`; no edge-function redeploy.
+- Following a club then that club posting produces a new-post in-app notification (and email when prefs allow) for the follower; verify on the local harness with the chosen mechanism.
+- `tsc --noEmit` / `vite build` clean; migration (if any) applies cleanly on the harness.
+- **Deployment note:** depends on the mechanism — a DB migration (`supabase db push`) and/or a `send-reminders` redeploy; record precisely in the PR.
+
+---
+
+#### ✅ WS2 completion record (2026-07-10)
+
+**What shipped:**
+- **Migration `20260710000200_add_messages_to_realtime.sql`** — idempotently adds `public.messages` to the `supabase_realtime` publication (guarded by a `pg_publication_tables` existence check and a `pg_publication` existence check, so re-running is safe). This is the single root cause: the frontend already subscribes to `messages` in `useMessages` (event `INSERT`, filter `receiver_id=eq.<uid>`) and `useNavigationCounts` (event `*`, filter `receiver_id=eq.<uid>`), but `messages` was never in the publication, so those subscriptions received nothing — live chat and the unread-message badge silently didn't update.
+- **Replica identity: left at DEFAULT (PK) — `REPLICA IDENTITY FULL` deliberately NOT set.** Every filter the app uses is on `receiver_id`, which is evaluated against the NEW row; the NEW row is fully present for INSERT and UPDATE regardless of replica identity — i.e., the two flows that matter (a message arriving; a message being marked read) work under default identity. FULL would only affect DELETE events (whose OLD row otherwise carries just the PK), and no subscription depends on matching a non-PK filter on a DELETE. `notifications` — realtime and working in production — also runs on DEFAULT identity, so this matches the established pattern.
+
+**`rsvps` deliberately deferred to WS4.** Investigation found **no** frontend subscription to the `rsvps` table anywhere (grep across all hooks/components). The student's RSVP-approval signal is already delivered live via the `notifications` table (which is in the publication) — the `rsvp_update` notification from `notify_rsvp_status_change`. Publishing `rsvps` with no consumer would change no observable behavior and can't be verified against an app subscription; making the EventDetail page itself flip live requires a NEW client subscription (an RSVP-journey/UX change). That belongs with WS4, which owns the RSVP journey. (Decision confirmed with the maintainer.)
+
+**Verified (local PG16 harness, `wal_level=logical`):** all 36 migrations apply cleanly; `messages` now appears in `pg_publication_tables` for `supabase_realtime` (with `notifications`, `club_team_members`); `rsvps` does not; `messages` replica identity is `default`; the migration is idempotent (re-applied twice → exactly one membership row). Real WAL-level decode of a message lifecycle proved the delivery path: INSERT and UPDATE (mark-read) stream the full new tuple **including `receiver_id`** (so the app's `receiver_id` filter matches and the subscriptions fire), while a DELETE streams only the PK under default identity (the one uncovered edge — a sender deleting an unread message won't live-decrement the receiver's badge; it self-heals on the next fetch). `tsc -p tsconfig.app.json --noEmit` and `npm run build` clean; no TS/TSX changed (DB-only), so no lint delta. A full websocket `supabase functions serve`/Realtime-server test wasn't possible here (needs Docker images that can't be pulled), so WAL logical decoding was used as the strongest available proof.
+
+**Deployment steps a human must run (after merge; nothing is deployed by this branch):** `supabase db push --linked` — applies only `20260710000200_add_messages_to_realtime.sql`. **No** Edge Function redeploy and **no** Vercel deploy required (no app code changed). Rollback: `ALTER PUBLICATION supabase_realtime DROP TABLE public.messages;` (reverts to the pre-WS2 no-op behavior; low risk).
 
 ---
 
@@ -119,14 +133,14 @@ Coherent workstreams (one root cause + directly-coupled defects each), ranked by
 **WS1 — Application-pipeline notifications & email correctness** — **✅ DONE (2026-07-10)**
 Clubs now receive a reliable in-app notification (`on_new_application` trigger, transactional) **and** a best-effort, de-duplicated email (`application_notification`) on each new application. The email is fully server-authoritative: the client sends only an `applicationId`, and `send-email` verifies the authenticated caller owns the application, derives the club/applicant/opportunity from DB rows, gates on `application_updates`, and claims a `reminder_logs` row to prevent duplicate sends. Application confirmation/status emails are preference-gated server-side and fail closed when the recipient can't be resolved. Completion record in "▶ Start here". *Remaining RSVP-email preference gap is tracked in WS4.*
 
-**WS2 — Realtime delivery for messages & RSVP status** — **[Medium]**
-`messages` and `rsvps` are **not** in the `supabase_realtime` publication (verified: only `notifications` + `club_team_members` are), so live chat, the unread-message badge, and the student's live RSVP-approval update don't work. Single root cause / one migration: `ALTER PUBLICATION supabase_realtime ADD TABLE …` + set `REPLICA IDENTITY`; verify by subscribing and observing. *([Messages] Real-time messaging…; Phase 2c follow-up: rsvps realtime)*
+**WS2 — Realtime delivery for messages** — **✅ DONE (2026-07-10)**
+`public.messages` is now in the `supabase_realtime` publication (migration `20260710000200`), so the existing `useMessages`/`useNavigationCounts` subscriptions deliver live chat and the unread-message badge. Default replica identity is sufficient (filters are on `receiver_id`, present in the new row for INSERT/UPDATE); `REPLICA IDENTITY FULL` intentionally not set. Completion record in "▶ Start here". **`rsvps` realtime was deferred to WS4** — no frontend subscription consumes it today, and RSVP approval already arrives live via the published `notifications` channel; wiring a real rsvps subscription is an RSVP-journey change owned by WS4. *([Messages] Real-time messaging… — fixed; rsvps realtime folded into WS4.)*
 
 **WS3 — Unify follow/bookmark semantics & fire new-post notifications** — **[Medium]**
 "Follow" is implemented as a **bookmark** (`bookmarks.club_id`), but the new-post in-app trigger (`notify_followers_on_new_post`) and the `send-reminders` new-post emails read `club_followers`, which the app **never** writes (verified: `club_followers` appears only in generated types). So students who follow a club never get its new-post notifications/emails even though the feed works. Pick one mechanism (write `club_followers` on follow, or repoint the trigger + cron at `bookmarks`) and reconcile; also fix the `deadline_reminders`-preference gating a "new post" notification. *([Feed/Notifications] "Follow" writes bookmarks…)*
 
 **WS4 — Event RSVP integrity & email correctness** — **[Medium]**
-Cluster of RSVP-journey correctness defects: (a) **event capacity enforced only client-side** — no server/DB guard, so concurrency / direct API can exceed `capacity` (add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps`); (b) **declining an RSVP emails "You're In! confirmed"** — `sendRSVPStatusEmail` reuses `rsvp_confirmation` for declines (add a decline template + branch); (c) **club decline not notified in-app** — needs a way to distinguish a club decline from a student self-cancel; (d) RSVP transactional emails share the preference-consistency fix from WS1. *([Events] Event capacity…; [Events/Email] Declining an RSVP…; Phase 2c follow-up)*
+Cluster of RSVP-journey correctness defects: (a) **event capacity enforced only client-side** — no server/DB guard, so concurrency / direct API can exceed `capacity` (add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps`); (b) **declining an RSVP emails "You're In! confirmed"** — `sendRSVPStatusEmail` reuses `rsvp_confirmation` for declines (add a decline template + branch); (c) **club decline not notified in-app** — needs a way to distinguish a club decline from a student self-cancel; (d) RSVP transactional emails share the preference-consistency fix from WS1; (e) **live rsvps realtime (deferred from WS2)** — the student's EventDetail RSVP status doesn't update live on approval because no client subscribes to `rsvps` (approval already arrives via the `notifications` channel). If desired, add a client subscription in EventDetail (student's own RSVP) and `ALTER PUBLICATION supabase_realtime ADD TABLE public.rsvps;` — default replica identity suffices (UPDATE new row carries `student_id`/`event_id`); this is an RSVP-journey/UX change, hence WS4 not WS2. *([Events] Event capacity…; [Events/Email] Declining an RSVP…; Phase 2c follow-up; rsvps realtime deferred from WS2)*
 
 **WS5 — Discovery access-model consistency (anonymous browsing)** — **[Medium, product decision]**
 Logged-out visitors can read `club_profiles` (policy `TO public`) but **not** `opportunities`/`events` (policies `TO authenticated`), while the landing page has a public "Browse Opportunities" CTA. Decide the intended model (gated beta ⇒ require login for all discovery, or public ⇒ add anon SELECT policies for active rows) and make the three tables consistent. Product-decision-dependent — confirm intent (see `prd.md` Access Model) before changing RLS. *([Discovery/RLS] Logged-out visitors…)*
@@ -343,7 +357,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** PRD lists real-time messaging and real-time unread-count badges.
 - **Root cause (CONFIRMED via publication membership):** `useMessages` (`src/hooks/useMessages.ts:272-329`) and `useNavigationCounts` (`src/hooks/useNavigationCounts.ts:71-85`) subscribe to `postgres_changes` on `messages`, but `messages` is **not in the `supabase_realtime` publication** — only `notifications` and `club_team_members` were ever `ALTER PUBLICATION ... ADD`ed (verified via `pg_publication_tables`). So message subscriptions receive no events. Notifications realtime works (it's published). Fix: `ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;` (and set `REPLICA IDENTITY` as needed).
 - **Suspected location:** migration (publication membership); `src/hooks/useMessages.ts`, `src/hooks/useNavigationCounts.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS2 (2026-07-10).** Migration `20260710000200` idempotently adds `public.messages` to the `supabase_realtime` publication; both subscriptions now receive events. Replica identity left at DEFAULT (filters are on `receiver_id`, present in the new row for INSERT/UPDATE — the flows live chat and the unread badge depend on); `FULL` not set. Verified on the local harness via WAL logical decoding: INSERT/UPDATE stream the new tuple incl. `receiver_id`; the only uncovered edge is a DELETE-of-unread live-decrement (self-heals on refetch). `rsvps` realtime was **not** bundled here (no consumer exists; deferred to WS4).
 
 #### [Discovery/RLS] Logged-out visitors can't browse opportunities or events (but can browse clubs)
 - **Severity:** Medium
