@@ -2,7 +2,7 @@
 
 **Version:** 3.1
 **Last Updated:** 2026-07-09
-**Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover to Vercel complete. Full Product Audit + Blocker/High/live-QA fix passes done. Now in post-cutover stabilization — see `plan.md` for the active engineering plan.
+**Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed** and the project is in **normal product-development mode** (a short stability-monitoring window is running before Lovable decommission) — see `plan.md` for the active development plan.
 **Author:** Claude, reconciled against the live codebase
 
 ---
@@ -138,8 +138,8 @@ Full detail and per-item status live in `plan.md`'s Bug Inventory. Summary as of
 
 | # | Item | Type | Status |
 |---|---|---|---|
-| A | **Supabase migration-history repair** — prod was built via `pg_restore`, so the CLI history table doesn't record the existing migrations; `db push` tries to replay them. Repair plan drafted, **not yet executed.** | Infra cleanup | Open (audit-only; see `plan.md` → "Supabase migration-history repair (audit)") |
-| B | **Lovable decommission** — Lovable is no longer serving production traffic but is being kept untouched a few days as fallback. | Infra cleanup | Open (deliberate; future manual step) |
+| A | **Supabase migration-history repair** — the CLI history table now records all migrations. | Infra cleanup | ✅ **Done (2026-07-09).** `migration list --linked` shows all 34 migrations matching remote; `db push --linked --dry-run` = "Remote database is up to date." Manual SQL workaround no longer needed — future migrations use normal `db push`. |
+| B | **Lovable decommission** — Lovable is no longer serving production traffic but is kept untouched temporarily as the rollback path. | Infra cleanup | Open (deliberate future manual step; gated on the checklist in `plan.md` → "Lovable decommission checklist"). |
 | C | Remaining Medium/Low bugs from the Bug Inventory (e.g. `rsvps`/`messages` not in the realtime publication; new-post follower notifications keyed off the unused `club_followers`; unscheduled `archive_past_events`) | Bug backlog | Open (see `plan.md`) |
 
 **No new bugs should be fixed ad hoc.** Any additional issues found should be added to the Bug Inventory in `plan.md` before being fixed, so the next coding pass is coordinated.
@@ -248,7 +248,7 @@ No dedicated analytics platform required at this scale — derive metrics from d
 - [ ] Support contact live and documented *(depends on `@zothub.app` mailbox now that DNS is live)*
 - [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent *(reminder job confirmed active; `archive_past_events` scheduling still to confirm — see `plan.md`)*
 
-**Post-launch infra cleanup (open, non-blocking):** Supabase migration-history repair (audit drafted in `plan.md`, not executed); Lovable decommission (kept as fallback for a few days).
+**Post-launch infra cleanup:** Supabase migration-history repair ✅ **done** (future migrations use normal `db push`). Lovable decommission still **open** — a deliberate future manual step gated on the checklist in `plan.md`; Lovable no longer serves production traffic but is kept as the rollback path during the stability-monitoring window.
 
 ---
 
