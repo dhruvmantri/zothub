@@ -176,7 +176,7 @@ The application uses the following main tables:
 
 ## Deployment
 
-ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.app) (and [www.zothub.app](https://www.zothub.app)) — DNS cutover to Vercel is complete with valid TLS — backed by a self-owned Supabase project. This repo previously ran on Lovable Cloud/Lovable hosting during initial development; that migration is complete and **Lovable no longer serves production traffic** (it is being kept untouched for a short fallback window; decommission is a future manual step). See \`docs/archive/MIGRATION.md\` for history and \`plan.md\` for current engineering status, including the open Supabase migration-history repair item.
+ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.app) (and [www.zothub.app](https://www.zothub.app)) — DNS cutover to Vercel is complete with valid TLS — backed by a self-owned Supabase project. This repo previously ran on Lovable Cloud/Lovable hosting during initial development; that migration is complete, the Supabase migration history has been reconciled (new migrations deploy via the normal `supabase db push` flow), and **Lovable no longer serves production traffic** (kept untouched for a short fallback window; decommission is a future manual step). See \`docs/archive/MIGRATION.md\` for migration history and \`plan.md\` for the current product-development plan.
 
 1. Build the project:
    \`\`\`bash
@@ -190,6 +190,17 @@ ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.ap
 4. OAuth redirect URLs and Auth settings are configured in the Supabase project dashboard.
 
 Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`plan.md\` for current engineering status.
+
+## Database Migrations
+
+Schema changes use **normal Supabase migration files + the Supabase CLI** (the migration history is reconciled with production, so this is the standard flow — no manual raw SQL, no \`db reset\`):
+
+1. Create a new timestamped migration in \`supabase/migrations/\` (e.g. \`supabase migration new <name>\`), and write idempotent SQL where practical.
+2. Test it locally before pushing (the repo is regularly validated by applying **all** migrations to a fresh local Postgres).
+3. Apply to the linked project with \`npx supabase db push --linked\`; confirm with \`npx supabase migration list --linked\` (local should match remote) and \`npx supabase db push --linked --dry-run\` ("Remote database is up to date").
+4. If the change adds/edits an Edge Function, redeploy it: \`supabase functions deploy <name>\`.
+
+Do **not** hand-apply SQL to production as the normal path, and never run \`supabase db reset\` against production.
 
 ## Environment Variables
 

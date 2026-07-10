@@ -1,22 +1,164 @@
-# ZotHub — Next-Stage Engineering Plan
+# ZotHub — Engineering Execution Plan
 
-> **Engineering execution doc.** This is the active source of truth for the next development stage of ZotHub. `prd.md` is the companion product spec (vision, users, access model, known issues, launch readiness) — read it for *what the product is and what's known to be wrong*; read this for *what to do next and how*.
-
----
-
-## Context
-
-**Why this rewrite exists:** `plan.md` previously tracked the migration from Lovable Cloud to a self-owned Supabase project + Vercel hosting. That migration is now functionally complete (full history in `docs/archive/MIGRATION.md`). This document no longer needs to be a migration plan — it now exists to drive the **next development stage**: finding out, comprehensively and in one coordinated pass, everything that's actually broken or incomplete across the live product, before writing a single line of fix code.
-
-**Where things stand:** ZotHub runs on Vercel with a self-owned Supabase project (`fguzpscguulkfctipeih`). Schema, data, storage, and all 4 edge functions (`send-email`, `send-otp`, `verify-otp`, `send-reminders`) are migrated and live; the hourly reminder cron job is active. Core flows (OTP signup, account creation, login, manual waitlist approval) are confirmed working. Two bugs and three infrastructure/hardening gaps are already known (see **Known Issues & Open Items** below) — surfaced during migration QA, not yet fixed.
-
-**The core principle for this stage:** *audit before you fix.* Bugs discovered during Phase 1 below must be added to this document's Bug Inventory **before** any fixing begins, so the next coding pass is coordinated and prioritized — not a random walk through whatever's noticed first.
+> **Active engineering source of truth.** ZotHub is **live in production** and in **normal product-development** (the Lovable→Supabase/Vercel migration is fully closed). `prd.md` is the product spec (what the product is + product-level gaps); `README.md` is setup/deploy. Read this for *what to build next and how*.
+>
+> **A fresh Claude Code session should read `README.md`, `prd.md`, and this file, then jump to "▶ Start here" immediately below.**
 
 ---
 
-## Known Issues & Open Items (carried forward — seed the Bug Inventory with these)
+## Current stage: normal product development (migration closed)
 
-These were found during migration QA and are not yet fixed. They should be the first entries in the Bug Inventory once Phase 1 begins, not forgotten in the transition.
+> **Status banner (2026-07-09):** The Lovable Cloud → owned-Supabase/Vercel **migration and cutover are fully closed.** ZotHub is live in production. This document is now a **normal product-development execution plan**, not a migration or stabilization plan. Start with the **"▶ Start here"** section (recommended next workstream), then the **"Backlog — ranked workstreams"** — the Phase 1 audit, the Bug Inventory, and the migration-history repair audit that follow are kept as the historical record the current backlog is drawn from.
+
+**Migration / infrastructure — closed:**
+- ✅ Vercel production live; `zothub.app` **and** `www.zothub.app` verified on Vercel with valid TLS (DNS cutover complete).
+- ✅ Owned Supabase project (`fguzpscguulkfctipeih`) live — schema, data, storage, and all 4 edge functions (`send-email`, `send-otp`, `verify-otp`, `send-reminders`) deployed; hourly reminder cron active. Resend DNS records preserved.
+- ✅ **Supabase migration-history repair complete.** `npx supabase migration list --linked` shows all 34 local migrations matching remote; `npx supabase db push --linked --dry-run` reports **"Remote database is up to date."** The manual raw-SQL workaround is **no longer needed** — future migrations go through the normal `supabase db push` flow.
+- ✅ Production smoke tests passed; core flows verified end-to-end (signup, OTP, waitlist, admin approval, student/club profile, opportunity creation, application submit/review/accept, event RSVP/approval, notifications, resume upload/view).
+- 🟡 **Lovable** is no longer serving production traffic but is **kept untouched temporarily as a fallback.** Decommission is a deliberate **future manual step** — see the **"Lovable decommission checklist"** below. Do not decommission yet.
+
+**How work is organized now:** the migration-era "audit before you fix" phases are done. From here, pick **one coherent workstream** from the ranked backlog, fix its root cause plus directly-coupled defects, verify, and update the docs. Add any newly found bug to the **Confirmed bug & risk inventory** before fixing it.
+
+---
+
+## ▶ Start here — recommended next workstream
+
+> This is the single recommended next coding pass for a fresh session. Pick this unless a higher-severity production incident has appeared since (in which case triage that first and note it here). The full ranked backlog is in **"Backlog — ranked workstreams."**
+
+### Workstream 1 — Application-pipeline notifications & email correctness
+
+**In one line:** make the core marketplace loop reliable by ensuring a club is actually notified when a student applies (in-app **and** email), and that application-related emails respect the user's notification preferences.
+
+**Why this comes first**
+- **Core-value impact (highest):** the two-sided loop is *student applies → club reviews → decides*. Today a club receives **nothing** when a student applies — no in-app notification and no email — so clubs only see applications if they happen to open the dashboard. That directly undermines the primary success metric (application volume / club engagement) and the product's core promise to clubs. Verified against the code: there is **no `AFTER INSERT` trigger on `applications`**, and `send-email` has **no "new application to club" type** (only `application_confirmation`/`application_status` to the student).
+- **Trust/correctness:** `prd.md` Journey 1 explicitly promises "in-app + email notification per application" — the product currently contradicts its own spec.
+- **Coupled, same verification path:** client-side transactional **application** emails bypass `notification_preferences` (the DB triggers and the `send-reminders` cron respect prefs, but `ApplicationForm`/`ApplicationReview` call `send-email` directly with no preference check). Fixing "who gets notified about applications" and "do those sends respect preferences" is one coherent unit exercised by the same test (submit an application, toggle prefs, observe).
+- **Low-risk, established pattern:** the codebase already has three notification triggers to mirror (`on_application_status_change`, `on_rsvp_status_change`, `notify_new_message`) and an email helper pattern (`src/lib/emailService.ts`), so this is additive, not a rewrite.
+
+**Scope (do)**
+1. **In-app notification to the club on new application** — add an `AFTER INSERT` trigger on `public.applications` (new migration) that inserts a `notifications` row for the opportunity's owning club, gated on the club's `application_updates` preference (mirror `notify_application_status_change`).
+2. **"New application" email to the club** — add a `send-email` type (template already drafted in `prd.md` Appendix C, "New Application Notification (to Club)") and wire a caller. Choose client-side-after-insert (like `sendApplicationConfirmation`) vs the edge/cron pattern after inspecting how the club owner's email is reachable from the submit path.
+3. **Preference-respecting application emails** — make the application confirmation/status emails check `notification_preferences` before sending (or move them server-side where the check already lives).
+
+**Boundaries (do NOT, this pass)**
+- Do **not** rework the follow/`club_followers` vs bookmarks system (Workstream 3), the realtime publication (Workstream 2), RSVP capacity/decline email (Workstream 4), or anon browsing (Workstream 5). Note anything you find in those areas in the inventory; don't fix here.
+- Keep RSVP and message notifications out of scope except where they share the identical preference-check helper you're already touching.
+
+**Evidence to inspect before coding**
+- Triggers/pattern: `supabase/migrations/20251223160240_*.sql` (`notify_application_status_change`, `notify_new_message`) and `20260709000400_*` (`notify_rsvp_status_change`) — copy the shape.
+- `applications` schema + RLS + `notifications` insert policy (`\d applications`; the `"System can insert notifications"` policy already permits trigger inserts).
+- `src/components/ApplicationForm.tsx` (submit path, what data it has — esp. whether the club email is available or must be fetched via `opportunities → club_profiles`), `src/lib/emailService.ts`, `supabase/functions/send-email/index.ts` (type union + templates), `src/components/dashboard/ApplicationReview.tsx` (status emails).
+- `notification_preferences` columns (`application_updates` exists) and how the existing triggers read them.
+
+**Done / verification looks like**
+- New migration applies cleanly on a fresh local Postgres with all 34 migrations (the established local-DB harness); submitting an application creates exactly one club `notifications` row and (when prefs allow) triggers a club email; toggling the club's `application_updates` off suppresses both.
+- Application confirmation/status emails are gated by preferences (verify: disable the preference → no send).
+- `tsc --noEmit` and `vite build` clean; lint on touched files shows no new errors; a targeted manual/e2e drive of "student applies → club sees notification."
+- **Deployment note (record in the PR):** this adds a DB trigger + `send-email` change → `supabase db push --linked` for the migration and redeploy `send-email` (`supabase functions deploy send-email`). Migration history is reconciled, so `db push` applies only the new file.
+
+---
+
+## Operating rules for future Claude Code sessions
+
+1. **Start from `main` and synchronize safely** — `git fetch`, branch from the latest `main`; never force-push shared history; preserve unrelated changes.
+2. **Read `README.md`, `prd.md`, and this `plan.md`** before coding.
+3. **Choose exactly one coherent workstream** — normally the top of **"▶ Start here"** / the ranked backlog. Do not random-walk the backlog.
+4. **Inspect the relevant user journey and adjacent systems first** (the "Evidence to inspect" list for that workstream), so the fix targets the root cause, not a symptom.
+5. **Fix directly-coupled issues in the same pass** when they share the workstream's root cause or verification path — but avoid unrelated rewrites. Do not interpret "one task" so narrowly that you leave a known root cause or directly-coupled behavior broken.
+6. **Database changes use normal migration files + the Supabase CLI** (`supabase/migrations/*.sql`, `supabase db push --linked`). Migration history is reconciled — no manual raw-SQL workaround, no `db reset`. Make migrations idempotent where practical.
+7. **Verify:** run `tsc --noEmit`, `vite build`, `npm run lint` (at least on touched files), any tests, and a targeted behavior check of the affected flow (the repo's local-Postgres harness is the standard way to exercise triggers/RLS).
+8. **Update docs after each pass** — move the finished workstream's inventory entries to "fixed," refresh **"▶ Start here"** to the new top workstream, and record any newly found issue.
+9. **Document deployment steps** the change requires (migrations to push, edge functions to redeploy, Vercel redeploy) in the PR/commit.
+10. **Do not decommission Lovable** until every box in the **"Lovable decommission checklist"** is satisfied.
+
+---
+
+## Task-selection method
+
+When "▶ Start here" is stale or you must choose among workstreams, rank by (in order):
+1. **Impact on core user value** — does it fix the two-sided marketplace loop (discover → apply/RSVP → review → decide → engage)?
+2. **User trust & correctness** — silent failures, wrong content, or "success" shown when nothing persisted rank above cosmetic issues.
+3. **Security / data-integrity risk** — authorization boundaries, RLS gaps, data that can be corrupted (e.g. over-capacity).
+4. **Operational risk** — scheduled jobs, backups, support/admin ownership.
+5. **Dependencies & sequencing** — prefer root causes that unblock several downstream items; don't build on something you're about to change.
+6. **Ability to verify** — favor work you can exercise and confirm in one pass (local-DB harness, build, targeted drive).
+7. **Breadth of affected systems** — group issues that share a root cause or verification path into one workstream; keep unrelated ones out.
+
+Group related issues into **workstreams**, not a flat bug list. A good workstream is one root cause + its directly-coupled defects, completable and verifiable in a single focused pass.
+
+---
+
+## Development stages (current)
+
+Normal product-development cadence now that migration/cutover is closed. Roughly sequential, but the monitoring window runs continuously alongside everything else.
+
+1. **Stability monitoring window (now → ~1 week).** Watch the freshly-cut-over production for regressions before doing anything irreversible (especially Lovable decommission). Each day, spot-check: auth (signup → OTP → waitlist → approval → dashboard), storage (resume upload + club view), email deliverability (Resend), DNS/TLS on `zothub.app` + `www.zothub.app`, and the Supabase logs for errors. No production auth/storage/email/DNS incident for several consecutive days is the gate for Stage 4 (Lovable decommission). Keep the Lovable fallback untouched during this window.
+2. **Remaining Medium/Low bug backlog.** Work the open items in the order given in **"Backlog — ranked workstreams"** below. These are the real remaining defects; drive them down before adding polish or features.
+3. **Product polish / launch-readiness.** UX/consistency passes, privacy-policy accuracy, empty/loading/error-state polish, accessibility, lint/test cleanup, admin/analytics polish. Informed by real usage from the monitoring window.
+4. **Optional post-launch feature development.** Only after production has proven stable and the backlog is in good shape. Candidate features live in `prd.md`'s Post-Launch Roadmap (email digest, self-service account deletion, richer analytics, relaxing the gated-beta access model, etc.). Do not start net-new features while Stage 2 bugs remain.
+
+---
+
+## Backlog — ranked workstreams
+
+Coherent workstreams (one root cause + directly-coupled defects each), ranked by the **Task-selection method** above. Work top-down. Each cross-references its **Confirmed bug & risk inventory** entry. Severity in brackets is the worst defect in the workstream.
+
+**WS1 — Application-pipeline notifications & email correctness** *(detailed in "▶ Start here")* — **[High]**
+Clubs get **no** notification (in-app or email) on a new application; application emails ignore `notification_preferences`. Root cause: the application notification/email path is incomplete + inconsistent. *([Applications] Clubs are not notified…; [Notifications] Client-side transactional emails…)*
+
+**WS2 — Realtime delivery for messages & RSVP status** — **[Medium]**
+`messages` and `rsvps` are **not** in the `supabase_realtime` publication (verified: only `notifications` + `club_team_members` are), so live chat, the unread-message badge, and the student's live RSVP-approval update don't work. Single root cause / one migration: `ALTER PUBLICATION supabase_realtime ADD TABLE …` + set `REPLICA IDENTITY`; verify by subscribing and observing. *([Messages] Real-time messaging…; Phase 2c follow-up: rsvps realtime)*
+
+**WS3 — Unify follow/bookmark semantics & fire new-post notifications** — **[Medium]**
+"Follow" is implemented as a **bookmark** (`bookmarks.club_id`), but the new-post in-app trigger (`notify_followers_on_new_post`) and the `send-reminders` new-post emails read `club_followers`, which the app **never** writes (verified: `club_followers` appears only in generated types). So students who follow a club never get its new-post notifications/emails even though the feed works. Pick one mechanism (write `club_followers` on follow, or repoint the trigger + cron at `bookmarks`) and reconcile; also fix the `deadline_reminders`-preference gating a "new post" notification. *([Feed/Notifications] "Follow" writes bookmarks…)*
+
+**WS4 — Event RSVP integrity & email correctness** — **[Medium]**
+Cluster of RSVP-journey correctness defects: (a) **event capacity enforced only client-side** — no server/DB guard, so concurrency / direct API can exceed `capacity` (add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps`); (b) **declining an RSVP emails "You're In! confirmed"** — `sendRSVPStatusEmail` reuses `rsvp_confirmation` for declines (add a decline template + branch); (c) **club decline not notified in-app** — needs a way to distinguish a club decline from a student self-cancel; (d) RSVP transactional emails share the preference-consistency fix from WS1. *([Events] Event capacity…; [Events/Email] Declining an RSVP…; Phase 2c follow-up)*
+
+**WS5 — Discovery access-model consistency (anonymous browsing)** — **[Medium, product decision]**
+Logged-out visitors can read `club_profiles` (policy `TO public`) but **not** `opportunities`/`events` (policies `TO authenticated`), while the landing page has a public "Browse Opportunities" CTA. Decide the intended model (gated beta ⇒ require login for all discovery, or public ⇒ add anon SELECT policies for active rows) and make the three tables consistent. Product-decision-dependent — confirm intent (see `prd.md` Access Model) before changing RLS. *([Discovery/RLS] Logged-out visitors…)*
+
+**WS6 — Scheduler & launch-ops hardening** — **[Medium/operational]**
+`archive_past_events()` is defined but **no `cron.schedule` for it exists in the repo** — schedule the nightly archive and confirm `send-reminders-hourly` via `select * from cron.job;` (the Events list already filters by date, so user impact is limited; `is_active` staleness affects analytics). Also the operational launch items that are **outside code**: name a support contact / mailbox, confirm the `/admin` waitlist-queue owner, and establish a routine DB backup/export cadence (also a Lovable-decommission prerequisite). *([Cron] `archive_past_events()`…)*
+
+**WS7 — Test / lint / type hardening** — **[Low, enables everything else]**
+Repair the Playwright config (references an unavailable package → no runnable e2e) and add a smoke-level e2e for the core flows; clear the ESLint errors (`no-explicit-any`, `no-case-declarations`, a `require()` import — none break `build`/`tsc`); optionally opt into the React Router v7 future flags to silence console warnings. Raising the verification floor de-risks every later workstream. *([Tooling] ESLint…; [Console] React Router…)*
+
+**WS8 — UX polish & data hygiene** — **[Low]**
+`Waitlist`/`WaitlistRejected` call `navigate()` during render (move to effect/`<Navigate>`); Google-OAuth pending users can strand on `/login` (route role-less pending users to `/waitlist`); unsubscribe-link auto-opt-out can re-enable other prefs (build new prefs from the loaded row); orphaned migrated team member still renders (UI/query filter in `useClubTeam` and/or an `ON DELETE SET NULL` FK once the 0-orphan detection query is confirmed); `/privacy` doesn't name Supabase/Vercel as processors; admin approval doesn't set `reviewed_by`; `bookmarks` has no uniqueness constraint; dead/duplicated code (`AuthContext.signUp`, `ClubProfileSetup` local `CATEGORY_OPTIONS`/bespoke logo). Batch these opportunistically. *(see individual inventory entries)*
+
+**WS9 — Future features (only after WS1–WS4 land and stability holds)** — **[deferred]**
+From `prd.md`'s roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Do not start net-new features while the trust/correctness workstreams (WS1–WS4) have open items.
+
+---
+
+## Lovable decommission checklist
+
+> **Do NOT decommission Lovable yet.** It no longer serves production traffic but is the current rollback path. Decommission is a deliberate future manual step, only once **all** of the following hold:
+
+- [ ] `zothub.app` (and `www.zothub.app`) has been **stable on Vercel for several consecutive days** (the Stage 1 monitoring window).
+- [ ] **No production auth / storage / email / DNS issues** have appeared during that window.
+- [ ] A **current database backup/export exists** (Supabase snapshot or `pg_dump`) and has been verified restorable.
+- [ ] **Vercel environment variables verified** (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) point at the owned Supabase project.
+- [ ] **Supabase Edge Function secrets verified** (`RESEND_API_KEY` set; `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_ANON_KEY` injected as expected).
+- [ ] **Resend domain still verified** for `zothub.app`, DNS records intact, deliverability confirmed.
+- [ ] **No needed assets remain only in Lovable** — all storage objects, edge functions, secrets, and any config exist in the owned Supabase project (nothing referenced solely from the old Lovable Cloud project).
+- [ ] The **rollback plan is no longer needed** — confidence is high enough that reverting to Lovable would never be chosen.
+
+Only when every box is checked: decommission Lovable (and note it here as done, with the date).
+
+---
+---
+
+# Historical record & detailed inventory (reference only)
+
+> Everything below this line is the **historical/reference record** the active plan above is drawn from: the migration-QA seed list, the Phase 1 audit methodology, the full per-defect **Confirmed bug & risk inventory** (with fixed-vs-open status on each entry), the live-QA rounds, the completed migration-history repair, and the closed phase history. It does **not** drive day-to-day work — the active plan is everything **above** this line. Consult it for defect detail, root-cause notes, and how prior fixes were verified.
+
+---
+
+## Known Issues & Open Items (historical — migration-QA seed list)
+
+> **Resolved/superseded (2026-07-09):** this was the original migration-QA seed list. Current status: Bug #1 **fixed**, Bug #2 **cleaned in prod** (future-safe guidance documented), Infra #3/#4/#5 **done** (see the updated table below and the Bug Inventory). Kept here for historical continuity; the live backlog is in **"Backlog — ranked workstreams."**
 
 ### Bugs
 | # | Issue | Where | Desired behavior |
@@ -25,7 +167,7 @@ These were found during migration QA and are not yet fixed. They should be the f
 | 2 | Orphaned/deleted user (old migrated "Dhruv Mantri" account) still appears as a club team member | `club_team_members` and any other table with a `user_id`-style FK into `auth.users` | Rows referencing an `auth.users` ID that no longer exists should be removed or hidden from UI, not displayed as if the user were real/active. Root cause: `auth.users` was intentionally never migrated from Lovable Cloud (fresh OTP signups were used instead), so old `public.*` rows referencing the old Lovable Cloud auth UUIDs are now orphaned references. |
 
 ### Infrastructure / Hardening Gaps
-> **Update 2026-07-09 (post-cutover):** items 3–5 below are the *original* migration-QA notes, kept for history. Current status: **#3 DNS cutover is DONE** (`zothub.app` + `www.zothub.app` live on Vercel with valid TLS); **#4 is DONE** (`BEFORE INSERT` trigger on `auth.users`, Phase 2); **#5 is DONE** (Phase 1 audit + Phase 2/2b/2c). Two infra-cleanup items remain open and are tracked below: **Supabase migration-history repair** (audit-only section near the end of this doc — not yet executed) and **Lovable decommission** (kept as fallback a few days; deliberate future manual step).
+> **Update 2026-07-09 (post-cutover):** items 3–5 below are the *original* migration-QA notes, kept for history. Current status: **#3 DNS cutover is DONE** (`zothub.app` + `www.zothub.app` live on Vercel with valid TLS); **#4 is DONE** (`BEFORE INSERT` trigger on `auth.users`, Phase 2); **#5 is DONE** (Phase 1 audit + Phase 2/2b/2c); **Supabase migration-history repair is DONE** (see the dedicated section). One infra-cleanup item remains open: **Lovable decommission** (no longer serving production traffic; kept as the rollback path during the stability-monitoring window; gated on the "Lovable decommission checklist").
 
 | # | Item | Status |
 |---|---|---|
@@ -35,7 +177,9 @@ These were found during migration QA and are not yet fixed. They should be the f
 
 ---
 
-## Phase 1: Full Product Audit & Bug Inventory
+## Phase 1: Full Product Audit & Bug Inventory *(historical — completed 2026-07-08)*
+
+> **Completed.** This describes the one-time audit methodology used to build the inventory below. Retained for provenance; not an active process.
 
 **Goal:** a complete, written, workflow-by-workflow audit of the live product — what works, what's broken, what's incomplete — producing a single prioritized Bug Inventory that the next coding pass works from. No fixing happens during this phase; the entire point is to stop and look before touching code, so the fix pass is coordinated instead of reactive.
 
@@ -82,7 +226,9 @@ Every workflow above has been walked and has either a "no issues found" note or 
 
 ---
 
-## Bug Inventory
+## Confirmed bug & risk inventory (detailed record)
+
+> **Every entry here is confirmed against code and/or schema** (root cause noted per entry) — these are not speculative. Each carries a **Status** (Fixed in Phase 2/2b/2c, or Found/open). The **open** entries are what the active **"Backlog — ranked workstreams"** groups into workstreams; the **fixed** entries are the completion record. Anything genuinely unverified is labelled as such in its entry (e.g. the `archive_past_events` scheduling, which could not be checked against live `cron.job` from this environment).
 
 **Status:** Phase 1 audit complete (2026-07-08). Every workflow listed in Phase 1 has been walked and recorded below.
 
@@ -409,7 +555,7 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
      Equivalent manual form if preferred: `INSERT INTO supabase_migrations.schema_migrations (version) VALUES ('20251223013805'), … ON CONFLICT DO NOTHING;`
   3. Confirm the only migrations still "pending" are the Phase 2 / 2b ones (`20260709000100`–`20260709000400`), then `npx supabase db push --linked` to apply just those.
   - **Do not** run `supabase db reset` against prod (destructive). If `000100`–`000300` were already applied manually, also `migration repair --status applied` those three so push doesn't re-run them; only `20260709000400` should remain to apply.
-- **Status:** Documented (operational runbook above). No repo change.
+- **Status:** ✅ **Done (2026-07-09).** Migration history reconciled via `migration repair`; `db push --linked --dry-run` = "Remote database is up to date." See the dedicated "Supabase migration-history repair — ✅ COMPLETE" section below.
 
 #### [Data] Orphaned migrated users were manually cleaned
 - **Severity:** Medium (data hygiene)
@@ -423,11 +569,11 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
 
 ---
 
-## Supabase migration-history repair (audit — 2026-07-09, NOT executed)
+## Supabase migration-history repair — ✅ COMPLETE (2026-07-09)
 
-**Status: audit only. No `migration repair`, no `db push`, no reset has been run. Every command below is for review; the ones that touch production are called out and still need explicit approval before anyone runs them.**
+> **Done.** Migration history was reconciled with `supabase migration repair --status applied` for the existing versions. Verified: `npx supabase migration list --linked` shows **all 34 local migrations matching remote**, and `npx supabase db push --linked --dry-run` reports **"Remote database is up to date."** The manual raw-SQL workaround is **no longer needed** — new migration files now deploy through the normal `supabase db push --linked` flow. The audit that follows is retained as the record of how the repair was scoped and verified.
 
-### Why this is needed
+### Why this was needed
 Production was built by `pg_restore` (from the Lovable Cloud dump), not by the Supabase CLI, so the CLI's history table `supabase_migrations.schema_migrations` does **not** record the migrations whose objects already exist in the DB. As a result `npx supabase db push --linked` tries to replay every local migration from the beginning and fails on the first already-existing object (observed: `type "public.user_role" already exists`, from the very first migration `20251223013805`). The five 2026-07-09 migrations were then applied **manually as raw SQL**, so they aren't recorded either. Net: the schema is correct and current, but the history table is empty/incomplete, so the CLI's model of "what's applied" is wrong.
 
 ### 1. Which local migrations exist (read-only, already verified here)
@@ -454,8 +600,8 @@ Expected given the pg_restore history: the remote/history column is **empty or n
 ### 3. Which migrations are effectively already present in production
 **All 34.** The 29 historical ones came in with the `pg_restore` schema; the 5 new ones were applied manually. So the correct end state is "all 34 marked applied," and **nothing should actually execute against the schema** during repair — repair only writes rows into the history table, it does not run migration SQL.
 
-### 4. Exact non-destructive repair commands (DO NOT RUN until approved)
-`supabase migration repair --status applied <version…>` inserts history rows **without executing** the migration bodies. Mark all 34 applied (safe to include ones already recorded — repair is idempotent per version):
+### 4. Exact non-destructive repair commands (executed 2026-07-09 — retained as record)
+`supabase migration repair --status applied <version…>` inserts history rows **without executing** the migration bodies. All 34 were marked applied (repair is idempotent per version):
 
 ```bash
 # One command, all 34 versions (CLI accepts multiple versions):
@@ -491,25 +637,21 @@ After that, a future genuinely-new migration file is the only thing `db push` wi
 
 ---
 
-## Anticipated Next Phases (provisional — to be finalized from Phase 1's findings)
+## Phase history (done) → current plan
 
-These are *not* fully scoped yet on purpose — real priorities should come from what Phase 1 actually finds, not be guessed in advance.
+The migration-era phases are complete: **Phase 1** (Full Product Audit) ✅, **Phase 2 / 2b / 2c** (prioritized + live-QA bug fixes) ✅, **Phase 3** (DNS cutover ✅, DB-level `@uci.edu` trigger ✅, Supabase migration-history repair ✅). **Phase 4** (comprehensive UI/UX revision) and the **access-model transition** (gated beta → open `@uci.edu` signup) remain deferred post-launch items.
 
-- **Phase 2: Prioritized bug-fix pass.** Work the Bug Inventory in severity order. Blockers first, then High, then Medium/Low as time allows.
-- **Phase 3: Close remaining infra/hardening gaps.** ✅ DNS cutover done (2026-07-09); ✅ DB-level `@uci.edu` trigger done (Phase 2). Remaining infra cleanup: **Supabase migration-history repair** (audit drafted below, not executed) and **Lovable decommission** (kept as fallback a few days).
-- **Phase 4 (deferred, post-launch): Comprehensive UI/UX revision.** Design-system consistency audit, full empty/loading/error-state pass beyond bug-level fixes, mobile-specific optimization, accessibility audit, possible visual refresh. Deliberately scoped for after real usage data exists — not planned blind.
-- **Access model transition:** once the beta has run for a while and core flows are validated, consider relaxing from gated waitlist-approval to open `@uci.edu` signup (keep OTP + the DB-level domain trigger as the sole gates).
+**The active plan now lives at the top of this document** — see **"▶ Start here"**, **"Backlog — ranked workstreams"**, and the **"Lovable decommission checklist."** This section is retained only to record that the numbered migration phases are closed.
 
 ---
 
-## Reference / Historical Docs
+## Documentation sources of truth
 
-- **`docs/archive/MIGRATION.md`** — the full Lovable Cloud → Supabase/Vercel migration runbook, with a step-by-step completion status. Kept for historical reference; no longer an active execution doc.
-- **`docs/archive/lovable-migration-plan.md`** — Lovable's own AI-generated planning doc for the same migration (superseded by the above, kept for reference only).
-- **`prd.md`** — current product spec, feature list, known issues, launch readiness criteria.
+Now that migration is closed, the active docs and their roles are:
 
----
+- **`README.md`** — setup & deployment basics (how to run/build/deploy the app, env vars, edge functions).
+- **`prd.md`** — product spec and **current product state** (vision, users, access model, feature list, known issues, launch readiness).
+- **`plan.md`** (this doc) — the **product-development execution plan**: current stage, next priorities, and the Lovable decommission checklist at the top; the migration-era audit/Bug Inventory retained below as the historical record the backlog draws from.
+- **`docs/archive/MIGRATION.md`** and **`docs/archive/lovable-migration-plan.md`** — **historical reference only**; the migration they describe is complete. Not active execution docs.
 
-## Suggested execution order
-
-**Phase 1** (Full Product Audit & Bug Inventory — ✅ done) → **Phase 2 / 2b / 2c** (prioritized fixes from the inventory + live-QA rounds — ✅ done) → **Phase 3** (DNS ✅ + DB-trigger hardening ✅ done; migration-history repair + Lovable decommission still open) → **Phase 4** (UI/UX revision, deferred, post-launch, separately scoped).
+The project is no longer in migration mode; treat the three top-level docs above as current and the `docs/archive/` files as history.
