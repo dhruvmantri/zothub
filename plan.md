@@ -25,36 +25,45 @@
 
 > This is the single recommended next coding pass for a fresh session. Pick this unless a higher-severity production incident has appeared since (in which case triage that first and note it here). The full ranked backlog is in **"Backlog — ranked workstreams."**
 
-### Workstream 1 — Application-pipeline notifications & email correctness
+> **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** See the completion record at the end of this section and the updated inventory entries. The recommended next pass is **WS2** below.
 
-**In one line:** make the core marketplace loop reliable by ensuring a club is actually notified when a student applies (in-app **and** email), and that application-related emails respect the user's notification preferences.
+### Workstream 2 — Realtime delivery for messages & RSVP status *(recommended next)*
 
-**Why this comes first**
-- **Core-value impact (highest):** the two-sided loop is *student applies → club reviews → decides*. Today a club receives **nothing** when a student applies — no in-app notification and no email — so clubs only see applications if they happen to open the dashboard. That directly undermines the primary success metric (application volume / club engagement) and the product's core promise to clubs. Verified against the code: there is **no `AFTER INSERT` trigger on `applications`**, and `send-email` has **no "new application to club" type** (only `application_confirmation`/`application_status` to the student).
-- **Trust/correctness:** `prd.md` Journey 1 explicitly promises "in-app + email notification per application" — the product currently contradicts its own spec.
-- **Coupled, same verification path:** client-side transactional **application** emails bypass `notification_preferences` (the DB triggers and the `send-reminders` cron respect prefs, but `ApplicationForm`/`ApplicationReview` call `send-email` directly with no preference check). Fixing "who gets notified about applications" and "do those sends respect preferences" is one coherent unit exercised by the same test (submit an application, toggle prefs, observe).
-- **Low-risk, established pattern:** the codebase already has three notification triggers to mirror (`on_application_status_change`, `on_rsvp_status_change`, `notify_new_message`) and an email helper pattern (`src/lib/emailService.ts`), so this is additive, not a rewrite.
+**In one line:** live chat, the unread-message badge, and the student's live RSVP-approval update don't work because the relevant tables aren't in the realtime publication.
+
+**Why this is next**
+- After WS1, the highest-impact remaining correctness gap is that PRD-promised realtime features silently don't work. `messages` and `rsvps` are **not** in the `supabase_realtime` publication (verified: only `notifications` + `club_team_members` were ever `ALTER PUBLICATION ... ADD`ed), so `useMessages`/`useNavigationCounts`/RSVP subscriptions receive no events.
+- Single root cause, one small migration, easy to verify by subscribing and observing.
 
 **Scope (do)**
-1. **In-app notification to the club on new application** — add an `AFTER INSERT` trigger on `public.applications` (new migration) that inserts a `notifications` row for the opportunity's owning club, gated on the club's `application_updates` preference (mirror `notify_application_status_change`).
-2. **"New application" email to the club** — add a `send-email` type (template already drafted in `prd.md` Appendix C, "New Application Notification (to Club)") and wire a caller. Choose client-side-after-insert (like `sendApplicationConfirmation`) vs the edge/cron pattern after inspecting how the club owner's email is reachable from the submit path.
-3. **Preference-respecting application emails** — make the application confirmation/status emails check `notification_preferences` before sending (or move them server-side where the check already lives).
+1. Add a migration: `ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;` and `... ADD TABLE public.rsvps;`, and set `REPLICA IDENTITY FULL` on each as needed for the client filters used.
+2. Verify a live subscription receives `postgres_changes` for message inserts and RSVP status updates.
 
 **Boundaries (do NOT, this pass)**
-- Do **not** rework the follow/`club_followers` vs bookmarks system (Workstream 3), the realtime publication (Workstream 2), RSVP capacity/decline email (Workstream 4), or anon browsing (Workstream 5). Note anything you find in those areas in the inventory; don't fix here.
-- Keep RSVP and message notifications out of scope except where they share the identical preference-check helper you're already touching.
+- Don't touch the follow/bookmark system (WS3), RSVP capacity/decline email (WS4), or anon browsing (WS5). Note anything you find; don't fix here.
 
 **Evidence to inspect before coding**
-- Triggers/pattern: `supabase/migrations/20251223160240_*.sql` (`notify_application_status_change`, `notify_new_message`) and `20260709000400_*` (`notify_rsvp_status_change`) — copy the shape.
-- `applications` schema + RLS + `notifications` insert policy (`\d applications`; the `"System can insert notifications"` policy already permits trigger inserts).
-- `src/components/ApplicationForm.tsx` (submit path, what data it has — esp. whether the club email is available or must be fetched via `opportunities → club_profiles`), `src/lib/emailService.ts`, `supabase/functions/send-email/index.ts` (type union + templates), `src/components/dashboard/ApplicationReview.tsx` (status emails).
-- `notification_preferences` columns (`application_updates` exists) and how the existing triggers read them.
+- `src/hooks/useMessages.ts`, `src/hooks/useNavigationCounts.ts` (subscriptions), the existing `ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications` in `20251223160240_*.sql`, and `pg_publication_tables` for current membership.
 
 **Done / verification looks like**
-- New migration applies cleanly on a fresh local Postgres with all 34 migrations (the established local-DB harness); submitting an application creates exactly one club `notifications` row and (when prefs allow) triggers a club email; toggling the club's `application_updates` off suppresses both.
-- Application confirmation/status emails are gated by preferences (verify: disable the preference → no send).
-- `tsc --noEmit` and `vite build` clean; lint on touched files shows no new errors; a targeted manual/e2e drive of "student applies → club sees notification."
-- **Deployment note (record in the PR):** this adds a DB trigger + `send-email` change → `supabase db push --linked` for the migration and redeploy `send-email` (`supabase functions deploy send-email`). Migration history is reconciled, so `db push` applies only the new file.
+- `messages` and `rsvps` appear in `pg_publication_tables` for `supabase_realtime`; a subscribed client observes inserts/updates live.
+- `tsc --noEmit` / `vite build` clean; migration applies cleanly on the local harness.
+- **Deployment note:** DB-only change → `supabase db push --linked`; no edge-function redeploy.
+
+---
+
+#### ✅ WS1 completion record (2026-07-10)
+
+**What shipped:**
+- **Migration `20260710000100_notify_club_on_new_application.sql`** — `AFTER INSERT` trigger `on_new_application` on `public.applications` (`notify_club_on_new_application()`, `SECURITY DEFINER`, mirrors `notify_application_status_change`). On a new application it inserts exactly one in-app `notifications` row (`type = 'new_application'`) for the owning club account, with the club derived server-side from `opportunity.club_id → club_profiles.user_id` (never client input) and gated on the club's `application_updates` preference (`COALESCE(..., true)`). Because it's `AFTER INSERT`, a blocked duplicate (unique key, 23505) produces no notification. Idempotent (`CREATE OR REPLACE` + `DROP TRIGGER IF EXISTS`).
+- **`send-email` edge function** — new `application_notification` type + template (from prd.md Appendix C). The club recipient is resolved server-side from `data.opportunityId` (`opportunities → club_profiles`), so it can't be misrouted. Added server-side **preference gating** for all three application email types (`application_confirmation`, `application_status`, `application_notification`): the function resolves the recipient's `user_id` and skips the send when `application_updates` is disabled (defaults to send when no prefs row — matching the triggers). Done server-side because RLS blocks a club from reading a student's prefs (and vice-versa), so a client-side check can't gate cross-user sends.
+- **Client** — `sendNewApplicationNotification()` in `src/lib/emailService.ts`, called from `ApplicationForm` in the same success block as the student confirmation (fires only after a confirmed insert, never on the 23505 duplicate path). `NotificationCard` links the club's `new_application` notification to `/club/applications`.
+
+**Verified:** all 34 migrations + the new one apply cleanly on a local PG16 harness; a new application creates exactly one notification to the correct owning club; a duplicate creates none; toggling the club's `application_updates` off suppresses it and back on re-enables it. `tsc -p tsconfig.app.json --noEmit` and `npm run build` clean; lint on touched files introduces no new errors. The edge function couldn't be executed locally (no Deno/Resend), so its resolution + preference queries were simulated directly against the harness schema.
+
+**Deferred (not this pass):** RSVP transactional emails still bypass preferences (WS4 owns RSVP email correctness); the `application_notification` email shares the `application_updates` preference (there is no dedicated per-club column — intentional).
+
+**Deployment steps a human must run:** `supabase db push --linked` (applies only `20260710000100_notify_club_on_new_application.sql`; history is reconciled) and `supabase functions deploy send-email`. No Vercel redeploy required for the DB/edge changes; the small client edits ship with the next frontend deploy.
 
 ---
 
@@ -103,8 +112,8 @@ Normal product-development cadence now that migration/cutover is closed. Roughly
 
 Coherent workstreams (one root cause + directly-coupled defects each), ranked by the **Task-selection method** above. Work top-down. Each cross-references its **Confirmed bug & risk inventory** entry. Severity in brackets is the worst defect in the workstream.
 
-**WS1 — Application-pipeline notifications & email correctness** *(detailed in "▶ Start here")* — **[High]**
-Clubs get **no** notification (in-app or email) on a new application; application emails ignore `notification_preferences`. Root cause: the application notification/email path is incomplete + inconsistent. *([Applications] Clubs are not notified…; [Notifications] Client-side transactional emails…)*
+**WS1 — Application-pipeline notifications & email correctness** — **✅ DONE (2026-07-10)**
+Clubs now receive an in-app notification (`on_new_application` trigger) **and** an email (`application_notification` type) on each new application, both derived server-side from the owning club and gated on `application_updates`; application confirmation/status emails are now preference-gated server-side in `send-email`. Completion record in "▶ Start here". *Remaining RSVP-email preference gap is tracked in WS4.*
 
 **WS2 — Realtime delivery for messages & RSVP status** — **[Medium]**
 `messages` and `rsvps` are **not** in the `supabase_realtime` publication (verified: only `notifications` + `club_team_members` are), so live chat, the unread-message badge, and the student's live RSVP-approval update don't work. Single root cause / one migration: `ALTER PUBLICATION supabase_realtime ADD TABLE …` + set `REPLICA IDENTITY`; verify by subscribing and observing. *([Messages] Real-time messaging…; Phase 2c follow-up: rsvps realtime)*
@@ -314,7 +323,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** PRD Journey 1 specifies "in-app + email notification per application" to the club.
 - **Root cause (CONFIRMED via triggers + code):** There is a trigger for application *status change* (`on_application_status_change`, AFTER UPDATE) but **no AFTER INSERT trigger** on `applications` (verified via `information_schema.triggers`), and `ApplicationForm` only sends a confirmation to the *student* (`sendApplicationConfirmation`). `send-email` has no "new application to club" type at all (`supabase/functions/send-email/index.ts:13`), even though PRD Appendix C documents that template. Fix: add an INSERT trigger (in-app) and a club email type + caller.
 - **Suspected location:** DB trigger on `applications` (to add); `src/components/ApplicationForm.tsx`; `supabase/functions/send-email/index.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS1 (2026-07-10).** Migration `20260710000100` adds the `AFTER INSERT` trigger `on_new_application` (in-app notification to the owning club, gated on `application_updates`); `send-email` gains an `application_notification` type whose club recipient is resolved server-side from the opportunity; `ApplicationForm` calls `sendNewApplicationNotification` after a confirmed insert. Verified on the local harness: exactly one notification to the correct club, none on a duplicate, suppressed when the pref is off.
 
 #### [Feed/Notifications] "Follow" writes bookmarks, but follower notifications read `club_followers` (never populated)
 - **Severity:** Medium
@@ -346,7 +355,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Preference toggles should gate the corresponding emails.
 - **Root cause (code analysis):** In-app notifications (DB triggers) *do* check `notification_preferences`, and the **cron reminders** (`send-reminders`) *do* check them. But the **client-side** transactional sends bypass preferences entirely: `ApplicationForm` (confirmation), `ApplicationReview.updateApplicationStatus`/`handleBulkStatusUpdate` (status), and `RSVPForm`/`eventNotifications` (RSVP) call `send-email` directly with no preference lookup. Fix: check preferences before sending, or move these sends server-side where the check already exists.
 - **Suspected location:** `src/lib/emailService.ts` callers, `src/components/ApplicationForm.tsx`, `src/components/dashboard/ApplicationReview.tsx`, `src/lib/eventNotifications.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Partially fixed in WS1 (2026-07-10).** The **application** emails (`application_confirmation`, `application_status`, and the new `application_notification`) are now preference-gated server-side inside `send-email` — it resolves the recipient's `user_id` and skips the send when `application_updates` is off (defaulting to send when no prefs row, matching the triggers). This is done server-side because RLS prevents a club from reading a student's prefs and vice-versa, so a client-side check can't gate cross-user sends. **Still open (WS4):** RSVP transactional emails (`rsvp_confirmation` via `RSVPForm`/`eventNotifications`) still bypass `event_reminders` — fold into WS4's RSVP email-correctness pass using the same server-side gate.
 
 #### [Events/Email] Declining an RSVP emails the student a "You're In! confirmed" message
 - **Severity:** Medium

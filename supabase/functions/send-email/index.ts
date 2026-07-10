@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,10 +14,60 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "application_confirmation" | "application_status" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
+  type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
   to: string;
   data: Record<string, unknown>;
 }
+
+// Email types that are gated by a notification_preferences column. When the
+// recipient has that preference disabled, the send is skipped. Types not listed
+// here (auth/waitlist/OTP and the cron-sent reminders, which are already
+// preference-checked in send-reminders) always send.
+const PREFERENCE_COLUMN_BY_TYPE: Record<string, string> = {
+  application_confirmation: "application_updates",
+  application_status: "application_updates",
+  application_notification: "application_updates",
+};
+
+type SupabaseClient = ReturnType<typeof createClient>;
+
+// Resolve a recipient's auth user_id from their email (student or club account),
+// so we can look up their notification preferences.
+const resolveUserIdByEmail = async (
+  supabase: SupabaseClient,
+  email: string,
+): Promise<string | null> => {
+  const { data: student } = await supabase
+    .from("student_profiles")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+  if (student?.user_id) return student.user_id as string;
+
+  const { data: club } = await supabase
+    .from("club_profiles")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+  return (club?.user_id as string) ?? null;
+};
+
+// Whether a preference column is enabled for a user. Defaults to true when no
+// preferences row exists — matching the DB triggers' COALESCE(<pref>, true).
+const isPreferenceEnabled = async (
+  supabase: SupabaseClient,
+  userId: string,
+  column: string,
+): Promise<boolean> => {
+  const { data } = await supabase
+    .from("notification_preferences")
+    .select(column)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return true;
+  const value = (data as Record<string, unknown>)[column];
+  return value === null || value === undefined ? true : Boolean(value);
+};
 
 const getEmailFooter = (type: string) => `
   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
@@ -74,6 +128,28 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
                 Status: ${(data.status as string).toUpperCase()}
               </p>
               <p style="margin: 8px 0 0 0;">${statusMessages[data.status as string] || ""}</p>
+            </div>
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getEmailFooter("application_updates")}
+          </div>
+        `,
+      };
+
+    case "application_notification":
+      return {
+        subject: `New application for ${data.opportunityTitle}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">New Application Received 📬</h1>
+            <p>Hi ${data.clubName},</p>
+            <p>You received a new application for <strong>${data.opportunityTitle}</strong>.</p>
+            <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
+              <p style="margin: 0;"><strong>Applicant:</strong> ${data.studentName}</p>
+              ${data.studentMajor ? `<p style="margin: 8px 0 0 0;"><strong>Major:</strong> ${data.studentMajor}</p>` : ""}
+              ${data.studentYear ? `<p style="margin: 8px 0 0 0;"><strong>Year:</strong> ${data.studentYear}</p>` : ""}
+            </div>
+            <div style="margin: 24px 0;">
+              <a href="https://zothub.app/club/applications" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px;">View application &amp; review answers</a>
             </div>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("application_updates")}
@@ -292,18 +368,77 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { type, to, data }: EmailRequest = await req.json();
 
-    if (!type || !to || !data) {
+    if (!type || !data) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: type, to, data" }),
+        JSON.stringify({ error: "Missing required fields: type, data" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Recipient and the user whose preferences gate this send. For most types
+    // the recipient is the client-provided `to`; for the club "new application"
+    // notification the recipient is resolved server-side from the opportunity so
+    // it can never be misrouted to the wrong club by client input.
+    let recipient = to;
+    let preferenceUserId: string | null = null;
+
+    const needsAdmin =
+      type === "application_notification" || Boolean(PREFERENCE_COLUMN_BY_TYPE[type]);
+    const supabase = needsAdmin ? createClient(supabaseUrl, supabaseServiceKey) : null;
+
+    if (type === "application_notification" && supabase) {
+      const { data: opportunity } = await supabase
+        .from("opportunities")
+        .select("title, club_profiles!inner(user_id, email, club_name)")
+        .eq("id", data.opportunityId as string)
+        .maybeSingle();
+
+      const club = opportunity?.club_profiles as
+        | { user_id: string; email: string; club_name: string }
+        | undefined;
+
+      // If the opportunity/club can't be resolved, there is no safe recipient —
+      // skip rather than risk sending to a client-supplied address.
+      if (!club?.email) {
+        return new Response(
+          JSON.stringify({ skipped: true, reason: "club_not_resolved" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      recipient = club.email;
+      preferenceUserId = club.user_id;
+      data.clubName = club.club_name;
+      data.opportunityTitle = data.opportunityTitle ?? opportunity?.title;
+    } else if (supabase && PREFERENCE_COLUMN_BY_TYPE[type] && recipient) {
+      preferenceUserId = await resolveUserIdByEmail(supabase, recipient);
+    }
+
+    if (!recipient) {
+      return new Response(
+        JSON.stringify({ error: "Missing required field: to" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Respect the recipient's notification preferences for preference-gated types.
+    const preferenceColumn = PREFERENCE_COLUMN_BY_TYPE[type];
+    if (supabase && preferenceColumn && preferenceUserId) {
+      const enabled = await isPreferenceEnabled(supabase, preferenceUserId, preferenceColumn);
+      if (!enabled) {
+        console.log(`Skipping ${type} email: ${preferenceColumn} disabled for recipient`);
+        return new Response(
+          JSON.stringify({ skipped: true, reason: "preference_disabled" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     const { subject, html } = getEmailContent(type, data);
 
     const emailResponse = await resend.emails.send({
       from: "ZotHub <notifications@zothub.app>",
-      to: [to],
+      to: [recipient],
       subject,
       html,
     });

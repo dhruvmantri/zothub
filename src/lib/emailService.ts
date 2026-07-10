@@ -1,8 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
-type EmailType = 
+type EmailType =
   | "application_confirmation"
   | "application_status"
+  | "application_notification"
   | "rsvp_confirmation"
   | "rsvp_reminder"
   | "deadline_reminder"
@@ -14,6 +15,9 @@ type EmailType =
 
 interface EmailData {
   studentName?: string;
+  studentMajor?: string;
+  studentYear?: string;
+  opportunityId?: string;
   opportunityTitle?: string;
   eventTitle?: string;
   clubName?: string;
@@ -57,6 +61,24 @@ export async function sendApplicationConfirmation(
     studentName,
     opportunityTitle,
     clubName,
+  });
+}
+
+// Notify the owning club that a new application was submitted. The club
+// recipient is resolved server-side from the opportunity (never passed as a
+// `to` address), so the notification can't be misrouted, and the send is gated
+// on the club's application_updates preference inside the edge function.
+export async function sendNewApplicationNotification(
+  opportunityId: string,
+  studentName: string,
+  studentMajor?: string,
+  studentYear?: string
+): Promise<{ success: boolean; error?: string }> {
+  return sendEmail("application_notification", "", {
+    opportunityId,
+    studentName,
+    studentMajor,
+    studentYear,
   });
 }
 
