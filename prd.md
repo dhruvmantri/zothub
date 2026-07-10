@@ -1,8 +1,8 @@
 # ZotHub Product Requirements Document
 
-**Version:** 3.0
-**Last Updated:** 2026-07-08
-**Status:** Migration complete, entering Full Product Audit stage — see `plan.md` for the active engineering plan
+**Version:** 3.1
+**Last Updated:** 2026-07-09
+**Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover to Vercel complete. Full Product Audit + Blocker/High/live-QA fix passes done. Now in post-cutover stabilization — see `plan.md` for the active engineering plan.
 **Author:** Claude, reconciled against the live codebase
 
 ---
@@ -23,7 +23,7 @@ ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovabl
 ### Launch scope
 - **Access model:** Gated beta — new users go through a waitlist (signup → email OTP verification → admin approval) rather than fully open signup. See "Access Model" below.
 - **Expected initial scale:** 10-30 clubs, 200-500 students in the first 30 days (medium launch; informs the performance posture — query limits + basic pagination, not full virtualization).
-- **Launch domain:** `zothub.app` (owned; DNS cutover to Vercel still pending — see Known Issues).
+- **Launch domain:** `zothub.app` — **live on Vercel.** DNS cutover complete; `zothub.app` and `www.zothub.app` verified serving on Vercel with valid TLS. Resend DNS records were preserved through the cutover.
 - **Support model:** Founder-led support via a designated support/admin email, plus the in-app `/admin` approval queue as an ongoing operational responsibility, not just a one-time launch task.
 
 ### Success criteria
@@ -124,17 +124,25 @@ The platform uses a **waitlist-gated signup flow**:
 
 ## 🐞 Known Issues / QA Gaps
 
-Full detail and desired-behavior specs live in `plan.md`'s Known Issues table (which also seeds the Phase 1 Bug Inventory). Summary:
+Full detail and per-item status live in `plan.md`'s Bug Inventory. Summary as of 2026-07-09 (post-cutover):
 
-| # | Issue | Type |
-|---|---|---|
-| 1 | Student profile setup fails with a raw validation error (`"Expected array, received null"`) when `interests`/`skills` are left empty | Bug |
-| 2 | An orphaned/deleted user still appears as a club team member (root cause: `auth.users` was never migrated from Lovable Cloud) | Bug |
-| 3 | `zothub.app` DNS has not yet been cut over to Vercel | Infra gap |
-| 4 | DB-level `@uci.edu` signup enforcement not yet added (client-side only today) | Infra gap |
-| 5 | Full end-to-end QA beyond core auth/waitlist flows has not been completed | Process gap — this is the explicit subject of `plan.md`'s Phase 1 |
+| # | Issue | Type | Status |
+|---|---|---|---|
+| 1 | Student profile setup raw validation error when `interests`/`skills` empty | Bug | ✅ Fixed (Phase 2) |
+| 2 | Orphaned migrated user appeared as a club team member (`auth.users` never migrated from Lovable Cloud) | Bug | ✅ Orphan rows manually cleaned in production; future-safe FK/UI-filter guidance documented in `plan.md` (not yet added) |
+| 3 | `zothub.app` DNS cutover to Vercel | Infra gap | ✅ **Done** — `zothub.app` + `www.zothub.app` live on Vercel with valid TLS |
+| 4 | DB-level `@uci.edu` signup enforcement (was client-side only) | Infra gap | ✅ Fixed (Phase 2 — `BEFORE INSERT` trigger on `auth.users`) |
+| 5 | Full end-to-end QA beyond core auth/waitlist flows | Process gap | ✅ Done (Phase 1 audit + Phase 2/2b/2c live-QA passes) |
 
-**No new bugs should be fixed ad hoc.** Per `plan.md`, any additional issues found should be added to the Bug Inventory there before being fixed, so the next coding pass is coordinated.
+**Open infra / cleanup items (not blocking, tracked in `plan.md`):**
+
+| # | Item | Type | Status |
+|---|---|---|---|
+| A | **Supabase migration-history repair** — prod was built via `pg_restore`, so the CLI history table doesn't record the existing migrations; `db push` tries to replay them. Repair plan drafted, **not yet executed.** | Infra cleanup | Open (audit-only; see `plan.md` → "Supabase migration-history repair (audit)") |
+| B | **Lovable decommission** — Lovable is no longer serving production traffic but is being kept untouched a few days as fallback. | Infra cleanup | Open (deliberate; future manual step) |
+| C | Remaining Medium/Low bugs from the Bug Inventory (e.g. `rsvps`/`messages` not in the realtime publication; new-post follower notifications keyed off the unused `club_followers`; unscheduled `archive_past_events`) | Bug backlog | Open (see `plan.md`) |
+
+**No new bugs should be fixed ad hoc.** Any additional issues found should be added to the Bug Inventory in `plan.md` before being fixed, so the next coding pass is coordinated.
 
 ---
 
@@ -190,7 +198,7 @@ Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`,
 - **Hosting:** Vercel.
 - **Backend:** Self-owned Supabase project (`fguzpscguulkfctipeih`), managed via the Supabase CLI/dashboard.
 - **Email:** Resend, invoked from Supabase Edge Functions, sending from a verified `zothub.app` domain.
-- **Domain:** `zothub.app` (registered at Name.com; DNS cutover to Vercel still pending).
+- **Domain:** `zothub.app` (registered at Name.com; **DNS cutover to Vercel complete** — `zothub.app` and `www.zothub.app` serving on Vercel with valid TLS. Resend DNS records preserved).
 
 ---
 
@@ -230,15 +238,17 @@ No dedicated analytics platform required at this scale — derive metrics from d
 
 ## ✅ Launch Readiness Criteria
 
-- [ ] `plan.md` Phase 1 (Full Product Audit) complete, with a full Bug Inventory
-- [ ] All Blocker/High-severity items from the Bug Inventory fixed and verified
-- [ ] Known Issues #1 and #2 (above) resolved
-- [ ] `zothub.app` DNS cut over to Vercel and confirmed serving correctly with valid TLS
-- [ ] DB-level `@uci.edu` enforcement trigger in place
-- [ ] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
-- [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly
-- [ ] Support contact live and documented
-- [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent
+- [x] `plan.md` Phase 1 (Full Product Audit) complete, with a full Bug Inventory
+- [x] All Blocker/High-severity items from the Bug Inventory fixed and verified (Phase 2 / 2b / 2c)
+- [x] Known Issues #1 and #2 resolved (#1 fixed; #2 orphan rows cleaned in prod, future-safe guidance documented)
+- [x] `zothub.app` DNS cut over to Vercel and confirmed serving correctly with valid TLS (`zothub.app` + `www.zothub.app`)
+- [x] DB-level `@uci.edu` enforcement trigger in place
+- [x] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
+- [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly *(operational owner assignment — outside code)*
+- [ ] Support contact live and documented *(depends on `@zothub.app` mailbox now that DNS is live)*
+- [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent *(reminder job confirmed active; `archive_past_events` scheduling still to confirm — see `plan.md`)*
+
+**Post-launch infra cleanup (open, non-blocking):** Supabase migration-history repair (audit drafted in `plan.md`, not executed); Lovable decommission (kept as fallback for a few days).
 
 ---
 
