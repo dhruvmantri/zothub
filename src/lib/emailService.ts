@@ -15,9 +15,7 @@ type EmailType =
 
 interface EmailData {
   studentName?: string;
-  studentMajor?: string;
-  studentYear?: string;
-  opportunityId?: string;
+  applicationId?: string;
   opportunityTitle?: string;
   eventTitle?: string;
   clubName?: string;
@@ -64,21 +62,17 @@ export async function sendApplicationConfirmation(
   });
 }
 
-// Notify the owning club that a new application was submitted. The club
-// recipient is resolved server-side from the opportunity (never passed as a
-// `to` address), so the notification can't be misrouted, and the send is gated
-// on the club's application_updates preference inside the edge function.
+// Notify the owning club that a new application was submitted. Only the
+// authoritative applicationId is sent; the edge function verifies the caller
+// owns the application, then derives the club recipient, applicant identity,
+// and opportunity from database rows, gates on the club's application_updates
+// preference, and de-duplicates the send. No applicant data is trusted from the
+// client here.
 export async function sendNewApplicationNotification(
-  opportunityId: string,
-  studentName: string,
-  studentMajor?: string,
-  studentYear?: string
+  applicationId: string
 ): Promise<{ success: boolean; error?: string }> {
   return sendEmail("application_notification", "", {
-    opportunityId,
-    studentName,
-    studentMajor,
-    studentYear,
+    applicationId,
   });
 }
 

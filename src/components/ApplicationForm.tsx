@@ -127,13 +127,17 @@ export function ApplicationForm({
         return;
       }
 
-      const { error } = await supabase.from("applications").insert({
-        opportunity_id: validationResult.data.opportunity_id,
-        student_id: profile.id,
-        answers: validationResult.data.answers,
-        resume_url: validationResult.data.resume_url,
-        status: "pending",
-      });
+      const { data: inserted, error } = await supabase
+        .from("applications")
+        .insert({
+          opportunity_id: validationResult.data.opportunity_id,
+          student_id: profile.id,
+          answers: validationResult.data.answers,
+          resume_url: validationResult.data.resume_url,
+          status: "pending",
+        })
+        .select("id")
+        .single();
 
       if (error) {
         console.error("Error submitting application:", error);
@@ -156,13 +160,13 @@ export function ApplicationForm({
         ).catch(console.error);
       }
 
-      // Notify the owning club of the new application (non-blocking). The club
-      // recipient is resolved server-side from the opportunity id; this runs
-      // only after a confirmed insert, so a blocked duplicate never emails.
-      sendNewApplicationNotification(
-        opportunity.id,
-        studentName || "A student"
-      ).catch(console.error);
+      // Notify the owning club of the new application (non-blocking). Only the
+      // authoritative application id is sent; the edge function verifies
+      // ownership, resolves the club recipient, and de-duplicates. Runs only
+      // after a confirmed insert, so a blocked duplicate never emails.
+      if (inserted?.id) {
+        sendNewApplicationNotification(inserted.id).catch(console.error);
+      }
 
       toast.success("Application submitted successfully!");
       onSuccess();

@@ -13,6 +13,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const jsonResponse = (body: Record<string, unknown>, status: number): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+
 interface EmailRequest {
   type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
   to: string;
@@ -377,64 +383,122 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Recipient and the user whose preferences gate this send. For most types
     // the recipient is the client-provided `to`; for the club "new application"
-    // notification the recipient is resolved server-side from the opportunity so
-    // it can never be misrouted to the wrong club by client input.
+    // notification everything is resolved server-side from authoritative rows so
+    // it can never be misrouted or spoofed by client input.
     let recipient = to;
     let preferenceUserId: string | null = null;
+    let payload: Record<string, unknown> = data;
 
     const needsAdmin =
       type === "application_notification" || Boolean(PREFERENCE_COLUMN_BY_TYPE[type]);
     const supabase = needsAdmin ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
     if (type === "application_notification" && supabase) {
-      const { data: opportunity } = await supabase
-        .from("opportunities")
-        .select("title, club_profiles!inner(user_id, email, club_name)")
-        .eq("id", data.opportunityId as string)
+      // 1. Require an authenticated end-user (the applying student). The bearer
+      //    is forwarded by supabase-js functions.invoke; a service-role token or
+      //    anonymous request resolves to no user and is rejected.
+      const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+      if (!token) {
+        return jsonResponse({ error: "Missing authorization" }, 401);
+      }
+      const { data: authData, error: authError } = await supabase.auth.getUser(token);
+      const authUser = authData?.user;
+      if (authError || !authUser) {
+        return jsonResponse({ error: "Invalid or expired session" }, 401);
+      }
+
+      // 2. Load the referenced application and its authoritative relations.
+      const applicationId = data.applicationId;
+      if (!applicationId || typeof applicationId !== "string") {
+        return jsonResponse({ error: "Missing applicationId" }, 400);
+      }
+      const { data: application } = await supabase
+        .from("applications")
+        .select(
+          "id, student_profiles:student_id(user_id, full_name, major, year), " +
+            "opportunities:opportunity_id(title, club_profiles:club_id(user_id, email, club_name))",
+        )
+        .eq("id", applicationId)
         .maybeSingle();
 
-      const club = opportunity?.club_profiles as
-        | { user_id: string; email: string; club_name: string }
-        | undefined;
-
-      // If the opportunity/club can't be resolved, there is no safe recipient —
-      // skip rather than risk sending to a client-supplied address.
-      if (!club?.email) {
-        return new Response(
-          JSON.stringify({ skipped: true, reason: "club_not_resolved" }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+      if (!application) {
+        return jsonResponse({ error: "Application not found" }, 404);
       }
 
+      const student = application.student_profiles as
+        | { user_id: string; full_name: string | null; major: string | null; year: string | null }
+        | null;
+
+      // 3. Authorize: the application must belong to the authenticated student.
+      if (!student || student.user_id !== authUser.id) {
+        return jsonResponse({ error: "Forbidden" }, 403);
+      }
+
+      const opportunity = application.opportunities as
+        | { title: string | null; club_profiles: { user_id: string; email: string; club_name: string } | null }
+        | null;
+      const club = opportunity?.club_profiles ?? null;
+      if (!club?.email || !club?.user_id) {
+        return jsonResponse({ error: "Owning club could not be resolved" }, 404);
+      }
+
+      // 4. Derive every recipient/content field from DB rows — ignore client data.
       recipient = club.email;
       preferenceUserId = club.user_id;
-      data.clubName = club.club_name;
-      data.opportunityTitle = data.opportunityTitle ?? opportunity?.title;
-    } else if (supabase && PREFERENCE_COLUMN_BY_TYPE[type] && recipient) {
-      preferenceUserId = await resolveUserIdByEmail(supabase, recipient);
-    }
+      payload = {
+        clubName: club.club_name,
+        opportunityTitle: opportunity?.title ?? "your opportunity",
+        studentName: student.full_name || "A student",
+        studentMajor: student.major ?? undefined,
+        studentYear: student.year ?? undefined,
+      };
 
-    if (!recipient) {
-      return new Response(
-        JSON.stringify({ error: "Missing required field: to" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Respect the recipient's notification preferences for preference-gated types.
-    const preferenceColumn = PREFERENCE_COLUMN_BY_TYPE[type];
-    if (supabase && preferenceColumn && preferenceUserId) {
-      const enabled = await isPreferenceEnabled(supabase, preferenceUserId, preferenceColumn);
+      // 5. Respect the club's application_updates preference.
+      const enabled = await isPreferenceEnabled(supabase, club.user_id, "application_updates");
       if (!enabled) {
-        console.log(`Skipping ${type} email: ${preferenceColumn} disabled for recipient`);
-        return new Response(
-          JSON.stringify({ skipped: true, reason: "preference_disabled" }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+        return jsonResponse({ skipped: true, reason: "preference_disabled" }, 200);
+      }
+
+      // 6. Idempotency: claim this (application, club) send before emailing, reusing
+      //    the existing reminder_logs unique key. A duplicate claim means the club
+      //    was already notified for this application, so skip the send.
+      const { error: claimError } = await supabase.from("reminder_logs").insert({
+        reminder_type: "application_notification",
+        target_id: applicationId,
+        user_id: club.user_id,
+      });
+      if (claimError) {
+        if (claimError.code === "23505") {
+          return jsonResponse({ skipped: true, reason: "already_sent" }, 200);
+        }
+        console.error("Failed to record application_notification log:", claimError);
+        return jsonResponse({ error: "Could not record notification" }, 500);
+      }
+    } else {
+      // For the remaining preference-gated application emails (confirmation /
+      // status) the recipient is the client-provided address. Resolve it to a
+      // user and FAIL CLOSED for gated types when it can't be resolved, rather
+      // than silently sending past the preference check.
+      if (!recipient) {
+        return jsonResponse({ error: "Missing required field: to" }, 400);
+      }
+
+      const preferenceColumn = PREFERENCE_COLUMN_BY_TYPE[type];
+      if (supabase && preferenceColumn) {
+        preferenceUserId = await resolveUserIdByEmail(supabase, recipient);
+        if (!preferenceUserId) {
+          console.log(`Skipping ${type} email: recipient ${recipient} could not be resolved to a user`);
+          return jsonResponse({ skipped: true, reason: "recipient_unresolved" }, 200);
+        }
+        const enabled = await isPreferenceEnabled(supabase, preferenceUserId, preferenceColumn);
+        if (!enabled) {
+          console.log(`Skipping ${type} email: ${preferenceColumn} disabled for recipient`);
+          return jsonResponse({ skipped: true, reason: "preference_disabled" }, 200);
+        }
       }
     }
 
-    const { subject, html } = getEmailContent(type, data);
+    const { subject, html } = getEmailContent(type, payload);
 
     const emailResponse = await resend.emails.send({
       from: "ZotHub <notifications@zothub.app>",
