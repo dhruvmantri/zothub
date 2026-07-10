@@ -127,9 +127,9 @@ The platform uses a **waitlist-gated signup flow**:
 These are **confirmed** current gaps between the product spec above and what ships today (each verified against code/schema). They are the substance of the engineering backlog — full per-defect detail, root causes, and the ranked workstreams live in `plan.md`. Grouped by product area:
 
 **Engagement & notifications (highest product impact)**
-- **Clubs are not notified when a student applies** — no in-app notification and no email (contradicts Journey 1's "in-app + email notification per application"). Clubs only see applications by opening the dashboard. *(plan.md WS1 — the recommended next fix.)*
+- ~~**Clubs are not notified when a student applies**~~ — ✅ **Closed (WS1, 2026-07-10).** A new `AFTER INSERT` trigger on `applications` posts a reliable in-app notification to the owning club, and a best-effort, de-duplicated `application_notification` email is sent — the email path verifies the authenticated applicant owns the referenced application and derives the club/applicant/opportunity from DB rows (no client-trusted recipient data). Both are gated on the club's `application_updates` preference. Journey 1's "in-app + email notification per application" now holds (in-app guaranteed, email best-effort).
 - **Following a club doesn't deliver new-post notifications** — "follow" is stored as a bookmark, but the new-post notification/email path reads a separate `club_followers` table the app never populates, so followers get nothing when a club posts. *(plan.md WS3.)*
-- **Some transactional emails ignore notification preferences** — in-app notifications and the reminder cron respect preferences, but certain client-sent emails (application/RSVP confirmations & status) do not. *(plan.md WS1/WS4.)*
+- **Some transactional emails ignore notification preferences** — in-app notifications and the reminder cron respect preferences. **Application** emails (confirmation/status/new-application) are now preference-gated server-side (WS1). **RSVP** confirmation/status emails still ignore preferences. *(plan.md WS4.)*
 - **Live updates are incomplete** — the notifications badge is realtime, but **messages** (chat + unread badge) and **RSVP status** aren't in the realtime publication, so they update only on refresh. *(plan.md WS2.)*
 
 **Events / RSVP correctness**
@@ -167,7 +167,7 @@ These describe the **intended** end-to-end experience (the product target). Wher
 ### Journey 1 — Club: Post → Receive Applications → Select Candidate
 1. **Signup & approval** (Journey 0) as a club; complete club profile.
 2. **Post an opportunity**: title, type, description, requirements, deadline, optional flyer; custom application form; optional application-count visibility; publish.
-3. **Receive applications**: in-app + email notification per application *(⚠️ current gap: clubs are **not** notified today — plan.md WS1)*; review — filter by opportunity, read correctly-labeled answers, download resumes, bulk accept/reject, export CSV.
+3. **Receive applications**: in-app + email notification per application *(✅ implemented in WS1 — `on_new_application` trigger for the reliable in-app notification + a best-effort, ownership-verified, de-duplicated `application_notification` email, both gated on the club's `application_updates` preference)*; review — filter by opportunity, read correctly-labeled answers, download resumes, bulk accept/reject, export CSV.
 4. **Select candidates**: update statuses; students notified in-app + email; message accepted candidates directly.
 
 **Success criteria:** posting an opportunity takes under 5 minutes; the review UI makes it easy to compare candidates; question/answer pairs always correctly labeled.

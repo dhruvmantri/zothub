@@ -14,6 +14,8 @@ function getNotificationLink(notification: Notification, role: UserRole | null):
   switch (notification.type) {
     case "application_update":
       return role === "student" ? "/student/dashboard" : "/club/applications";
+    case "new_application":
+      return "/club/applications";
     case "new_message":
       return role === "student" ? "/student/messages" : "/club/messages";
     case "event_reminder":
