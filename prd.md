@@ -1,6 +1,6 @@
 # ZotHub Product Requirements Document
 
-**Version:** 3.1
+**Version:** 3.2
 **Last Updated:** 2026-07-09
 **Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed** and the project is in **normal product-development mode** (a short stability-monitoring window is running before Lovable decommission) — see `plan.md` for the active development plan.
 **Author:** Claude, reconciled against the live codebase
@@ -14,11 +14,11 @@
 ### Mission
 Create a single, searchable hub where every UCI student has equal access to all campus opportunities, and every club has professional tools to recruit, manage, and engage their community.
 
-### Relationship to `plan.md`
-This document (`prd.md`) is the **product spec** — vision, users, journeys, access model, known issues, and launch readiness. `plan.md` is the **engineering execution plan** — the active next-stage work (a full product audit, followed by prioritized fixes). Read this for *what the product is and what's known to be wrong*; read `plan.md` for *what to do next*.
+### Relationship to `plan.md` and `README.md`
+This document (`prd.md`) is the **product spec and product source of truth** — vision, users, journeys, access model, implemented capabilities, product gaps, and launch readiness. `plan.md` is the **engineering execution plan** for normal product development (current state, the recommended next workstream, the ranked backlog). `README.md` is setup/deployment. Read this for *what the product is and where it falls short*; read `plan.md` for *what to build next*.
 
 ### Infrastructure note
-ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovable hosting. It has since **migrated to a self-owned Supabase project + Vercel hosting** — schema, data, storage, and all edge functions moved over, and this is functionally complete. Full migration history is archived at `docs/archive/MIGRATION.md`; nothing further on this needs tracking here.
+ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovable hosting. It now runs on a **self-owned Supabase project + Vercel hosting** — schema, data, storage, and all edge functions were migrated, `zothub.app` DNS is cut over to Vercel, and the Supabase migration history is reconciled (future DB changes use normal migration files + `supabase db push`). The migration is **fully closed**; full history is archived at `docs/archive/MIGRATION.md`. Lovable no longer serves production traffic but is retained temporarily as a rollback path (decommission is gated on `plan.md`'s checklist).
 
 ### Launch scope
 - **Access model:** Gated beta — new users go through a waitlist (signup → email OTP verification → admin approval) rather than fully open signup. See "Access Model" below.
@@ -84,15 +84,15 @@ The platform uses a **waitlist-gated signup flow**:
 ## 📦 Implemented Features
 
 ### Core marketplace
-- ✅ UCI-restricted signup (client-side check; DB-level enforcement is a known open item — see below)
+- ✅ UCI-restricted signup — enforced both client-side **and** at the database (`BEFORE INSERT` trigger on `auth.users`, allowlisting the admin address)
 - ✅ Waitlist + OTP + admin-approval access gate
 - ✅ Student & club profiles (skills, interests, resume/portfolio links; club logo, category, social links)
 - ✅ Opportunity posting with custom application-question builder (text, textarea, single-select, multi-select)
-- ✅ Event posting with capacity limits
+- ✅ Event posting with a capacity **field** (note: capacity is currently enforced only in the UI, not server-side — see Known Product Gaps)
 - ✅ Applications with status workflow (pending → reviewed → accepted/rejected), duplicate-application prevention, correct question-label rendering
-- ✅ RSVPs with optional custom RSVP-question forms and an optional club approval workflow (`requires_approval`, pending/approved/declined)
-- ✅ Bidirectional messaging (student ↔ club)
-- ✅ In-app notifications with a preferences UI
+- ✅ RSVPs with optional custom RSVP-question forms and an optional club approval workflow. *Implementation note:* the `rsvps.status` values are **`pending` / `confirmed` / `cancelled`** (a club approval sets `confirmed`, a decline/cancel sets `cancelled`); product copy elsewhere may say "approved/declined" — treat those as the same states.
+- ✅ Bidirectional messaging (student ↔ club) — *see gap: live delivery is not wired up (messages aren't in the realtime publication)*
+- ✅ In-app notifications with a preferences UI (note: some client-side transactional **emails** don't yet honor those preferences — see gaps)
 - ✅ Bookmarks / following clubs; personalized feed of followed-club activity
 - ✅ Club team roster with custom display ordering (up/down reorder)
 - ✅ Club analytics dashboard (views, applications, RSVPs)
@@ -100,7 +100,7 @@ The platform uses a **waitlist-gated signup flow**:
 ### Discovery & engagement
 - ✅ Full-text keyword search (opportunities, events, clubs)
 - ✅ Smart sort (newest / deadline approaching / most popular)
-- ✅ Unread-count badges in navigation (messages, notifications), real-time
+- ✅ Unread-count badges in navigation — the **notifications** badge updates in real time; the **messages** badge does **not** yet (messages aren't in the realtime publication — see gaps)
 - ✅ Club category filtering (true filter, not just sort)
 - ✅ Resume prefill from student profile on the application form
 - ✅ Success confirmation modals after apply / RSVP / publish
@@ -122,33 +122,38 @@ The platform uses a **waitlist-gated signup flow**:
 
 ---
 
-## 🐞 Known Issues / QA Gaps
+## 🐞 Known Product Gaps & Inconsistent Behavior
 
-Full detail and per-item status live in `plan.md`'s Bug Inventory. Summary as of 2026-07-09 (post-cutover):
+These are **confirmed** current gaps between the product spec above and what ships today (each verified against code/schema). They are the substance of the engineering backlog — full per-defect detail, root causes, and the ranked workstreams live in `plan.md`. Grouped by product area:
 
-| # | Issue | Type | Status |
-|---|---|---|---|
-| 1 | Student profile setup raw validation error when `interests`/`skills` empty | Bug | ✅ Fixed (Phase 2) |
-| 2 | Orphaned migrated user appeared as a club team member (`auth.users` never migrated from Lovable Cloud) | Bug | ✅ Orphan rows manually cleaned in production; future-safe FK/UI-filter guidance documented in `plan.md` (not yet added) |
-| 3 | `zothub.app` DNS cutover to Vercel | Infra gap | ✅ **Done** — `zothub.app` + `www.zothub.app` live on Vercel with valid TLS |
-| 4 | DB-level `@uci.edu` signup enforcement (was client-side only) | Infra gap | ✅ Fixed (Phase 2 — `BEFORE INSERT` trigger on `auth.users`) |
-| 5 | Full end-to-end QA beyond core auth/waitlist flows | Process gap | ✅ Done (Phase 1 audit + Phase 2/2b/2c live-QA passes) |
+**Engagement & notifications (highest product impact)**
+- **Clubs are not notified when a student applies** — no in-app notification and no email (contradicts Journey 1's "in-app + email notification per application"). Clubs only see applications by opening the dashboard. *(plan.md WS1 — the recommended next fix.)*
+- **Following a club doesn't deliver new-post notifications** — "follow" is stored as a bookmark, but the new-post notification/email path reads a separate `club_followers` table the app never populates, so followers get nothing when a club posts. *(plan.md WS3.)*
+- **Some transactional emails ignore notification preferences** — in-app notifications and the reminder cron respect preferences, but certain client-sent emails (application/RSVP confirmations & status) do not. *(plan.md WS1/WS4.)*
+- **Live updates are incomplete** — the notifications badge is realtime, but **messages** (chat + unread badge) and **RSVP status** aren't in the realtime publication, so they update only on refresh. *(plan.md WS2.)*
 
-**Open infra / cleanup items (not blocking, tracked in `plan.md`):**
+**Events / RSVP correctness**
+- **Event capacity is not enforced server-side** — the UI hides "RSVP" when full, but nothing prevents exceeding `capacity` under concurrency or a direct API call. *(plan.md WS4.)*
+- **Declining an RSVP sends a "confirmed" email** — the decline path reuses the confirmation template. *(plan.md WS4.)*
 
-| # | Item | Type | Status |
-|---|---|---|---|
-| A | **Supabase migration-history repair** — the CLI history table now records all migrations. | Infra cleanup | ✅ **Done (2026-07-09).** `migration list --linked` shows all 34 migrations matching remote; `db push --linked --dry-run` = "Remote database is up to date." Manual SQL workaround no longer needed — future migrations use normal `db push`. |
-| B | **Lovable decommission** — Lovable is no longer serving production traffic but is kept untouched temporarily as the rollback path. | Infra cleanup | Open (deliberate future manual step; gated on the checklist in `plan.md` → "Lovable decommission checklist"). |
-| C | Remaining Medium/Low bugs from the Bug Inventory (e.g. `rsvps`/`messages` not in the realtime publication; new-post follower notifications keyed off the unused `club_followers`; unscheduled `archive_past_events`) | Bug backlog | Open (see `plan.md`) |
+**Discovery / access**
+- **Anonymous browsing is inconsistent** — logged-out visitors can view clubs but not opportunities/events, while the landing page invites public browsing. Needs a product decision (gated vs. public) and consistent RLS. *(plan.md WS5.)*
 
-**No new bugs should be fixed ad hoc.** Any additional issues found should be added to the Bug Inventory in `plan.md` before being fixed, so the next coding pass is coordinated.
+**Operational / trust**
+- **Nightly `archive_past_events()` job scheduling is unverified** — the function exists but no schedule is defined in the repo (user-facing impact is limited because listings filter by date). *(plan.md WS6.)*
+- **Launch-ops ownership** — a support contact/mailbox, a committed `/admin` waitlist-queue owner, and a routine DB backup cadence still need to be established (outside code; also a Lovable-decommission prerequisite). *(plan.md WS6.)*
+- **`/privacy` doesn't name Supabase or Vercel** as data processors (it names Resend and generic "hosting/auth"). *(plan.md WS8.)*
+- Assorted **UX/data-hygiene** items (waitlist redirect anti-pattern, OAuth-pending routing, unsubscribe stale-state, orphaned team-member rendering, missing `bookmarks` uniqueness, admin `reviewed_by` not recorded). *(plan.md WS8.)*
+
+**Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
+
+**Process:** don't fix bugs ad hoc — add any newly found issue to `plan.md`'s Confirmed bug & risk inventory, then address it inside a coherent workstream.
 
 ---
 
 ## 👥 Core User Journeys
 
-These describe the target experience end-to-end; use them as the audit script for `plan.md`'s Phase 1.
+These describe the **intended** end-to-end experience (the product target). Where the current implementation falls short of a step, it's called out inline and tracked in "Known Product Gaps" above.
 
 ### Journey 0: Signup → Verification → Approval
 1. Visitor lands on `/signup`, picks Student or Club.
@@ -162,7 +167,7 @@ These describe the target experience end-to-end; use them as the audit script fo
 ### Journey 1 — Club: Post → Receive Applications → Select Candidate
 1. **Signup & approval** (Journey 0) as a club; complete club profile.
 2. **Post an opportunity**: title, type, description, requirements, deadline, optional flyer; custom application form; optional application-count visibility; publish.
-3. **Receive applications**: in-app + email notification per application; review — filter by opportunity, read correctly-labeled answers, download resumes, bulk accept/reject, export CSV.
+3. **Receive applications**: in-app + email notification per application *(⚠️ current gap: clubs are **not** notified today — plan.md WS1)*; review — filter by opportunity, read correctly-labeled answers, download resumes, bulk accept/reject, export CSV.
 4. **Select candidates**: update statuses; students notified in-app + email; message accepted candidates directly.
 
 **Success criteria:** posting an opportunity takes under 5 minutes; the review UI makes it easy to compare candidates; question/answer pairs always correctly labeled.
@@ -206,8 +211,8 @@ Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`,
 
 ### Current posture
 - Row Level Security enforced on all tables.
-- UCI email restriction: enforced client-side today; a DB-level trigger is a known open item (see Known Issues).
-- File uploads (resumes, logos, flyers) go through Supabase Storage with bucket-level access policies.
+- UCI email restriction: enforced **both** client-side and at the database (a `BEFORE INSERT` trigger on `auth.users` restricting signups to `@uci.edu`, with the admin address allowlisted).
+- File uploads (resumes, logos, flyers) go through Supabase Storage with bucket-level access policies; private `student-resumes` files are served via short-lived signed URLs.
 - Secrets: Resend API key and service-role credentials live only in Supabase Edge Function secrets — never in the client bundle or committed to git.
 
 ### Data visibility
@@ -216,7 +221,7 @@ Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`,
 - Admins (via the `/admin` role) can see waitlist entries for approval purposes.
 
 ### Data retention & privacy policy
-No self-service account deletion exists yet; deletion requests are handled manually. A privacy policy is live at `/privacy` — verify its content stays accurate as infrastructure changes (Resend, Vercel, Supabase are the current processors — no longer Lovable).
+No self-service account deletion exists yet; deletion requests are handled manually. A privacy policy is live at `/privacy`. **Known gap:** it names Resend but not Supabase or Vercel as processors — update it to list all current processors (Supabase, Vercel, Resend; no longer Lovable). Tracked in `plan.md` WS8.
 
 ---
 
@@ -306,10 +311,10 @@ WHERE created_at >= NOW() - INTERVAL '7 days';
 SELECT COUNT(*) FROM applications
 WHERE created_at >= NOW() - INTERVAL '7 days';
 
--- Event RSVPs this week
+-- Event RSVPs this week (rsvps.status is 'pending' | 'confirmed' | 'cancelled')
 SELECT COUNT(*) FROM rsvps
 WHERE created_at >= NOW() - INTERVAL '7 days'
-  AND status IN ('confirmed', 'approved');
+  AND status = 'confirmed';
 
 -- Top opportunities (most applications, last 30 days)
 SELECT o.title, c.club_name AS club, COUNT(a.id) AS applications
@@ -441,3 +446,5 @@ Welcome aboard!
 | 1.2 | 2026-01-21 | Added 14 more features from codebase analysis (22 total); framed as a 1-week crunch launch | Claude |
 | 2.0 | 2026-07-08 | Full reconciliation against the live codebase; removed crunch/timeline framing; documented waitlist/OTP/admin-approval access model | Claude |
 | **3.0** | **2026-07-08** | **Post-migration cleanup rewrite.** Migration status condensed to a single infrastructure note (full history moved to `docs/archive/MIGRATION.md`). Added a dedicated Known Issues / QA Gaps section and a Launch Readiness Criteria checklist. Reframed the roadmap around `plan.md`'s new Full Product Audit & Bug Inventory phase rather than deploy-migration tasks. Removed all remaining stale migration-status phrasing. | Claude |
+| 3.1 | 2026-07-09 | Marked DNS cutover, migration-history repair, and DB-level `@uci.edu` enforcement complete; recorded live-production status and Lovable-as-fallback. | Claude |
+| **3.2** | **2026-07-09** | **Product-spec reset for normal development.** Replaced the migration-era Known Issues table with a **Known Product Gaps & Inconsistent Behavior** section (confirmed current gaps grouped by product area, cross-referenced to `plan.md` workstreams). Corrected stale claims: DB-level UCI enforcement is done (not "open"); clarified `rsvps` status vocabulary (pending/confirmed/cancelled); noted messages badge/live-delivery gap; flagged capacity-not-server-enforced, `/privacy` processors, and the club-application-notification gap inline in the relevant journey/feature. Fixed an RSVP metrics query using a non-existent `approved` status. | Claude |

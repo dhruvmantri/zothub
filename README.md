@@ -191,6 +191,17 @@ ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.ap
 
 Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`plan.md\` for current engineering status.
 
+## Database Migrations
+
+Schema changes use **normal Supabase migration files + the Supabase CLI** (the migration history is reconciled with production, so this is the standard flow — no manual raw SQL, no \`db reset\`):
+
+1. Create a new timestamped migration in \`supabase/migrations/\` (e.g. \`supabase migration new <name>\`), and write idempotent SQL where practical.
+2. Test it locally before pushing (the repo is regularly validated by applying **all** migrations to a fresh local Postgres).
+3. Apply to the linked project with \`npx supabase db push --linked\`; confirm with \`npx supabase migration list --linked\` (local should match remote) and \`npx supabase db push --linked --dry-run\` ("Remote database is up to date").
+4. If the change adds/edits an Edge Function, redeploy it: \`supabase functions deploy <name>\`.
+
+Do **not** hand-apply SQL to production as the normal path, and never run \`supabase db reset\` against production.
+
 ## Environment Variables
 
 | Variable | Description | Example |
