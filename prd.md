@@ -91,7 +91,7 @@ The platform uses a **waitlist-gated signup flow**:
 - ✅ Event posting with a capacity **field** (note: capacity is currently enforced only in the UI, not server-side — see Known Product Gaps)
 - ✅ Applications with status workflow (pending → reviewed → accepted/rejected), duplicate-application prevention, correct question-label rendering
 - ✅ RSVPs with optional custom RSVP-question forms and an optional club approval workflow. *Implementation note:* the `rsvps.status` values are **`pending` / `confirmed` / `cancelled`** (a club approval sets `confirmed`, a decline/cancel sets `cancelled`); product copy elsewhere may say "approved/declined" — treat those as the same states.
-- ✅ Bidirectional messaging (student ↔ club) — *see gap: live delivery is not wired up (messages aren't in the realtime publication)*
+- ✅ Bidirectional messaging (student ↔ club) — live delivery wired up in WS2 (`messages` added to the realtime publication)
 - ✅ In-app notifications with a preferences UI (note: some client-side transactional **emails** don't yet honor those preferences — see gaps)
 - ✅ Bookmarks / following clubs; personalized feed of followed-club activity
 - ✅ Club team roster with custom display ordering (up/down reorder)
@@ -100,7 +100,7 @@ The platform uses a **waitlist-gated signup flow**:
 ### Discovery & engagement
 - ✅ Full-text keyword search (opportunities, events, clubs)
 - ✅ Smart sort (newest / deadline approaching / most popular)
-- ✅ Unread-count badges in navigation — the **notifications** badge updates in real time; the **messages** badge does **not** yet (messages aren't in the realtime publication — see gaps)
+- ✅ Unread-count badges in navigation — the **notifications** and **messages** badges both update in real time (messages realtime enabled in WS2)
 - ✅ Club category filtering (true filter, not just sort)
 - ✅ Resume prefill from student profile on the application form
 - ✅ Success confirmation modals after apply / RSVP / publish
@@ -130,7 +130,7 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Clubs are not notified when a student applies**~~ — ✅ **Closed (WS1, 2026-07-10).** A new `AFTER INSERT` trigger on `applications` posts a reliable in-app notification to the owning club, and a best-effort, de-duplicated `application_notification` email is sent — the email path verifies the authenticated applicant owns the referenced application and derives the club/applicant/opportunity from DB rows (no client-trusted recipient data). Both are gated on the club's `application_updates` preference. Journey 1's "in-app + email notification per application" now holds (in-app guaranteed, email best-effort).
 - **Following a club doesn't deliver new-post notifications** — "follow" is stored as a bookmark, but the new-post notification/email path reads a separate `club_followers` table the app never populates, so followers get nothing when a club posts. *(plan.md WS3.)*
 - **Some transactional emails ignore notification preferences** — in-app notifications and the reminder cron respect preferences. **Application** emails (confirmation/status/new-application) are now preference-gated server-side (WS1). **RSVP** confirmation/status emails still ignore preferences. *(plan.md WS4.)*
-- **Live updates are incomplete** — the notifications badge is realtime, but **messages** (chat + unread badge) and **RSVP status** aren't in the realtime publication, so they update only on refresh. *(plan.md WS2.)*
+- **Live updates are partially complete** — the notifications badge and, as of WS2, **messages** (chat + unread badge) update in real time. **RSVP status** on the EventDetail page still updates only on refresh: no client subscribes to the `rsvps` table (approval is already delivered live via the notifications channel), so wiring a live RSVP-status subscription is deferred to the RSVP workstream. *(messages: WS2 done; rsvps: plan.md WS4.)*
 
 **Events / RSVP correctness**
 - **Event capacity is not enforced server-side** — the UI hides "RSVP" when full, but nothing prevents exceeding `capacity` under concurrency or a direct API call. *(plan.md WS4.)*
