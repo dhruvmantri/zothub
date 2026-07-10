@@ -22,6 +22,7 @@ export default function Unsubscribe() {
     new_messages: true,
     deadline_reminders: true,
     team_invitations: true,
+    new_post_notifications: true,
   });
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -54,6 +55,7 @@ export default function Unsubscribe() {
           new_messages: prefs.new_messages,
           deadline_reminders: prefs.deadline_reminders,
           team_invitations: prefs.team_invitations ?? true,
+          new_post_notifications: prefs.new_post_notifications ?? true,
         });
       }
 
@@ -127,6 +129,10 @@ export default function Unsubscribe() {
     team_invitations: {
       label: "Team Invitations",
       description: "Notifications when you're invited to join a club team",
+    },
+    new_post_notifications: {
+      label: "New Posts from Followed Clubs",
+      description: "Emails when a club you follow posts an opportunity or event",
     },
   };
 
