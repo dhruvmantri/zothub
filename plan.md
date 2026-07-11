@@ -26,29 +26,52 @@
 > This is the single recommended next coding pass for a fresh session. Pick this unless a higher-severity production incident has appeared since (in which case triage that first and note it here). The full ranked backlog is in **"Backlog — ranked workstreams."**
 
 > **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
-> **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below. The recommended next pass is **WS3**.
+> **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
+> **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below. The recommended next pass is **WS4**.
 
-### Workstream 3 — Unify follow/bookmark semantics & fire new-post notifications *(recommended next)*
+### Workstream 4 — Event RSVP integrity & email correctness *(recommended next)*
 
-**In one line:** "following" a club is stored as a bookmark, but the new-post notification/email path reads `club_followers` (which the app never writes), so followers get no new-post notifications or emails even though the feed works.
+**In one line:** a cluster of RSVP-journey correctness defects — capacity enforced only client-side, declines emailing a "confirmed" message, club declines not notified in-app, RSVP emails ignoring preferences, and (deferred from WS2) no live RSVP-status update.
 
 **Why this is next**
-- With WS1 (application notifications) and WS2 (live messages) done, this is the top remaining engagement gap: a student who follows a club silently receives nothing when that club posts. Verified: `notify_followers_on_new_post()` (migration `20260121010020`) and the `send-reminders` new-post emails query `public.club_followers`, but the app only ever writes `bookmarks.club_id` (grep: `club_followers` appears only in generated types).
+- With the application loop (WS1), live messages (WS2), and follow/new-post notifications (WS3) fixed, the RSVP journey is the remaining two-sided-loop workstream with real correctness/data-integrity defects.
 
-**Scope (do)**
-1. Pick ONE mechanism and reconcile: either write `club_followers` on follow/unfollow, or repoint `notify_followers_on_new_post()` + the `send-reminders` new-post query at `bookmarks.club_id`. Inspect `useBookmarks`, `StudentFeed`, `FollowedClubsList` before choosing.
-2. Fix the minor semantic mismatch where the new-post notification/email is gated on the `deadline_reminders` preference.
+**Scope (do)** — see the WS4 backlog entry for the full list. Highlights:
+1. **Capacity integrity:** add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps` so concurrency / direct API can't exceed `events.capacity` (only the client gates today).
+2. **Decline email correctness:** `sendRSVPStatusEmail` reuses the `rsvp_confirmation` template for declines ("You're In! confirmed") — add a decline template + branch in `send-email` and `eventNotifications`.
+3. **Club-decline in-app notification:** distinguish a club decline from a student self-cancel so a declined student is notified.
+4. **RSVP email preferences:** gate RSVP confirmation/status emails on `event_reminders` server-side (mirror the WS1 fail-closed pattern in `send-email`).
+5. **(Deferred from WS2) live rsvps realtime:** optionally add an EventDetail subscription (student's own RSVP) + `ALTER PUBLICATION supabase_realtime ADD TABLE public.rsvps;` — default replica identity suffices.
 
 **Boundaries (do NOT, this pass)**
-- Don't touch RSVP integrity/email (WS4) or anon browsing (WS5). Note anything you find; don't fix here.
+- Don't touch anon browsing (WS5) or the scheduler (WS6). Note anything you find; don't fix here.
 
 **Evidence to inspect before coding**
-- `src/hooks/useBookmarks.ts`, `src/pages/StudentFeed.tsx`, `src/components/…/FollowedClubsList.tsx`, `notify_followers_on_new_post()` (migration `20260121010020_*`), and `supabase/functions/send-reminders/index.ts` (new-post query).
+- `src/components/RSVPForm.tsx`, `src/hooks/useEventRSVP.ts`, `src/components/dashboard/RSVPReview.tsx`, `src/lib/eventNotifications.ts`, `supabase/functions/send-email/index.ts` (rsvp templates), `rsvps` schema/CHECK/trigger, and `src/pages/EventDetail.tsx` (for the optional realtime piece).
 
 **Done / verification looks like**
-- Following a club then that club posting produces a new-post in-app notification (and email when prefs allow) for the follower; verify on the local harness with the chosen mechanism.
-- `tsc --noEmit` / `vite build` clean; migration (if any) applies cleanly on the harness.
-- **Deployment note:** depends on the mechanism — a DB migration (`supabase db push`) and/or a `send-reminders` redeploy; record precisely in the PR.
+- Over-capacity insert is rejected at the DB; a decline sends a decline email (not "confirmed") and an in-app notification; RSVP emails respect `event_reminders`; harness + `tsc`/`build` clean.
+- **Deployment note:** DB migration (`supabase db push`) + redeploy `send-email` (and `send-reminders` only if touched); record precisely in the PR.
+
+---
+
+#### ✅ WS3 completion record (2026-07-10)
+
+**Root cause:** "following a club" is stored as a bookmark (`bookmarks.club_id`) — the follow button (`useBookmarks("club")`), the personalized feed (`StudentFeed`), the followed-clubs list, and the dashboard "Following" count all read/write `bookmarks`. But the new-post in-app trigger `notify_followers_on_new_post()` and the `send-reminders` new-post emails read `public.club_followers`, a table the app **never writes**. So a student who followed a club received **no** new-post notification or email even though the feed worked. The notifications were also gated on the semantically-wrong `deadline_reminders` preference.
+
+**Source-of-truth decision:** make `bookmarks.club_id` the single source of truth (repoint the two server-side consumers at it), rather than migrating the app to `club_followers`. Rationale: the entire app already uses `bookmarks.club_id`; this is the smallest change that matches existing behavior/naming, is non-destructive (no backfill — `bookmarks` already holds the real follow data), and avoids maintaining two divergent stores. `club_followers` is left in place (no destructive drop) but is no longer read.
+
+**What shipped:**
+- **Migration `20260710000300_unify_follow_new_post_notifications.sql`** — (1) adds a dedicated `new_post_notifications boolean NOT NULL DEFAULT true` to `notification_preferences`; (2) `CREATE OR REPLACE`s `notify_followers_on_new_post()` to iterate `SELECT DISTINCT b.user_id FROM bookmarks b WHERE b.club_id = NEW.club_id` and gate on `new_post_notifications`; (3) **makes club follows DB-unique** — a partial unique index `bookmarks_user_club_unique ON bookmarks (user_id, club_id) WHERE club_id IS NOT NULL`, preceded by a one-time dedup that keeps one canonical row per `(user_id, club_id)` (retention rule: earliest `created_at`, tie-break smallest `id`) and leaves opportunity/event bookmarks (`club_id IS NULL`) untouched. So club follows are now unique at the database level, not merely deduped at read time; the trigger's `DISTINCT` (and the `send-reminders` `Set`) remain as defense in depth. The existing `notify_followers_new_opportunity`/`notify_followers_new_event` triggers keep calling the replaced function. Idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE OR REPLACE`, `CREATE UNIQUE INDEX IF NOT EXISTS`; the dedup DELETE is naturally a no-op once unique).
+- **`useBookmarks.ts`** — club follow is now idempotent: a duplicate insert (double-click / retry / concurrent) raises `23505` against the partial unique index, which the hook treats as success (the follow already exists) instead of surfacing a raw error. Loading state, toasts, cache/refetch, unfollow, and all non-club bookmark behavior are unchanged.
+- **`send-reminders` edge function** — both new-post email paths (opportunities + events) now read followers from `bookmarks` (deduped via a JS `Set`), gate on `new_post_notifications`, and point the "unsubscribe from new posts" link at `?type=new_post_notifications` (was `deadline_reminders`). The separate deadline-reminder path (bookmarked *opportunities*) is untouched and still correctly uses `deadline_reminders`.
+- **Preference decision (confirmed with maintainer):** no existing preference matched "new post from a followed club", so a dedicated `new_post_notifications` column was added rather than silently repurposing `deadline_reminders`. Exposed as a "New Posts from Followed Clubs" toggle in `NotificationPreferencesDialog`, the `Unsubscribe` page, and the `useNotifications` preferences model; added to the generated `types.ts`.
+
+**Verified (local PG16 harness, all 37 migrations clean):** following a club then that club posting creates exactly **one** `new_post` notification for the follower (correct type/title/message/`related_id`); a non-follower gets none; a follower with `new_post_notifications=false` gets none; unfollowing stops further notifications. Uniqueness: the partial unique index exists with predicate `WHERE (club_id IS NOT NULL)`; seeding 3 duplicate club-follow rows then running the migration's dedup left exactly **one** row — the earliest-created (`created_at` tie-break `id`) — while a duplicate opportunity bookmark and the event bookmark were untouched; a duplicate club insert now raises `23505`, a duplicate opportunity bookmark is still allowed; unfollow→refollow leaves exactly one row. The `send-reminders` follower-resolution + preference gate was exercised in SQL. `tsc -p tsconfig.app.json --noEmit` and `npm run build` clean; lint on touched TS/TSX introduced no new errors; `deno check` passes for `send-reminders` (and `send-email` unchanged) against local module stubs (deno.land is egress-blocked, so a full `functions serve` isn't possible here).
+
+**Data/backfill:** the migration performs a one-time dedup of existing duplicate club-follow rows (keep earliest per `(user_id, club_id)`); this is safe (idempotent, no-op when there are no duplicates) and only touches `club_id IS NOT NULL` rows. `bookmarks` already holds the real follow data; `club_followers` (which the app never wrote) becomes irrelevant, no migration of its rows needed. No risk of duplicate notifications from the cutover: `CREATE OR REPLACE` swaps the function in place, so only the new logic runs.
+
+**Deployment steps a human must run (after merge; nothing is deployed by this branch):** `supabase db push --linked` (applies only `20260710000300_unify_follow_new_post_notifications.sql`) **and** `supabase functions deploy send-reminders`. Frontend changes (`useNotifications`, `NotificationPreferencesDialog`, `Unsubscribe`, `types.ts`) deploy via the normal Vercel flow on merge. Rollback: revert the migration (drop the column and restore the prior function body) and redeploy the prior `send-reminders`; low risk (additive column + function-body change).
 
 ---
 
@@ -136,8 +159,8 @@ Clubs now receive a reliable in-app notification (`on_new_application` trigger, 
 **WS2 — Realtime delivery for messages** — **✅ DONE (2026-07-10)**
 `public.messages` is now in the `supabase_realtime` publication (migration `20260710000200`), so the existing `useMessages`/`useNavigationCounts` subscriptions deliver live chat and the unread-message badge. Default replica identity is sufficient (filters are on `receiver_id`, present in the new row for INSERT/UPDATE); `REPLICA IDENTITY FULL` intentionally not set. Completion record in "▶ Start here". **`rsvps` realtime was deferred to WS4** — no frontend subscription consumes it today, and RSVP approval already arrives live via the published `notifications` channel; wiring a real rsvps subscription is an RSVP-journey change owned by WS4. *([Messages] Real-time messaging… — fixed; rsvps realtime folded into WS4.)*
 
-**WS3 — Unify follow/bookmark semantics & fire new-post notifications** — **[Medium]**
-"Follow" is implemented as a **bookmark** (`bookmarks.club_id`), but the new-post in-app trigger (`notify_followers_on_new_post`) and the `send-reminders` new-post emails read `club_followers`, which the app **never** writes (verified: `club_followers` appears only in generated types). So students who follow a club never get its new-post notifications/emails even though the feed works. Pick one mechanism (write `club_followers` on follow, or repoint the trigger + cron at `bookmarks`) and reconcile; also fix the `deadline_reminders`-preference gating a "new post" notification. *([Feed/Notifications] "Follow" writes bookmarks…)*
+**WS3 — Unify follow/bookmark semantics & fire new-post notifications** — **✅ DONE (2026-07-10)**
+`bookmarks.club_id` is now the single source of truth: `notify_followers_on_new_post()` and the `send-reminders` new-post emails read `bookmarks` (was `club_followers`, which the app never wrote), so followers now receive new-post notifications/emails. New-post is gated on a new dedicated `new_post_notifications` preference (was the semantically-wrong `deadline_reminders`), exposed in the preferences + unsubscribe UI. Club follows are made **DB-unique** (partial unique index `(user_id, club_id) WHERE club_id IS NOT NULL` + one-time dedup) and `useBookmarks` follow is idempotent (swallows `23505`); DISTINCT/Set kept as defense in depth. Completion record in "▶ Start here". *([Feed/Notifications] "Follow" writes bookmarks… — fixed; club-follow half of [Data] bookmarks-uniqueness also addressed.)*
 
 **WS4 — Event RSVP integrity & email correctness** — **[Medium]**
 Cluster of RSVP-journey correctness defects: (a) **event capacity enforced only client-side** — no server/DB guard, so concurrency / direct API can exceed `capacity` (add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps`); (b) **declining an RSVP emails "You're In! confirmed"** — `sendRSVPStatusEmail` reuses `rsvp_confirmation` for declines (add a decline template + branch); (c) **club decline not notified in-app** — needs a way to distinguish a club decline from a student self-cancel; (d) RSVP transactional emails share the preference-consistency fix from WS1; (e) **live rsvps realtime (deferred from WS2)** — the student's EventDetail RSVP status doesn't update live on approval because no client subscribes to `rsvps` (approval already arrives via the `notifications` channel). If desired, add a client subscription in EventDetail (student's own RSVP) and `ALTER PUBLICATION supabase_realtime ADD TABLE public.rsvps;` — default replica identity suffices (UPDATE new row carries `student_id`/`event_id`); this is an RSVP-journey/UX change, hence WS4 not WS2. *([Events] Event capacity…; [Events/Email] Declining an RSVP…; Phase 2c follow-up; rsvps realtime deferred from WS2)*
@@ -349,7 +372,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Following a club should drive both the personalized feed *and* new-post notifications.
 - **Root cause (CONFIRMED via code + schema):** Following is implemented as a **bookmark** with `club_id` — the feed reads `bookmarks` (`src/pages/StudentFeed.tsx:36-40, 83, 106`). Nothing in the app ever writes `public.club_followers` (grep: referenced only in generated types). But the new-post in-app trigger `notify_followers_on_new_post()` iterates `club_followers` (migration `20260121010020`), and the new-post **emails** in `send-reminders` also query `club_followers` (`supabase/functions/send-reminders/index.ts:247-250, 344-347`). So both notification paths key off a table the UI never populates → they only ever fire for stale/migrated `club_followers` rows. Fix: unify on one mechanism (either write `club_followers` on follow, or point the trigger/cron at `bookmarks`). Minor sub-issue: the trigger/cron gate new-post notifications on the `deadline_reminders` preference, a semantic mismatch.
 - **Suspected location:** `src/pages/StudentFeed.tsx`, `src/hooks/useBookmarks.ts`, `notify_followers_on_new_post()` trigger, `supabase/functions/send-reminders/index.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS3 (2026-07-10).** Chose `bookmarks.club_id` as the single source of truth (the store the whole app already uses); migration `20260710000300` repoints `notify_followers_on_new_post()` at `bookmarks` (SELECT DISTINCT user_id) and `send-reminders` reads `bookmarks` for new-post emails. The semantic mismatch is fixed with a new dedicated `new_post_notifications` preference (replacing `deadline_reminders` for new posts), surfaced in the preferences + unsubscribe UI. `club_followers` is left in place but no longer read (non-destructive). Verified on the harness: follower notified once (deduped), non-follower/pref-off/unfollowed get none.
 
 #### [Messages] Real-time messaging and the live unread-message badge don't update
 - **Severity:** Medium
@@ -443,7 +466,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Repro:** Rapid/concurrent bookmark toggles can create duplicate `bookmarks` rows for the same `(user_id, opportunity_id)` etc. (no unique constraint — verified via `pg_constraint`).
 - **Root cause:** Client-side `isBookmarked` guard only; no DB uniqueness. Fix: add a partial unique index per target column.
 - **Suspected location:** `bookmarks` table; `src/hooks/useBookmarks.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Partially fixed in WS3 (2026-07-11).** The **club-follow** case is now DB-unique: migration `20260710000300` adds a partial unique index `bookmarks_user_club_unique (user_id, club_id) WHERE club_id IS NOT NULL` (with a one-time dedup keeping the earliest row per pair), and `useBookmarks` treats the resulting `23505` on a club follow as idempotent success. **Still open:** the `opportunity_id`/`event_id` bookmark cases have no partial unique index yet (a follow-up can add `… (user_id, opportunity_id) WHERE opportunity_id IS NOT NULL` and the event equivalent, plus the same `23505` handling, which already covers all types generically).
 
 #### [Auth] Admin approval doesn't record `reviewed_by`
 - **Severity:** Low

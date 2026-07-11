@@ -14,6 +14,7 @@ interface NotificationPreferences {
   new_messages: boolean;
   deadline_reminders: boolean;
   team_invitations: boolean;
+  new_post_notifications: boolean;
 }
 
 interface NotificationPreferencesDialogProps {
@@ -90,6 +91,20 @@ export function NotificationPreferencesDialog({
               checked={preferences.deadline_reminders}
               onCheckedChange={(checked) =>
                 onPreferenceChange("deadline_reminders", checked)
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>New Posts from Followed Clubs</Label>
+              <p className="text-sm text-muted-foreground">
+                Notify when a club you follow posts an opportunity or event
+              </p>
+            </div>
+            <Switch
+              checked={preferences.new_post_notifications}
+              onCheckedChange={(checked) =>
+                onPreferenceChange("new_post_notifications", checked)
               }
             />
           </div>

@@ -18,6 +18,7 @@ export interface NotificationPreferences {
   new_messages: boolean;
   deadline_reminders: boolean;
   team_invitations: boolean;
+  new_post_notifications: boolean;
 }
 
 export function useNotifications() {
@@ -31,6 +32,7 @@ export function useNotifications() {
     new_messages: true,
     deadline_reminders: true,
     team_invitations: true,
+    new_post_notifications: true,
   });
 
   const fetchNotifications = useCallback(async () => {
@@ -74,6 +76,7 @@ export function useNotifications() {
           new_messages: data.new_messages,
           deadline_reminders: data.deadline_reminders,
           team_invitations: data.team_invitations ?? true,
+          new_post_notifications: data.new_post_notifications ?? true,
         });
       }
     } catch (error) {

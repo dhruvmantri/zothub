@@ -243,22 +243,28 @@ const handler = async (req: Request): Promise<Response> => {
         const clubProfile = opportunity.club_profiles as unknown as { id: string; club_name: string } | null;
         if (!clubProfile) continue;
 
-        // Get followers of this club
+        // Get followers of this club. "Following" is stored as a bookmark with
+        // club_id set (the source of truth the whole app uses); club_followers is
+        // never written by the app.
         const { data: followers } = await supabase
-          .from("club_followers")
+          .from("bookmarks")
           .select("user_id")
           .eq("club_id", clubProfile.id);
 
         if (!followers) continue;
 
-        for (const follower of followers) {
+        // A follower can have duplicate bookmark rows (no unique constraint);
+        // de-duplicate so we only consider each follower once.
+        const uniqueFollowerIds = [...new Set(followers.map((f) => f.user_id))];
+
+        for (const followerId of uniqueFollowerIds) {
           // Check if email already sent
           const { data: existingLog } = await supabase
             .from("reminder_logs")
             .select("id")
             .eq("reminder_type", "new_post_email")
             .eq("target_id", opportunity.id)
-            .eq("user_id", follower.user_id)
+            .eq("user_id", followerId)
             .single();
 
           if (existingLog) continue;
@@ -266,17 +272,17 @@ const handler = async (req: Request): Promise<Response> => {
           // Check notification preferences
           const { data: prefs } = await supabase
             .from("notification_preferences")
-            .select("deadline_reminders")
-            .eq("user_id", follower.user_id)
+            .select("new_post_notifications")
+            .eq("user_id", followerId)
             .single();
 
-          if (prefs && !prefs.deadline_reminders) continue;
+          if (prefs && !prefs.new_post_notifications) continue;
 
           // Get student email
           const { data: student } = await supabase
             .from("student_profiles")
             .select("email, full_name")
-            .eq("user_id", follower.user_id)
+            .eq("user_id", followerId)
             .single();
 
           if (!student?.email) continue;
@@ -299,7 +305,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.app/unsubscribe?type=new_post_notifications" style="color: #3b82f6;">Unsubscribe from new posts</a> |
                       <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
@@ -313,7 +319,7 @@ const handler = async (req: Request): Promise<Response> => {
             await supabase.from("reminder_logs").insert({
               reminder_type: "new_post_email",
               target_id: opportunity.id,
-              user_id: follower.user_id,
+              user_id: followerId,
             });
 
             newPostEmails++;
@@ -342,35 +348,37 @@ const handler = async (req: Request): Promise<Response> => {
         if (!clubProfile) continue;
 
         const { data: followers } = await supabase
-          .from("club_followers")
+          .from("bookmarks")
           .select("user_id")
           .eq("club_id", clubProfile.id);
 
         if (!followers) continue;
 
-        for (const follower of followers) {
+        const uniqueFollowerIds = [...new Set(followers.map((f) => f.user_id))];
+
+        for (const followerId of uniqueFollowerIds) {
           const { data: existingLog } = await supabase
             .from("reminder_logs")
             .select("id")
             .eq("reminder_type", "new_post_email")
             .eq("target_id", event.id)
-            .eq("user_id", follower.user_id)
+            .eq("user_id", followerId)
             .single();
 
           if (existingLog) continue;
 
           const { data: prefs } = await supabase
             .from("notification_preferences")
-            .select("deadline_reminders")
-            .eq("user_id", follower.user_id)
+            .select("new_post_notifications")
+            .eq("user_id", followerId)
             .single();
 
-          if (prefs && !prefs.deadline_reminders) continue;
+          if (prefs && !prefs.new_post_notifications) continue;
 
           const { data: student } = await supabase
             .from("student_profiles")
             .select("email, full_name")
-            .eq("user_id", follower.user_id)
+            .eq("user_id", followerId)
             .single();
 
           if (!student?.email) continue;
@@ -395,7 +403,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
                     <p style="color: #71717a; font-size: 12px; margin: 0;">
                       You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from new posts</a> | 
+                      <a href="https://zothub.app/unsubscribe?type=new_post_notifications" style="color: #3b82f6;">Unsubscribe from new posts</a> |
                       <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
                     </p>
                     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
@@ -409,7 +417,7 @@ const handler = async (req: Request): Promise<Response> => {
             await supabase.from("reminder_logs").insert({
               reminder_type: "new_post_email",
               target_id: event.id,
-              user_id: follower.user_id,
+              user_id: followerId,
             });
 
             newPostEmails++;
