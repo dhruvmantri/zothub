@@ -20,9 +20,9 @@
 -- are updated in the same change; send-reminders is updated to match.
 --
 -- No backfill: bookmarks already holds the real follow data, so switching the
--- reader needs no data migration. Duplicate follow rows (bookmarks has no unique
--- constraint on (user_id, club_id)) can't produce duplicate notifications because
--- the follower loop selects DISTINCT user_id.
+-- reader needs no data migration. Club follows are additionally made DB-unique
+-- (step 3 below): one canonical row per (user_id, club_id). The follower loop
+-- still selects DISTINCT user_id as defense in depth.
 
 -- 1. Dedicated preference for new-post-from-followed-club notifications/emails.
 ALTER TABLE public.notification_preferences
@@ -59,9 +59,9 @@ BEGIN
   FROM club_profiles
   WHERE id = NEW.club_id;
 
-  -- Notify all followers. "Following a club" is a bookmark with club_id set;
-  -- DISTINCT guards against duplicate bookmark rows (no unique constraint on
-  -- bookmarks) so a follower is never notified twice for one post.
+  -- Notify all followers. "Following a club" is a bookmark with club_id set.
+  -- Club follows are DB-unique (partial unique index, step 3), so there is at
+  -- most one row per (user_id, club_id); DISTINCT is kept as defense in depth.
   FOR v_follower IN
     SELECT DISTINCT b.user_id
     FROM bookmarks b
@@ -91,3 +91,34 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
+
+-- 3. Make club follows unique and idempotent at the database level.
+--    Historically bookmarks had no uniqueness on (user_id, club_id), so a user
+--    could accumulate multiple identical club-follow rows (double-clicks, retries,
+--    concurrent inserts). This guarantees one canonical follow relationship.
+--
+-- 3a. Remove existing duplicate CLUB-follow rows before adding the index.
+--     Retention rule: for each (user_id, club_id) group among rows where
+--     club_id IS NOT NULL, KEEP the earliest-created row (MIN created_at),
+--     breaking ties by the smallest id; DELETE the rest. Rows that are
+--     opportunity/event bookmarks (club_id IS NULL) are never considered here,
+--     so non-club bookmarks are left completely untouched.
+DELETE FROM public.bookmarks b
+USING (
+  SELECT id,
+         row_number() OVER (
+           PARTITION BY user_id, club_id
+           ORDER BY created_at ASC, id ASC
+         ) AS rn
+  FROM public.bookmarks
+  WHERE club_id IS NOT NULL
+) dups
+WHERE b.id = dups.id
+  AND dups.rn > 1;
+
+-- 3b. Partial unique index enforcing one club-follow per (user_id, club_id).
+--     Partial (WHERE club_id IS NOT NULL) so it constrains ONLY club follows and
+--     leaves opportunity/event bookmarks (club_id IS NULL) unconstrained.
+CREATE UNIQUE INDEX IF NOT EXISTS bookmarks_user_club_unique
+  ON public.bookmarks (user_id, club_id)
+  WHERE club_id IS NOT NULL;

@@ -76,7 +76,11 @@ export function useBookmarks(type: BookmarkType) {
           .from("bookmarks")
           .insert({ user_id: user.id, [columnName]: id });
 
-        if (error) throw error;
+        // Club follows are DB-unique via a partial unique index, so a duplicate
+        // insert (double-click, retry, or concurrent follow) raises 23505. Treat
+        // that as success — the relationship already exists — instead of surfacing
+        // a raw error, keeping the action idempotent.
+        if (error && error.code !== "23505") throw error;
 
         setBookmarkedIds((prev) => new Set(prev).add(id));
         toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} bookmarked`);
