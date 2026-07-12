@@ -184,3 +184,41 @@ BEGIN
     END IF;
   END IF;
 END $$;
+
+-- 4. Record who performed the latest RSVP status transition ---------------------
+-- A student self-cancel and a club decline both land on status='cancelled', so
+-- status alone can't prove the club caused it. This persists the authenticated
+-- actor of the latest status change (server-authoritative via auth.uid()), which
+-- send-email requires before sending a "declined by the organizer" email. The
+-- column is stamped only by the trigger below and is never accepted from a client.
+ALTER TABLE public.rsvps
+  ADD COLUMN IF NOT EXISTS status_updated_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION public.stamp_rsvp_status_actor()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    -- The creator (normally the student RSVPing). Recorded regardless of any
+    -- client-supplied value.
+    NEW.status_updated_by := auth.uid();
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    -- A real status transition (approve / decline / cancel / re-RSVP): record the
+    -- authenticated actor from the request JWT.
+    NEW.status_updated_by := auth.uid();
+  ELSE
+    -- Non-status update (e.g. answers): preserve the prior actor and never let a
+    -- client overwrite this column.
+    NEW.status_updated_by := OLD.status_updated_by;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS stamp_rsvp_status_actor_trigger ON public.rsvps;
+CREATE TRIGGER stamp_rsvp_status_actor_trigger
+BEFORE INSERT OR UPDATE ON public.rsvps
+FOR EACH ROW
+EXECUTE FUNCTION public.stamp_rsvp_status_actor();

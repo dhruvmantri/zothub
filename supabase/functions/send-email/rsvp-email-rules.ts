@@ -18,18 +18,25 @@ export type RsvpEmailDecision =
  *
  * Rules:
  *  - Caller must be the owning club or the RSVP's student (else 403).
- *  - rsvp_declined: only the owning club, and the RSVP must be `cancelled`
- *    (so a student cannot produce a decline email by self-cancelling).
+ *  - rsvp_declined: only the owning club, the RSVP must be `cancelled`, AND the
+ *    recorded actor of that cancellation must be the club (`transitionActorIsClub`).
+ *    A student self-cancel also lands on `cancelled` but recorded the student as
+ *    the actor, so the club cannot later send a misleading "declined by the
+ *    organizer" email for it.
  *  - rsvp_confirmation:
  *      - from the club   -> approval; status must be `confirmed`.
  *      - from the student -> initial acknowledgment; status must be `pending`
  *        or `confirmed`.
+ *
+ * `transitionActorIsClub` is whether the RSVP's persisted `status_updated_by`
+ * equals the owning club's user id; it is only consulted for `rsvp_declined`.
  */
 export function validateRsvpEmailRequest(
   type: RsvpEmailType,
   isClub: boolean,
   isStudent: boolean,
   status: string,
+  transitionActorIsClub: boolean,
 ): RsvpEmailDecision {
   if (!isClub && !isStudent) {
     return { ok: false, code: 403, error: "Forbidden" };
@@ -41,6 +48,9 @@ export function validateRsvpEmailRequest(
     }
     if (status !== "cancelled") {
       return { ok: false, code: 409, error: "RSVP is not in a declined/cancelled state" };
+    }
+    if (!transitionActorIsClub) {
+      return { ok: false, code: 409, error: "RSVP was not cancelled by the organizer" };
     }
     return { ok: true };
   }

@@ -521,7 +521,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: rsvp } = await supabase
         .from("rsvps")
         .select(
-          "id, status, student_profiles:student_id(user_id, email, full_name), " +
+          "id, status, status_updated_by, student_profiles:student_id(user_id, email, full_name), " +
             "events:event_id(title, event_date, location, requires_approval, club_profiles:club_id(user_id, club_name))",
         )
         .eq("id", rsvpId)
@@ -558,7 +558,18 @@ const handler = async (req: Request): Promise<Response> => {
       // to a pure, unit-tested rule so every combination is covered. Fail-closed.
       const isStudent = authUser.id === student.user_id;
       const isClub = authUser.id === club.user_id;
-      const decision = validateRsvpEmailRequest(type, isClub, isStudent, rsvp.status ?? "");
+      // Was the latest status transition performed by the owning club? Derived
+      // from the DB-persisted actor stamp, never from client input. Required for
+      // rsvp_declined so a student self-cancel can't yield a club decline email.
+      const statusUpdatedBy = (rsvp as { status_updated_by: string | null }).status_updated_by;
+      const transitionActorIsClub = !!statusUpdatedBy && statusUpdatedBy === club.user_id;
+      const decision = validateRsvpEmailRequest(
+        type,
+        isClub,
+        isStudent,
+        rsvp.status ?? "",
+        transitionActorIsClub,
+      );
       if (!decision.ok) {
         return jsonResponse({ error: decision.error }, decision.code);
       }
