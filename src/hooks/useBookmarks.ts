@@ -47,9 +47,14 @@ export function useBookmarks(type: BookmarkType) {
     }
   };
 
+  // "Following a club" is stored as a bookmark, but the product language for the
+  // club relationship is Follow/Following/Unfollow. Opportunity/event bookmarks
+  // keep the "bookmark"/"save" wording.
+  const isClub = type === "club";
+
   const toggleBookmark = async (id: string) => {
     if (!user) {
-      toast.error(`Please log in to bookmark ${type}s`);
+      toast.error(isClub ? "Please log in to follow clubs" : `Please log in to bookmark ${type}s`);
       return;
     }
 
@@ -70,7 +75,7 @@ export function useBookmarks(type: BookmarkType) {
           next.delete(id);
           return next;
         });
-        toast.success("Bookmark removed");
+        toast.success(isClub ? "Unfollowed" : "Bookmark removed");
       } else {
         const { error } = await supabase
           .from("bookmarks")
@@ -83,11 +88,11 @@ export function useBookmarks(type: BookmarkType) {
         if (error && error.code !== "23505") throw error;
 
         setBookmarkedIds((prev) => new Set(prev).add(id));
-        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} bookmarked`);
+        toast.success(isClub ? "Following" : `${type.charAt(0).toUpperCase() + type.slice(1)} bookmarked`);
       }
     } catch (err) {
       console.error("Error toggling bookmark:", err);
-      toast.error("Failed to update bookmark");
+      toast.error(isClub ? "Failed to update follow" : "Failed to update bookmark");
     }
   };
 

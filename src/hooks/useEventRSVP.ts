@@ -89,6 +89,37 @@ export function useEventRSVP(
     }
   }, [eventId]);
 
+  // Live RSVP status: when the club approves/declines this student's RSVP for
+  // this event, update the UI without a manual refresh. Subscribes to the
+  // student's own rsvps (RLS-scoped) and reacts only to this event's row.
+  useEffect(() => {
+    if (!studentProfileId || !eventId) return;
+
+    const channel = supabase
+      .channel(`rsvp-status-${eventId}-${studentProfileId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rsvps",
+          filter: `student_id=eq.${studentProfileId}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { event_id?: string } | null;
+          if (row?.event_id === eventId) {
+            checkRSVP(studentProfileId);
+            onEventRefetch();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [studentProfileId, eventId, checkRSVP, onEventRefetch]);
+
   const handleRSVP = useCallback(async () => {
     if (!user) {
       toast.error("Please log in to RSVP");
@@ -151,7 +182,17 @@ export function useEventRSVP(
             { onConflict: "event_id,student_id" }
           );
 
-        if (error) throw error;
+        if (error) {
+          // The DB capacity guard is authoritative (the client check above can
+          // race). Surface a clean message instead of a raw error.
+          console.error("Error creating RSVP:", error);
+          toast.error(
+            error.message?.toLowerCase().includes("full capacity")
+              ? "This event is at full capacity."
+              : "Failed to process RSVP"
+          );
+          return;
+        }
         setHasRSVP(true);
         setRsvpStatus(status);
         

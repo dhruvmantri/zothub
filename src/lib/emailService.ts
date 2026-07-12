@@ -5,6 +5,7 @@ type EmailType =
   | "application_status"
   | "application_notification"
   | "rsvp_confirmation"
+  | "rsvp_declined"
   | "rsvp_reminder"
   | "deadline_reminder"
   | "event_cancelled"
@@ -16,6 +17,7 @@ type EmailType =
 interface EmailData {
   studentName?: string;
   applicationId?: string;
+  rsvpId?: string;
   opportunityTitle?: string;
   eventTitle?: string;
   clubName?: string;
@@ -89,21 +91,12 @@ export async function sendApplicationStatusUpdate(
   });
 }
 
+// Send the RSVP confirmation email to the student. Only the authoritative
+// rsvpId is sent; the edge function verifies the caller (the student who owns
+// the RSVP, or the owning club), derives the recipient and event/club data from
+// the database, and gates on the student's event_reminders preference.
 export async function sendRSVPConfirmation(
-  studentEmail: string,
-  studentName: string,
-  eventTitle: string,
-  clubName: string,
-  eventDate: string,
-  location: string,
-  requiresApproval: boolean
+  rsvpId: string
 ): Promise<{ success: boolean; error?: string }> {
-  return sendEmail("rsvp_confirmation", studentEmail, {
-    studentName,
-    eventTitle,
-    clubName,
-    eventDate,
-    location,
-    requiresApproval,
-  });
+  return sendEmail("rsvp_confirmation", "", { rsvpId });
 }

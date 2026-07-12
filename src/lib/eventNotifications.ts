@@ -92,34 +92,24 @@ export async function sendEventCancellationEmails(
 }
 
 /**
- * Send RSVP status update email when club approves/rejects
+ * Send an RSVP status-update email when a club approves or declines a pending
+ * RSVP. An approval sends the confirmation email; a decline sends the dedicated
+ * decline email (no "confirmed"/"You're In" wording). Only the authoritative
+ * rsvpId is sent — the edge function verifies the caller (the owning club or the
+ * student), derives the recipient and event/club data from the database, and
+ * gates on the student's event_reminders preference.
  */
 export async function sendRSVPStatusEmail(
   rsvpId: string,
-  newStatus: "confirmed" | "cancelled",
-  eventTitle: string,
-  eventDate: string,
-  location: string | null,
-  clubName: string,
-  studentEmail: string,
-  studentName: string
+  newStatus: "confirmed" | "cancelled"
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const statusText = newStatus === "confirmed" ? "approved" : "declined";
-    
+    const type = newStatus === "confirmed" ? "rsvp_confirmation" : "rsvp_declined";
+
     const { error } = await supabase.functions.invoke("send-email", {
       body: {
-        type: "rsvp_confirmation",
-        to: studentEmail,
-        data: {
-          studentName,
-          eventTitle,
-          clubName,
-          eventDate,
-          location: location || "TBD",
-          requiresApproval: false, // Already processed
-          statusUpdate: statusText,
-        },
+        type,
+        data: { rsvpId },
       },
     });
 

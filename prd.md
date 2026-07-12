@@ -88,7 +88,7 @@ The platform uses a **waitlist-gated signup flow**:
 - ✅ Waitlist + OTP + admin-approval access gate
 - ✅ Student & club profiles (skills, interests, resume/portfolio links; club logo, category, social links)
 - ✅ Opportunity posting with custom application-question builder (text, textarea, single-select, multi-select)
-- ✅ Event posting with a capacity **field** (note: capacity is currently enforced only in the UI, not server-side — see Known Product Gaps)
+- ✅ Event posting with a capacity **field**, enforced server-side (WS4: a DB trigger on `rsvps` prevents exceeding capacity, including under concurrency)
 - ✅ Applications with status workflow (pending → reviewed → accepted/rejected), duplicate-application prevention, correct question-label rendering
 - ✅ RSVPs with optional custom RSVP-question forms and an optional club approval workflow. *Implementation note:* the `rsvps.status` values are **`pending` / `confirmed` / `cancelled`** (a club approval sets `confirmed`, a decline/cancel sets `cancelled`); product copy elsewhere may say "approved/declined" — treat those as the same states.
 - ✅ Bidirectional messaging (student ↔ club) — live delivery wired up in WS2 (`messages` added to the realtime publication)
@@ -130,11 +130,11 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Clubs are not notified when a student applies**~~ — ✅ **Closed (WS1, 2026-07-10).** A new `AFTER INSERT` trigger on `applications` posts a reliable in-app notification to the owning club, and a best-effort, de-duplicated `application_notification` email is sent — the email path verifies the authenticated applicant owns the referenced application and derives the club/applicant/opportunity from DB rows (no client-trusted recipient data). Both are gated on the club's `application_updates` preference. Journey 1's "in-app + email notification per application" now holds (in-app guaranteed, email best-effort).
 - ~~**Following a club doesn't deliver new-post notifications**~~ — ✅ **Closed (WS3, 2026-07-10).** `bookmarks.club_id` is now the single source of truth: the new-post in-app trigger and the `send-reminders` new-post emails read `bookmarks` (previously they read the never-written `club_followers`), so followers now receive new-post notifications and emails. Gated on a new dedicated `new_post_notifications` preference (replacing the semantically-wrong `deadline_reminders`).
 - **Some transactional emails ignore notification preferences** — in-app notifications and the reminder cron respect preferences. **Application** emails (confirmation/status/new-application) are now preference-gated server-side (WS1). **RSVP** confirmation/status emails still ignore preferences. *(plan.md WS4.)*
-- **Live updates are partially complete** — the notifications badge and, as of WS2, **messages** (chat + unread badge) update in real time. **RSVP status** on the EventDetail page still updates only on refresh: no client subscribes to the `rsvps` table (approval is already delivered live via the notifications channel), so wiring a live RSVP-status subscription is deferred to the RSVP workstream. *(messages: WS2 done; rsvps: plan.md WS4.)*
+- **Live updates** — the notifications badge, **messages** (chat + unread badge, WS2), and **RSVP status** on the EventDetail page (WS4: the student's own RSVP updates live on approval/decline) all update in real time.
 
 **Events / RSVP correctness**
-- **Event capacity is not enforced server-side** — the UI hides "RSVP" when full, but nothing prevents exceeding `capacity` under concurrency or a direct API call. *(plan.md WS4.)*
-- **Declining an RSVP sends a "confirmed" email** — the decline path reuses the confirmation template. *(plan.md WS4.)*
+- ~~**Event capacity is not enforced server-side**~~ — ✅ **Closed (WS4, 2026-07-11).** A `BEFORE INSERT/UPDATE` trigger on `rsvps` locks the event row and rejects confirmations beyond `capacity`; verified no overbooking under concurrent requests.
+- ~~**Declining an RSVP sends a "confirmed" email**~~ — ✅ **Closed (WS4, 2026-07-11).** Added a dedicated decline email template + status branch; declines now also create an in-app notification (distinguished from a student self-cancel via server-authoritative actor identity). RSVP emails are gated on the `event_reminders` preference.
 
 **Discovery / access**
 - **Anonymous browsing is inconsistent** — logged-out visitors can view clubs but not opportunities/events, while the landing page invites public browsing. Needs a product decision (gated vs. public) and consistent RLS. *(plan.md WS5.)*

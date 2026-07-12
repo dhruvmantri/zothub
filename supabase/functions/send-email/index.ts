@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { validateRsvpEmailRequest } from "./rsvp-email-rules.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -20,7 +21,7 @@ const jsonResponse = (body: Record<string, unknown>, status: number): Response =
   });
 
 interface EmailRequest {
-  type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
+  type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_declined" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "email_otp";
   to: string;
   data: Record<string, unknown>;
 }
@@ -177,6 +178,29 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
               <p style="margin: 8px 0 0 0;"><strong>🏢 Hosted by:</strong> ${data.clubName}</p>
             </div>
             ${data.requiresApproval ? "<p>You'll receive another email once your RSVP is approved.</p>" : "<p>We look forward to seeing you there!</p>"}
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getEmailFooter("event_reminders")}
+          </div>
+        `,
+      };
+
+    case "rsvp_declined":
+      return {
+        subject: `RSVP Update: ${data.eventTitle}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">RSVP Update</h1>
+            <p>Hi ${data.studentName},</p>
+            <p>Unfortunately, your RSVP for <strong>${data.eventTitle}</strong> hosted by <strong>${data.clubName}</strong> was not approved.</p>
+            <div style="margin: 24px 0; padding: 16px; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px;">
+              <p style="margin: 0; font-weight: 600; color: #b91c1c;">Your RSVP was declined by the organizer.</p>
+              <p style="margin: 8px 0 0 0;"><strong>📅 Date:</strong> ${data.eventDate}</p>
+              <p style="margin: 8px 0 0 0;"><strong>📍 Location:</strong> ${data.location || "TBD"}</p>
+            </div>
+            <p>Spots may be limited. Check out other events on ZotHub!</p>
+            <div style="margin: 24px 0;">
+              <a href="https://zothub.app/events" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px;">Browse Events</a>
+            </div>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
             ${getEmailFooter("event_reminders")}
           </div>
@@ -389,8 +413,9 @@ const handler = async (req: Request): Promise<Response> => {
     let preferenceUserId: string | null = null;
     let payload: Record<string, unknown> = data;
 
+    const isRsvpAuthoritative = type === "rsvp_confirmation" || type === "rsvp_declined";
     const needsAdmin =
-      type === "application_notification" || Boolean(PREFERENCE_COLUMN_BY_TYPE[type]);
+      type === "application_notification" || isRsvpAuthoritative || Boolean(PREFERENCE_COLUMN_BY_TYPE[type]);
     const supabase = needsAdmin ? createClient(supabaseUrl, supabaseServiceKey) : null;
 
     if (type === "application_notification" && supabase) {
@@ -473,6 +498,107 @@ const handler = async (req: Request): Promise<Response> => {
         }
         console.error("Failed to record application_notification log:", claimError);
         return jsonResponse({ error: "Could not record notification" }, 500);
+      }
+    } else if (isRsvpAuthoritative && supabase) {
+      // RSVP confirmation / decline emails. Like application_notification, the
+      // client sends only an authoritative rsvpId; the recipient (student) and
+      // all event/club data are derived from DB rows, the caller is authorized,
+      // and the send is gated on the student's event_reminders preference.
+      const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+      if (!token) {
+        return jsonResponse({ error: "Missing authorization" }, 401);
+      }
+      const { data: authData, error: authError } = await supabase.auth.getUser(token);
+      const authUser = authData?.user;
+      if (authError || !authUser) {
+        return jsonResponse({ error: "Invalid or expired session" }, 401);
+      }
+
+      const rsvpId = data.rsvpId;
+      if (!rsvpId || typeof rsvpId !== "string") {
+        return jsonResponse({ error: "Missing rsvpId" }, 400);
+      }
+      const { data: rsvp } = await supabase
+        .from("rsvps")
+        .select(
+          "id, status, status_updated_by, student_profiles:student_id(user_id, email, full_name), " +
+            "events:event_id(title, event_date, location, requires_approval, club_profiles:club_id(user_id, club_name))",
+        )
+        .eq("id", rsvpId)
+        .maybeSingle();
+
+      if (!rsvp) {
+        return jsonResponse({ error: "RSVP not found" }, 404);
+      }
+
+      const student = rsvp.student_profiles as
+        | { user_id: string; email: string | null; full_name: string | null }
+        | null;
+      const event = rsvp.events as
+        | {
+            title: string | null;
+            event_date: string | null;
+            location: string | null;
+            requires_approval: boolean | null;
+            club_profiles: { user_id: string; club_name: string } | null;
+          }
+        | null;
+      const club = event?.club_profiles ?? null;
+
+      if (!student?.email || !student?.user_id) {
+        return jsonResponse({ error: "Recipient could not be resolved" }, 404);
+      }
+      if (!club?.user_id) {
+        return jsonResponse({ error: "Event club could not be resolved" }, 404);
+      }
+
+      // Authorize the caller (must be the RSVP's student or the owning club) and
+      // validate the requested email type against the caller's role and the
+      // AUTHORITATIVE RSVP status (never a client-supplied status/actor). Delegated
+      // to a pure, unit-tested rule so every combination is covered. Fail-closed.
+      const isStudent = authUser.id === student.user_id;
+      const isClub = authUser.id === club.user_id;
+      // Was the latest status transition performed by the owning club? Derived
+      // from the DB-persisted actor stamp, never from client input. Required for
+      // rsvp_declined so a student self-cancel can't yield a club decline email.
+      const statusUpdatedBy = (rsvp as { status_updated_by: string | null }).status_updated_by;
+      const transitionActorIsClub = !!statusUpdatedBy && statusUpdatedBy === club.user_id;
+      const decision = validateRsvpEmailRequest(
+        type,
+        isClub,
+        isStudent,
+        rsvp.status ?? "",
+        transitionActorIsClub,
+      );
+      if (!decision.ok) {
+        return jsonResponse({ error: decision.error }, decision.code);
+      }
+
+      recipient = student.email;
+      preferenceUserId = student.user_id;
+      const eventDate = event?.event_date
+        ? new Date(event.event_date).toLocaleString("en-US", {
+            dateStyle: "long",
+            timeStyle: "short",
+            timeZone: "America/Los_Angeles",
+          })
+        : "TBD";
+      payload = {
+        studentName: student.full_name || "there",
+        eventTitle: event?.title ?? "an event",
+        clubName: club.club_name ?? "the club",
+        eventDate,
+        location: event?.location ?? "TBD",
+        // Only meaningful for rsvp_confirmation: a still-pending RSVP shows the
+        // "submitted, pending approval" copy; a confirmed one shows "confirmed".
+        requiresApproval: rsvp.status === "pending",
+      };
+
+      // Gate on the student's event_reminders preference (recipient already
+      // resolved from the DB, so this fails closed by construction).
+      const enabled = await isPreferenceEnabled(supabase, student.user_id, "event_reminders");
+      if (!enabled) {
+        return jsonResponse({ skipped: true, reason: "preference_disabled" }, 200);
       }
     } else {
       // For the remaining preference-gated application emails (confirmation /
