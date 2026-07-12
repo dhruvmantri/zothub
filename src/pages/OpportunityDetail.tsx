@@ -87,33 +87,35 @@ export default function OpportunityDetail() {
     if (!id) return;
 
     try {
-      const { data, error } = await supabase
+      // application_questions is only needed by the (auth-only) application form,
+      // so it is requested only when logged in — anon has no column grant for it.
+      // The dynamic column list is a plain string, so the row type is asserted.
+      const { data, error } = (await supabase
         .from("opportunities")
-        .select(`
-          id,
-          title,
-          type,
-          description,
-          requirements,
-          deadline,
-          application_questions,
-          show_application_count,
-          created_at,
-          club_id,
-          club_profiles (
-            id,
-            club_name,
-            logo_url,
-            description,
-            website_url
-          ),
-          applications (
-            id
-          )
-        `)
+        .select(
+          `id, title, type, description, requirements, deadline, ${user ? "application_questions, " : ""}show_application_count, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url), applications (id)`
+        )
         .eq("id", id)
         .eq("is_active", true)
-        .maybeSingle();
+        .maybeSingle()) as unknown as {
+          data:
+            | {
+                id: string;
+                title: string;
+                type: string;
+                description: string | null;
+                requirements: string | null;
+                deadline: string | null;
+                application_questions?: unknown;
+                show_application_count: boolean | null;
+                created_at: string;
+                club_id: string;
+                club_profiles: OpportunityDetail["club_profiles"];
+                applications: { id: string }[];
+              }
+            | null;
+          error: { message: string } | null;
+        };
 
       if (error) {
         console.error("Error fetching opportunity:", error);

@@ -37,7 +37,6 @@ interface EventDetail {
   location: string | null;
   capacity: number | null;
   banner_url: string | null;
-  views: number | null;
   rsvp_questions: FormQuestion[] | null;
   requires_approval: boolean | null;
   club_profiles: {
@@ -67,26 +66,33 @@ export default function EventDetail() {
     if (!id) return;
     
     try {
-      const { data, error } = await supabase
+      // rsvp_questions is only needed by the (auth-only) RSVP form, so it is
+      // requested only when logged in — anon has no column grant for it. The
+      // dynamic column list is a plain string, so the row type is asserted.
+      const { data, error } = (await supabase
         .from("events")
-        .select(`
-          *,
-          club_profiles (id, club_name, logo_url),
-          rsvps (id, student_id, status)
-        `)
+        .select(
+          `id, title, description, event_date, location, capacity, banner_url, requires_approval, ${user ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url), rsvps (id, student_id, status)`
+        )
         .eq("id", id)
-        .single();
+        .single()) as unknown as {
+          data:
+            | (Omit<EventDetail, "rsvp_questions"> & { rsvp_questions?: unknown })
+            | null;
+          error: { message: string } | null;
+        };
 
       if (error) throw error;
-      
+      if (!data) throw new Error("Event not found");
+
       // Parse rsvp_questions from JSON
       const eventData: EventDetail = {
         ...data,
-        rsvp_questions: Array.isArray(data.rsvp_questions) 
-          ? (data.rsvp_questions as unknown as FormQuestion[]) 
+        rsvp_questions: Array.isArray(data.rsvp_questions)
+          ? (data.rsvp_questions as unknown as FormQuestion[])
           : null,
       };
-      
+
       setEvent(eventData);
     } catch (error) {
       console.error("Error fetching event:", error);
@@ -94,7 +100,7 @@ export default function EventDetail() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     fetchEvent();

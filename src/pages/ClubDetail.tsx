@@ -94,7 +94,9 @@ const ClubDetail = () => {
 
       setIsLoading(true);
       try {
-        // Fetch club profile (including user_id for messaging)
+        // Fetch club profile. user_id is included (needed to message the club);
+        // anon may read it — it is a non-sensitive UUID that the club-owner RLS
+        // policies also depend on — but the private email is never anon-readable.
         const { data: clubData, error: clubError } = await supabase
           .from("club_profiles")
           .select("id, user_id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url")
