@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, CalendarCheck } from "lucide-react";
 import { sendRSVPConfirmation } from "@/lib/emailService";
-import { format } from "date-fns";
 import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
 import type { FormQuestion, EventForForm } from "@/types";
 
@@ -36,27 +35,8 @@ export function RSVPForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [studentEmail, setStudentEmail] = useState("");
-  const [studentName, setStudentName] = useState("");
 
   const { validateAnswers } = useDynamicQuestionForm(questions);
-
-  // Fetch student profile info for email
-  useEffect(() => {
-    const fetchStudentInfo = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from("student_profiles")
-        .select("email, full_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) {
-        setStudentEmail(data.email);
-        setStudentName(data.full_name || "");
-      }
-    };
-    fetchStudentInfo();
-  }, [user]);
 
   const handleAnswerChange = useCallback((questionId: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -99,19 +79,27 @@ export function RSVPForm({
       // Upsert, not insert: a previously-cancelled RSVP leaves a row behind, so
       // a plain insert would hit the (event_id, student_id) unique key. Upsert
       // reuses the existing row (re-RSVP after cancel) and records the answers.
-      const { error } = await supabase.from("rsvps").upsert(
-        {
-          event_id: event.id,
-          student_id: studentProfileId,
-          answers: formattedAnswers,
-          status,
-        },
-        { onConflict: "event_id,student_id" }
-      );
+      const { data: rsvpRow, error } = await supabase
+        .from("rsvps")
+        .upsert(
+          {
+            event_id: event.id,
+            student_id: studentProfileId,
+            answers: formattedAnswers,
+            status,
+          },
+          { onConflict: "event_id,student_id" }
+        )
+        .select("id")
+        .single();
 
       if (error) {
         console.error("Error submitting RSVP:", error);
-        toast.error("Failed to submit RSVP");
+        toast.error(
+          error.message?.toLowerCase().includes("full capacity")
+            ? "This event is at full capacity."
+            : "Failed to submit RSVP"
+        );
         return;
       }
 
@@ -121,17 +109,10 @@ export function RSVPForm({
         toast.success("RSVP confirmed! See you there!");
       }
 
-      // Send confirmation email (non-blocking)
-      if (studentEmail) {
-        sendRSVPConfirmation(
-          studentEmail,
-          studentName || "Student",
-          event.title,
-          event.club_profiles?.club_name || "the club",
-          event.event_date ? format(new Date(event.event_date), "MMMM d, yyyy 'at' h:mm a") : "TBD",
-          event.location || "TBD",
-          event.requires_approval || false
-        ).catch(console.error);
+      // Send confirmation email (non-blocking). Recipient + event data are
+      // derived server-side from the rsvpId and gated on event_reminders.
+      if (rsvpRow?.id) {
+        sendRSVPConfirmation(rsvpRow.id).catch(console.error);
       }
 
       onSuccess();

@@ -27,31 +27,57 @@
 
 > **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
-> **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below. The recommended next pass is **WS4**.
+> **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below.
+> **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below. The recommended next pass is **WS5**.
 
-### Workstream 4 — Event RSVP integrity & email correctness *(recommended next)*
+### Workstream 5 — Discovery access-model consistency (anonymous browsing) *(recommended next — product decision required)*
 
-**In one line:** a cluster of RSVP-journey correctness defects — capacity enforced only client-side, declines emailing a "confirmed" message, club declines not notified in-app, RSVP emails ignoring preferences, and (deferred from WS2) no live RSVP-status update.
+**In one line:** logged-out visitors can read `club_profiles` (policy `TO public`) but not `opportunities`/`events` (`TO authenticated`), while the landing page has a public "Browse Opportunities" CTA — the three discovery tables are inconsistent.
 
 **Why this is next**
-- With the application loop (WS1), live messages (WS2), and follow/new-post notifications (WS3) fixed, the RSVP journey is the remaining two-sided-loop workstream with real correctness/data-integrity defects.
+- With WS1–WS4 (the trust/correctness workstreams) done, this is the top remaining Medium item. It's **product-decision-dependent**: confirm the intended access model before changing RLS.
 
-**Scope (do)** — see the WS4 backlog entry for the full list. Highlights:
-1. **Capacity integrity:** add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps` so concurrency / direct API can't exceed `events.capacity` (only the client gates today).
-2. **Decline email correctness:** `sendRSVPStatusEmail` reuses the `rsvp_confirmation` template for declines ("You're In! confirmed") — add a decline template + branch in `send-email` and `eventNotifications`.
-3. **Club-decline in-app notification:** distinguish a club decline from a student self-cancel so a declined student is notified.
-4. **RSVP email preferences:** gate RSVP confirmation/status emails on `event_reminders` server-side (mirror the WS1 fail-closed pattern in `send-email`).
-5. **(Deferred from WS2) live rsvps realtime:** optionally add an EventDetail subscription (student's own RSVP) + `ALTER PUBLICATION supabase_realtime ADD TABLE public.rsvps;` — default replica identity suffices.
+**Scope (do)**
+1. Decide the model: gated beta (require login for all discovery — add auth to the landing CTA / routes) **or** public discovery (add anon SELECT policies for active `opportunities`/`events` rows, matching `club_profiles`). Confirm intent against `prd.md`'s Access Model **and with the maintainer** before touching RLS.
+2. Make the three tables (`club_profiles`, `opportunities`, `events`) consistent with the chosen model.
 
 **Boundaries (do NOT, this pass)**
-- Don't touch anon browsing (WS5) or the scheduler (WS6). Note anything you find; don't fix here.
+- Don't touch the scheduler (WS6) or start net-new features (WS9). Note anything you find; don't fix here.
 
 **Evidence to inspect before coding**
-- `src/components/RSVPForm.tsx`, `src/hooks/useEventRSVP.ts`, `src/components/dashboard/RSVPReview.tsx`, `src/lib/eventNotifications.ts`, `supabase/functions/send-email/index.ts` (rsvp templates), `rsvps` schema/CHECK/trigger, and `src/pages/EventDetail.tsx` (for the optional realtime piece).
+- `pg_policies` for `opportunities`/`events`/`club_profiles`; the landing page "Browse Opportunities" CTA and the `/opportunities`, `/events`, `/clubs` routes; `prd.md` Access Model section.
 
 **Done / verification looks like**
-- Over-capacity insert is rejected at the DB; a decline sends a decline email (not "confirmed") and an in-app notification; RSVP emails respect `event_reminders`; harness + `tsc`/`build` clean.
-- **Deployment note:** DB migration (`supabase db push`) + redeploy `send-email` (and `send-reminders` only if touched); record precisely in the PR.
+- The three discovery tables behave consistently for anon under the chosen model; verify on the harness with `SET ROLE anon`. `tsc`/`build` clean.
+- **Deployment note:** DB-only RLS migration (`supabase db push`) if policies change; no edge/Vercel unless routes change.
+
+---
+
+#### ✅ WS4 completion record (2026-07-11)
+
+**Migration `20260711000100_ws4_rsvp_integrity.sql`** (all rsvps DB changes; idempotent, applies cleanly on a fresh 38-migration harness):
+- **Capacity guard** — `BEFORE INSERT/UPDATE` trigger `enforce_rsvp_capacity` (SECURITY DEFINER). Only a `confirmed` RSVP consumes a seat (`pending`/`cancelled` don't); NULL `capacity` = unlimited. It `SELECT … FROM events … FOR UPDATE` to lock the event row so concurrent confirmations serialize (no overbooking race), then counts confirmed rows excluding the current one and `RAISE`s `'Event is at full capacity'` (ERRCODE check_violation) when full. SECURITY DEFINER is required so the count sees all rows (a student's RLS would undercount).
+- **Club-decline notification** — `notify_rsvp_status_change()` extended: still notifies the student on approval (pending→confirmed), and now also on a **club** decline/cancel (any→cancelled where the actor is the club owner). The actor is `auth.uid()` (the request JWT) — **server-authoritative, never a client field** — so a student's own self-cancel (actor = the student) is correctly NOT notified. Gated on the student's `event_reminders` preference.
+- **Realtime** — `public.rsvps` added to `supabase_realtime` (idempotent), default replica identity (the EventDetail subscription filters on `student_id`, present in the new row).
+
+**`send-email` edge function:**
+- New **`rsvp_declined`** template (decline wording — no "You're In"/"confirmed"; "declined by the organizer" + Browse Events CTA).
+- New **RSVP-authoritative branch** (mirrors WS1): for `rsvp_confirmation`/`rsvp_declined` the client sends only an `rsvpId`; the function requires the JWT user, loads the RSVP → student/event/club, authorizes the caller (must be the RSVP's student **or** the owning club, else 403; 404 if unresolvable), derives recipient + event data from DB rows (never client input), and gates on the student's **`event_reminders`** preference (fail-closed by construction).
+
+**Client:**
+- `sendRSVPConfirmation(rsvpId)` and `sendRSVPStatusEmail(rsvpId, newStatus)` (→ `rsvp_confirmation` on confirm, `rsvp_declined` on cancel) now send only the id; recipient/data derived server-side. `RSVPForm` captures the upserted `rsvp.id`; `RSVPReview` passes the id. Over-capacity DB errors are surfaced as a clean "at full capacity" toast in `RSVPForm`, `useEventRSVP`, and `RSVPReview` (approve + bulk) instead of a raw error.
+- **Live RSVP status** — a targeted realtime subscription in `useEventRSVP` (the hook `EventDetail` uses; owns `rsvpStatus`/`checkRSVP`) on the student's own `rsvps` (`filter student_id=eq.<profileId>`, reacts only to this event's row), refreshing status live on approval/decline; unique channel per event+student, cleaned up via `removeChannel`.
+
+**Part A — club terminology cleanup (product language):** "Follow / Following / Unfollow" is the club relationship language. The one incorrect surface — the `useBookmarks` toast for a club follow ("Club bookmarked"/"Bookmark removed", shown by the `ClubDetail` follow button) — now says "Following"/"Unfollowed" (login-prompt and error toasts likewise). Opportunity/event bookmark/"save" wording is unchanged, and the internal `bookmarks` table / `bookmarks.club_id` persistence is unchanged. No hook rename (ClubDetail already exposes `isFollowing`/`handleFollowToggle`); avoided broad refactoring.
+
+**Verified (local PG16 harness):** capacity — under capacity succeeds, the final seat succeeds, the next confirm is rejected, pending/cancelled don't consume, approval (pending→confirmed) at capacity is rejected, a freed seat reopens, unlimited accepts many, and **two concurrent transactions racing for the last seat produced exactly one confirmed** (the loser blocked on the event lock then was rejected). Notifications — club decline → one "RSVP Declined", self-cancel → none, approval → "RSVP Approved", `event_reminders=false` suppresses. Realtime — WAL decode shows an `rsvps` UPDATE streams `student_id` (filter matches). Edge — the RSVP-load/authorize query resolves against the schema; `deno check` passes for `send-email` (and `send-reminders`). Migration idempotent (re-applied twice). `tsc -p tsconfig.app.json --noEmit` and `npm run build` clean; lint on touched TS/TSX introduced no new errors (pre-existing warnings only). Full `functions serve` not possible here (deno.land egress-blocked), so the edge branch was verified by `deno check` + query simulation.
+
+**Deferred / notes:** the no-questions RSVP path (`useEventRSVP.handleRSVP`) still sends no confirmation email (pre-existing; only the form path emails) — left as-is to avoid adding a new email path. RSVP emails are not `reminder_logs`-deduped (transactional, best-effort; a re-approve could resend — acceptable).
+
+**Deployment steps a human must run (after merge; nothing deployed by this branch):**
+1. `supabase db push --linked` — applies only `20260711000100_ws4_rsvp_integrity.sql`.
+2. `supabase functions deploy send-email` — required (new `rsvp_declined` template + RSVP-authoritative branch).
+3. Frontend (`RSVPForm`, `RSVPReview`, `useEventRSVP`, `useBookmarks`, `emailService`, `eventNotifications`) ships via the normal Vercel flow on merge. `send-reminders` unchanged this pass. Rollback: revert the migration (drop the capacity trigger, restore the prior `notify_rsvp_status_change` body, `ALTER PUBLICATION … DROP TABLE public.rsvps`) and redeploy the prior `send-email`.
 
 ---
 
@@ -162,8 +188,8 @@ Clubs now receive a reliable in-app notification (`on_new_application` trigger, 
 **WS3 — Unify follow/bookmark semantics & fire new-post notifications** — **✅ DONE (2026-07-10)**
 `bookmarks.club_id` is now the single source of truth: `notify_followers_on_new_post()` and the `send-reminders` new-post emails read `bookmarks` (was `club_followers`, which the app never wrote), so followers now receive new-post notifications/emails. New-post is gated on a new dedicated `new_post_notifications` preference (was the semantically-wrong `deadline_reminders`), exposed in the preferences + unsubscribe UI. Club follows are made **DB-unique** (partial unique index `(user_id, club_id) WHERE club_id IS NOT NULL` + one-time dedup) and `useBookmarks` follow is idempotent (swallows `23505`); DISTINCT/Set kept as defense in depth. Completion record in "▶ Start here". *([Feed/Notifications] "Follow" writes bookmarks… — fixed; club-follow half of [Data] bookmarks-uniqueness also addressed.)*
 
-**WS4 — Event RSVP integrity & email correctness** — **[Medium]**
-Cluster of RSVP-journey correctness defects: (a) **event capacity enforced only client-side** — no server/DB guard, so concurrency / direct API can exceed `capacity` (add a `BEFORE INSERT`/`BEFORE UPDATE` guard on `rsvps`); (b) **declining an RSVP emails "You're In! confirmed"** — `sendRSVPStatusEmail` reuses `rsvp_confirmation` for declines (add a decline template + branch); (c) **club decline not notified in-app** — needs a way to distinguish a club decline from a student self-cancel; (d) RSVP transactional emails share the preference-consistency fix from WS1; (e) **live rsvps realtime (deferred from WS2)** — the student's EventDetail RSVP status doesn't update live on approval because no client subscribes to `rsvps` (approval already arrives via the `notifications` channel). If desired, add a client subscription in EventDetail (student's own RSVP) and `ALTER PUBLICATION supabase_realtime ADD TABLE public.rsvps;` — default replica identity suffices (UPDATE new row carries `student_id`/`event_id`); this is an RSVP-journey/UX change, hence WS4 not WS2. *([Events] Event capacity…; [Events/Email] Declining an RSVP…; Phase 2c follow-up; rsvps realtime deferred from WS2)*
+**WS4 — Event RSVP integrity & email correctness** — **✅ DONE (2026-07-11)**
+All five items shipped (migration `20260711000100` + `send-email` + client): (a) DB capacity guard on `rsvps` (`BEFORE INSERT/UPDATE`, event-row `FOR UPDATE` lock — verified no overbooking under concurrency); (b) dedicated `rsvp_declined` email template + status branch; (c) club-decline in-app notification distinguished from student self-cancel via `auth.uid()` (server-authoritative); (d) RSVP confirmation/status emails gated server-side on `event_reminders` (WS1 authoritative-derivation pattern, `rsvpId`-based); (e) live rsvps realtime — `rsvps` published + a targeted EventDetail (via `useEventRSVP`) subscription for the student's own RSVP. Also included the **club Follow/Following/Unfollow terminology cleanup** (`bookmarks` table unchanged). Completion record in "▶ Start here". *([Events] Event capacity… — fixed; [Events/Email] Declining an RSVP… — fixed; rsvps realtime — done.)*
 
 **WS5 — Discovery access-model consistency (anonymous browsing)** — **[Medium, product decision]**
 Logged-out visitors can read `club_profiles` (policy `TO public`) but **not** `opportunities`/`events` (policies `TO authenticated`), while the landing page has a public "Browse Opportunities" CTA. Decide the intended model (gated beta ⇒ require login for all discovery, or public ⇒ add anon SELECT policies for active rows) and make the three tables consistent. Product-decision-dependent — confirm intent (see `prd.md` Access Model) before changing RLS. *([Discovery/RLS] Logged-out visitors…)*
@@ -396,7 +422,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Preference toggles should gate the corresponding emails.
 - **Root cause (code analysis):** In-app notifications (DB triggers) *do* check `notification_preferences`, and the **cron reminders** (`send-reminders`) *do* check them. But the **client-side** transactional sends bypass preferences entirely: `ApplicationForm` (confirmation), `ApplicationReview.updateApplicationStatus`/`handleBulkStatusUpdate` (status), and `RSVPForm`/`eventNotifications` (RSVP) call `send-email` directly with no preference lookup. Fix: check preferences before sending, or move these sends server-side where the check already exists.
 - **Suspected location:** `src/lib/emailService.ts` callers, `src/components/ApplicationForm.tsx`, `src/components/dashboard/ApplicationReview.tsx`, `src/lib/eventNotifications.ts`.
-- **Status:** **Partially fixed in WS1 (2026-07-10).** The **application** emails (`application_confirmation`, `application_status`, and the new `application_notification`) are now preference-gated server-side inside `send-email` — it resolves the recipient's `user_id` and skips the send when `application_updates` is off (defaulting to send when no prefs row, matching the triggers). This is done server-side because RLS prevents a club from reading a student's prefs and vice-versa, so a client-side check can't gate cross-user sends. **Still open (WS4):** RSVP transactional emails (`rsvp_confirmation` via `RSVPForm`/`eventNotifications`) still bypass `event_reminders` — fold into WS4's RSVP email-correctness pass using the same server-side gate.
+- **Status:** **Fixed (WS1 2026-07-10 + WS4 2026-07-11).** WS1 gated the **application** emails server-side on `application_updates`. WS4 completes it for **RSVP** emails: `rsvp_confirmation` and the new `rsvp_declined` now send only an `rsvpId`, and `send-email` derives the recipient + event data from DB rows, authorizes the caller (RSVP's student or owning club), and gates on the student's `event_reminders` (fail-closed). All client-side transactional application/RSVP emails now respect preferences.
 
 #### [Events/Email] Declining an RSVP emails the student a "You're In! confirmed" message
 - **Severity:** Medium
@@ -404,7 +430,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** A declined student should get a decline/waitlist message, not a confirmation.
 - **Root cause (code analysis):** `sendRSVPStatusEmail` sends `type: "rsvp_confirmation"` for both approve and decline, passing a `statusUpdate` field the template ignores (`src/lib/eventNotifications.ts:97-124`). The `rsvp_confirmation` template in `send-email` always renders the confirmation copy (`supabase/functions/send-email/index.ts:84-102`) and has no decline branch. Fix: add a decline/rejected email template and branch on status. (Partly shadowed today by the approval-RSVP Blocker, but will surface once that's fixed.)
 - **Suspected location:** `src/lib/eventNotifications.ts`, `supabase/functions/send-email/index.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS4 (2026-07-11).** Added a dedicated `rsvp_declined` template (decline wording, no "You're In"/"confirmed") and branched `sendRSVPStatusEmail` to send `rsvp_declined` on cancel / `rsvp_confirmation` on confirm. Verified via `deno check` + template review.
 
 #### [Events] Event capacity is enforced only in the client
 - **Severity:** Medium
@@ -412,7 +438,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** PRD calls out correct capacity behavior "under concurrent RSVPs." There is no server/DB guard.
 - **Root cause (code/schema):** No capacity check in `RSVPForm` (`src/components/RSVPForm.tsx:99-104`) and no DB trigger/constraint on `rsvps` enforcing count < `events.capacity`. Fix: enforce in a `BEFORE INSERT` trigger (authoritative) in addition to the client gate.
 - **Suspected location:** `src/components/RSVPForm.tsx`; `rsvps` (add trigger).
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS4 (2026-07-11).** Migration `20260710000... (20260711000100)` adds a `BEFORE INSERT/UPDATE` `enforce_rsvp_capacity` trigger (SECURITY DEFINER) that locks the event row `FOR UPDATE` and rejects a confirm that would exceed `capacity`; only `confirmed` rows count, NULL capacity = unlimited. Verified: sequential fill/reject, approval-at-capacity reject, and **two concurrent transactions racing the last seat yield exactly one confirmed** (no overbooking). Clients surface a clean "at full capacity" toast instead of a raw error. The client pre-check is kept for UX.
 
 #### [Events] Re-RSVP after cancelling fails with a duplicate-key error *(found during Phase 2 verification)*
 - **Severity:** Medium

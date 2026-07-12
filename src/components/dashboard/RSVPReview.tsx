@@ -210,7 +210,11 @@ export function RSVPReview() {
 
       if (error) {
         console.error("Error updating RSVP:", error);
-        toast.error("Failed to update RSVP");
+        toast.error(
+          error.message?.toLowerCase().includes("full capacity")
+            ? "This event is at full capacity — you can't confirm more attendees."
+            : "Failed to update RSVP"
+        );
         return;
       }
 
@@ -223,18 +227,12 @@ export function RSVPReview() {
       // Find the RSVP to get details for email
       const rsvp = rsvps.find(r => r.id === rsvpId);
 
-      // Send email notification for status change (only for confirm/cancel)
+      // Send email notification for status change (only for confirm/cancel).
+      // The edge function derives recipient + event data from the rsvpId and
+      // gates on the student's event_reminders preference.
       if (rsvp && (newStatus === "confirmed" || newStatus === "cancelled")) {
-        sendRSVPStatusEmail(
-          rsvpId,
-          newStatus as "confirmed" | "cancelled",
-          rsvp.event.title,
-          format(new Date(rsvp.event.event_date), "MMMM d, yyyy 'at' h:mm a"),
-          rsvp.event.location,
-          rsvp.event.club_profiles.club_name,
-          rsvp.student.email,
-          rsvp.student.full_name || "there"
-        ).catch(err => console.error("Failed to send RSVP status email:", err));
+        sendRSVPStatusEmail(rsvpId, newStatus as "confirmed" | "cancelled")
+          .catch(err => console.error("Failed to send RSVP status email:", err));
       }
 
       // Update local state
@@ -273,7 +271,11 @@ export function RSVPReview() {
 
       if (error) {
         console.error("Error updating RSVPs:", error);
-        toast.error("Failed to update RSVPs");
+        toast.error(
+          error.message?.toLowerCase().includes("full capacity")
+            ? "This event is at full capacity — you can't confirm more attendees."
+            : "Failed to update RSVPs"
+        );
         return;
       }
 
@@ -288,16 +290,8 @@ export function RSVPReview() {
       if (newStatus === "confirmed" || newStatus === "cancelled") {
         const rsvpsToNotify = rsvps.filter(r => updatedIds.has(r.id));
         for (const rsvp of rsvpsToNotify) {
-          sendRSVPStatusEmail(
-            rsvp.id,
-            newStatus as "confirmed" | "cancelled",
-            rsvp.event.title,
-            format(new Date(rsvp.event.event_date), "MMMM d, yyyy 'at' h:mm a"),
-            rsvp.event.location,
-            rsvp.event.club_profiles.club_name,
-            rsvp.student.email,
-            rsvp.student.full_name || "there"
-          ).catch(err => console.error("Failed to send RSVP status email:", err));
+          sendRSVPStatusEmail(rsvp.id, newStatus as "confirmed" | "cancelled")
+            .catch(err => console.error("Failed to send RSVP status email:", err));
         }
       }
 
