@@ -64,9 +64,12 @@ GRANT SELECT (
 --    which is evaluated with the querying role's privileges. Without SELECT on
 --    club_profiles.user_id, anon reads of opportunities/events (and the
 --    applications/rsvps discovery embeds) fail with "permission denied" at plan
---    time — i.e. public discovery genuinely requires it. It is a non-sensitive
---    UUID (not email/PII); auth.users itself is never exposed to anon. The client
---    still never fetches it for display.
+--    time — i.e. public discovery genuinely requires the grant. It is a
+--    non-sensitive UUID (not email/PII); auth.users itself is never exposed to
+--    anon. The grant exists solely for RLS evaluation: the logged-out UI does NOT
+--    request user_id (ClubDetail adds it to its select only when authenticated,
+--    for messaging), though a direct anon API `select("user_id")` remains
+--    technically possible because the RLS dependency forces the column grant.
 REVOKE SELECT ON public.club_profiles FROM anon;
 GRANT SELECT (
   id, user_id, club_name, description, category,

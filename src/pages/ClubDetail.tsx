@@ -29,7 +29,9 @@ import type { TeamMember } from "@/types";
 
 interface ClubDetailData {
   id: string;
-  user_id: string;
+  // Only fetched for authenticated visitors (needed to message the club owner);
+  // the logged-out UI never requests it.
+  user_id?: string;
   club_name: string;
   category: string | null;
   description: string | null;
@@ -94,14 +96,20 @@ const ClubDetail = () => {
 
       setIsLoading(true);
       try {
-        // Fetch club profile. user_id is included (needed to message the club);
-        // anon may read it — it is a non-sensitive UUID that the club-owner RLS
-        // policies also depend on — but the private email is never anon-readable.
-        const { data: clubData, error: clubError } = await supabase
+        // Fetch club profile. user_id is only needed to message the club (an
+        // authenticated-only action), so the logged-out UI does not request it —
+        // it is added to the select only when logged in. (Anon retains the DB
+        // grant on this column purely so the club-owner RLS policies can be
+        // evaluated; email is never anon-readable.) The dynamic column list is a
+        // plain string, so the row type is asserted.
+        const { data: clubData, error: clubError } = (await supabase
           .from("club_profiles")
-          .select("id, user_id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url")
+          .select(`id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url${user ? ", user_id" : ""}`)
           .eq("id", id)
-          .single();
+          .single()) as unknown as {
+            data: ClubDetailData | null;
+            error: { message: string } | null;
+          };
 
         if (clubError) throw clubError;
         setClub(clubData);
@@ -139,7 +147,9 @@ const ClubDetail = () => {
     };
 
     fetchClubData();
-  }, [id]);
+    // Refetch when auth resolves/changes so user_id is (de)hydrated correctly on
+    // login/logout without a stale value.
+  }, [id, user]);
 
   // Subscribe to realtime changes on team members for this club
   useEffect(() => {
@@ -291,8 +301,9 @@ const ClubDetail = () => {
             </Button>
           )}
 
-          {/* Contact button - only for students */}
-          {user && role === "student" && (
+          {/* Contact button - only for students, and only once the club owner id
+              has loaded (it is fetched only for authenticated visitors) */}
+          {user && role === "student" && club.user_id && (
             <Button variant="outline" onClick={() => setContactDialogOpen(true)}>
               <Mail className="mr-2 h-4 w-4" />
               Contact Club
@@ -467,8 +478,9 @@ const ClubDetail = () => {
         </div>
       </div>
 
-      {/* Contact Dialog */}
-      {club && (
+      {/* Contact Dialog — only mounted once the club owner id is available, so it
+          can never open or send with an undefined receiver */}
+      {club && club.user_id && (
         <ContactClubDialog
           open={contactDialogOpen}
           onOpenChange={setContactDialogOpen}
