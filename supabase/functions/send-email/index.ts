@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { validateRsvpEmailRequest } from "./rsvp-email-rules.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -551,10 +552,15 @@ const handler = async (req: Request): Promise<Response> => {
         return jsonResponse({ error: "Event club could not be resolved" }, 404);
       }
 
-      // Authorize: only the student who owns the RSVP or the club that owns the
-      // event may trigger an RSVP email about it.
-      if (authUser.id !== student.user_id && authUser.id !== club.user_id) {
-        return jsonResponse({ error: "Forbidden" }, 403);
+      // Authorize the caller (must be the RSVP's student or the owning club) and
+      // validate the requested email type against the caller's role and the
+      // AUTHORITATIVE RSVP status (never a client-supplied status/actor). Delegated
+      // to a pure, unit-tested rule so every combination is covered. Fail-closed.
+      const isStudent = authUser.id === student.user_id;
+      const isClub = authUser.id === club.user_id;
+      const decision = validateRsvpEmailRequest(type, isClub, isStudent, rsvp.status ?? "");
+      if (!decision.ok) {
+        return jsonResponse({ error: decision.error }, decision.code);
       }
 
       recipient = student.email;

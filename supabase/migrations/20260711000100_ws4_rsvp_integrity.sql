@@ -25,17 +25,25 @@ DECLARE
   v_capacity INTEGER;
   v_confirmed_count INTEGER;
 BEGIN
-  -- Only a 'confirmed' RSVP consumes a seat. Skip if the row is not becoming
-  -- confirmed, and skip no-op confirmed->confirmed updates (seat already held).
+  -- Only a 'confirmed' RSVP consumes a seat: skip if the row is not becoming
+  -- confirmed.
   IF NEW.status IS DISTINCT FROM 'confirmed' THEN
     RETURN NEW;
   END IF;
-  IF TG_OP = 'UPDATE' AND OLD.status = 'confirmed' THEN
+
+  -- Skip the no-op ONLY when the row was already confirmed AND stays on the same
+  -- event (seat already held for this event). A confirmed RSVP that MOVES to a
+  -- different event (event_id changes) must be enforced against the destination's
+  -- capacity, so it is intentionally NOT skipped here.
+  IF TG_OP = 'UPDATE'
+     AND OLD.status = 'confirmed'
+     AND OLD.event_id IS NOT DISTINCT FROM NEW.event_id THEN
     RETURN NEW;
   END IF;
 
-  -- Lock the event row so concurrent confirmations for the same event serialize;
-  -- this is what prevents an overbooking race. NULL capacity = unlimited.
+  -- Lock the DESTINATION event row so concurrent confirmations/moves into the
+  -- same event serialize; this is what prevents an overbooking race. NULL
+  -- capacity = unlimited.
   SELECT capacity INTO v_capacity
   FROM events
   WHERE id = NEW.event_id
@@ -45,14 +53,24 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Count seats already taken by OTHER rows (exclude this row for UPDATEs).
-  -- SECURITY DEFINER is required: under the caller's RLS a student can only see
-  -- their own rsvp rows, which would undercount.
-  SELECT count(*) INTO v_confirmed_count
-  FROM rsvps
-  WHERE event_id = NEW.event_id
-    AND status = 'confirmed'
-    AND id <> NEW.id;
+  -- Count seats already taken on the destination event. SECURITY DEFINER is
+  -- required: under the caller's RLS a student can only see their own rsvp rows,
+  -- which would undercount. Be explicit about INSERT vs UPDATE rather than
+  -- relying on whether NEW.id already holds its default:
+  --   * INSERT: the new row is not yet in the table, so count every confirmed row.
+  --   * UPDATE: exclude only the row being updated (NEW.id = OLD.id).
+  IF TG_OP = 'INSERT' THEN
+    SELECT count(*) INTO v_confirmed_count
+    FROM rsvps
+    WHERE event_id = NEW.event_id
+      AND status = 'confirmed';
+  ELSE
+    SELECT count(*) INTO v_confirmed_count
+    FROM rsvps
+    WHERE event_id = NEW.event_id
+      AND status = 'confirmed'
+      AND id <> NEW.id;
+  END IF;
 
   IF v_confirmed_count >= v_capacity THEN
     -- Stable message the frontend matches to present a clean "at capacity" toast.
