@@ -77,6 +77,8 @@ The platform uses a **waitlist-gated signup flow**:
 
 **Why this matters operationally:** this is a UI-driven queue applying to **both students and clubs**. The admin queue must be checked regularly — an unapproved user is fully blocked, so a stale queue directly blocks growth. Whoever holds the admin role should treat `/admin` as a standing operational responsibility.
 
+**Discovery vs. interaction (WS5, 2026-07-12):** the *gated beta* applies to **account creation and interaction**, not to **browsing**. Logged-out visitors can publicly browse active clubs, opportunities, and events (and their detail pages); they must sign in (and be approved) to apply, RSVP, follow, bookmark, message, or access any dashboard/private data. Public discovery exposes only active/public rows and never a club's private email.
+
 **Planned evolution:** once the beta has validated core flows, the recommended next step is to relax this to **open `@uci.edu` signup** (keep OTP verification and the DB-level email-domain trigger as the only gates, remove the manual approval requirement) so growth isn't bottlenecked on manual review. Not urgent for initial launch.
 
 ---
@@ -137,7 +139,7 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Declining an RSVP sends a "confirmed" email**~~ — ✅ **Closed (WS4, 2026-07-11).** Added a dedicated decline email template + status branch; declines now also create an in-app notification (distinguished from a student self-cancel via server-authoritative actor identity). RSVP emails are gated on the `event_reminders` preference.
 
 **Discovery / access**
-- **Anonymous browsing is inconsistent** — logged-out visitors can view clubs but not opportunities/events, while the landing page invites public browsing. Needs a product decision (gated vs. public) and consistent RLS. *(plan.md WS5.)*
+- ~~**Anonymous browsing is inconsistent**~~ — ✅ **Closed (WS5, 2026-07-12).** Product decision: **public discovery.** Logged-out visitors can now browse active clubs, opportunities, and events consistently (RLS: `opportunities`/`events` SELECT is `TO public USING (is_active = true)`); anon access to the club's private `email` was removed. Writes and private data remain authenticated-only.
 
 **Operational / trust**
 - **Nightly `archive_past_events()` job scheduling is unverified** — the function exists but no schedule is defined in the repo (user-facing impact is limited because listings filter by date). *(plan.md WS6.)*
