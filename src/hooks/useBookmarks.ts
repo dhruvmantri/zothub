@@ -5,6 +5,13 @@ import { toast } from "sonner";
 
 type BookmarkType = "opportunity" | "event" | "club";
 
+// User-facing plural forms — "opportunity" doesn't pluralize as `${type}s`.
+const TYPE_PLURALS: Record<BookmarkType, string> = {
+  opportunity: "opportunities",
+  event: "events",
+  club: "clubs",
+};
+
 export function useBookmarks(type: BookmarkType) {
   const { user } = useAuth();
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -54,7 +61,7 @@ export function useBookmarks(type: BookmarkType) {
 
   const toggleBookmark = async (id: string) => {
     if (!user) {
-      toast.error(isClub ? "Please log in to follow clubs" : `Please log in to bookmark ${type}s`);
+      toast.error(isClub ? "Please log in to follow clubs" : `Please log in to bookmark ${TYPE_PLURALS[type]}`);
       return;
     }
 
