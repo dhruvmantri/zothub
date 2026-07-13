@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWaitlist } from "@/hooks/useWaitlist";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,10 @@ export default function WaitlistRejected() {
     navigate("/");
   };
 
+  // Declarative redirect — navigating in the render body logs a React
+  // "cannot update a component while rendering" warning and is fragile.
   if (!user) {
-    navigate("/login", { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   if (isLoading) {

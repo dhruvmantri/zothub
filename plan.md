@@ -31,7 +31,8 @@
 > **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below.
 > **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below.
 > **🟡 WS6 (Scheduler & launch-ops hardening) — code COMPLETE, merged & deployed, production cron verified (2026-07-13); the workstream stays OPEN only on human-owned launch-ops ownership items** (support mailbox, `/admin` waitlist owner, backup/export cadence — see the WS6 status block below and the Launch-ops checklist).
-> **✅ WS7 (Test / lint / type hardening) is COMPLETE (2026-07-13).** Completion record below. The recommended next coding pass is **WS8**.
+> **✅ WS7 (Test / lint / type hardening) is COMPLETE (2026-07-13).** Completion record below.
+> **✅ WS8 (UX polish & data hygiene) is COMPLETE (2026-07-14).** Completion record below. The remaining backlog is **WS9 (future features)** — do not start net-new features while any launch-readiness item is open; the immediate remaining work is WS6's human-owned launch-ops ownership items.
 
 ### Workstream 6 — Scheduler & launch-ops hardening *(code complete, merged & deployed; only launch-ops ownership items remain)*
 
@@ -83,6 +84,42 @@
 **Verified:** `npx playwright test` — **9/9 pass** against the vite dev server with the placeholder backend. `npm run lint` — **0 errors** (31 warnings remain: the pre-existing `react-hooks/exhaustive-deps` + `react-refresh` warnings, intentionally out of this pass's "clear the errors" scope). `tsc -p tsconfig.app.json --noEmit` and `npm run build` clean. Console check on a live page: no router future-flag warnings; the only console noise with the placeholder backend is the expected failed-fetch messages of the empty/error-state path. *Environment notes:* this sandbox pre-installs Chromium build 1194 while `@playwright/test` 1.57 wants 1200, so the run used `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium` (on a normal dev machine, `npx playwright install chromium` is the standard path); `deno` is unavailable here, so the two edge functions got no `deno check` — their changes are lint-only and behavior-identical (a brace-wrapped case block; a pre-declared counter field).
 
 **Deployment steps a human must run (after merge; nothing deployed by this branch):** frontend ships via the normal Vercel flow on merge. Edge Functions: **no redeploy required** (`send-email`/`send-reminders` changes are behavior-identical lint fixes); redeploying both at the next routine deploy keeps deployed source in sync with the repo. No DB changes.
+
+---
+
+#### ✅ WS8 completion record (2026-07-14)
+
+**All eight documented WS8 items shipped (no new dependencies; no auth/RLS/email/discovery behavior changed beyond the fixes themselves):**
+
+1. **Render-time `navigate()` removed** — `Waitlist`/`WaitlistRejected` replaced the `if (!user) { navigate("/login"); return null; }` render-body call with a declarative `<Navigate to="/login" replace />`. No more "Cannot update a component while rendering" warning. (The role-based redirects in `Waitlist` were already in a `useEffect`.)
+2. **Role-less pending OAuth users routed to `/waitlist`** — `Login`'s redirect effect keyed only off `user && role`, stranding a Google-OAuth user who is approved-pending (roles are granted only on approval, so `role` is null). It now also consumes `useWaitlist`: a logged-in role-less user is sent to `/waitlist` (status `pending`) or `/waitlist-rejected` (status `rejected`) once waitlist load settles; `null`/`approved` status never triggers a spurious redirect, and the role branch still handles approved users. Matches `ProtectedRoute`'s existing pending/rejected routing.
+3. **Unsubscribe auto-opt-out preserves loaded prefs** — `Unsubscribe.checkAuthAndLoadPreferences` built the auto-disable payload from the `preferences` **state**, which (because `setState` is async) still held the all-true defaults, silently re-enabling every other preference. It now builds `newPrefs` from a local `loadedPrefs` (the freshly fetched row, falling back to defaults only when no row exists), disabling just the `type` from the email link.
+4. **Orphaned club team members hardened (migration `20260714000200`)** — `club_team_members.user_id` was nullable with **no FK**, so a row pointing at a dead (never-migrated) Lovable auth UUID rendered as a real member and its "Message" button would target a ghost. The migration is self-guarding: it first NULLs any `user_id` absent from `auth.users` (dead references only — cannot touch an active account, keeps the roster row's name/email/role), then adds `FK (user_id) → auth.users(id) ON DELETE SET NULL` so future auth deletions self-heal. The existing UI already hides the Message button when `user_id` is null, so a nulled link degrades gracefully. **Because step 1 removes every possible orphan before step 2, the FK add cannot fail regardless of live data** — but the read-only orphan check (below) should still be run against production first to confirm the expected zero-orphan state.
+5. **`/privacy` names all processors** — the "Service Providers" line now names **Supabase** (database/auth/storage), **Vercel** (hosting), and **Resend** (email) explicitly, replacing "Resend … authentication, and hosting." No stale "Lovable."
+6. **`waitlist.reviewed_by` recorded** — `approveUser`/`rejectUser` now resolve the acting admin via `supabase.auth.getUser()` and write `reviewed_by` (null-safe) alongside `status`/`reviewed_at`, giving the approval queue an audit trail. The column already existed.
+7. **Bookmark uniqueness completed (migration `20260714000100`)** — added per-column partial unique indexes `bookmarks_user_opportunity_unique` and `bookmarks_user_event_unique` (each `WHERE <col> IS NOT NULL`), matching the WS3 club-follow index, each preceded by a one-time earliest-wins dedup. `useBookmarks` already swallows `23505` on insert for **all** types, so client behavior stays idempotent (comment updated to reflect all three are now DB-unique).
+8. **Documented dead/duplicated code removed** — deleted the never-called `AuthContext.signUp` (a divergent second copy of the waitlist/profile-creation logic; email signup goes through `send-otp`/`verify-otp`), and its context-type/provider-value entries; `ClubProfileSetup` now imports `CLUB_CATEGORIES` from `@/lib/constants` (dropping the identical local `CATEGORY_OPTIONS`) and uses the shared `<Logo>` component instead of the bespoke Sparkles+"ZotHub" header.
+
+**Verified (local PG16.13 harness — all 42 migrations apply cleanly in order):**
+- **Bookmark uniqueness:** the two new partial indexes exist; a duplicate opportunity-bookmark insert is rejected with `bookmarks_user_opportunity_unique` (23505); the WS3 club-follow uniqueness is unchanged; seeding 3 duplicate opportunity bookmarks then running the migration left exactly **one** — the earliest `created_at` — and a second run is a no-op (idempotent).
+- **Team-member FK:** `club_team_members_user_id_fkey` present with `confdeltype = n` (SET NULL); deleting a standalone auth user nulls the team-member link and **keeps the row**; a simulated pre-existing orphan (`user_id` = a UUID absent from `auth.users`) was nulled by the migration while the row (name "Ghost") survived, the FK was added, and a second run left exactly one FK (idempotent).
+- **Frontend:** `tsc -p tsconfig.app.json --noEmit` clean; `npm run build` clean; `npm run lint` **0 errors** (31 pre-existing warnings, unchanged count). Playwright smoke **11/11 pass** (added two WS8 tests: `/waitlist` and `/waitlist-rejected` redirect a logged-out visitor to `/login` with no page error — exercising the `<Navigate>` fix).
+
+**Production-only checks still required (before `db push`):** run this read-only orphan check against the linked project to confirm the expected zero-orphan state; the migration is safe even if it returns rows (it nulls only dead links), but confirming keeps the deploy boring:
+```sql
+-- Expect 0 rows. Any row is a club_team_members entry whose user_id points at
+-- a non-existent auth user; migration 20260714000200 will NULL exactly these.
+select ctm.id, ctm.email, ctm.user_id
+from public.club_team_members ctm
+where ctm.user_id is not null
+  and not exists (select 1 from auth.users u where u.id = ctm.user_id);
+```
+The Google-OAuth pending→`/waitlist` routing (item 2) could not be exercised end-to-end here (no OAuth provider / seeded pending OAuth account in this environment; provider config on the owned project is "assumed working, not re-verified" per the migration doc). It was verified by reading the auth/waitlist flow: the effect only redirects a logged-in, role-less user on a settled `pending`/`rejected` status, so approved and normal-login users are unaffected.
+
+**Deployment steps a human must run (after merge; nothing deployed by this branch):**
+1. Run the read-only orphan check above against the linked project (confirm 0 rows expected).
+2. `npx supabase db push --linked` — applies `20260714000100_ws8_bookmark_uniqueness.sql` and `20260714000200_ws8_club_team_members_user_fk.sql` only.
+3. Frontend ships via the normal Vercel flow on merge. **No** Edge Function redeploy. Rollback: drop the two new bookmark indexes / the `club_team_members_user_id_fkey` FK, and revert the frontend; low risk (additive indexes + a self-healing FK + local UI/hook changes).
 
 ---
 
@@ -260,8 +297,8 @@ Migration `20260713000100` schedules `archive-past-events-nightly` (`0 9 * * *` 
 **WS7 — Test / lint / type hardening** — **✅ DONE (2026-07-13)**
 The Playwright config is repaired (standard `@playwright/test` `defineConfig` — the unavailable `lovable-agent-playwright-config` import is gone) with a 9-test, backend-independent smoke suite (`e2e/smoke.spec.ts`, `npm run test:e2e`) covering the public discovery shells, auth entry points, 404, and the protected-route redirect, each test failing on any uncaught page error. All 26 ESLint errors cleared (0 errors / 31 pre-existing warnings remain: exhaustive-deps + fast-refresh, intentionally untouched); React Router v7 future flags opted in (console warnings gone). No new dependencies; no behavior changes (the two edge-function edits are lint-only and payload-identical). Completion record in "▶ Start here". *([Tooling] ESLint… — fixed; [Console] React Router… — fixed.)*
 
-**WS8 — UX polish & data hygiene** — **[Low]**
-`Waitlist`/`WaitlistRejected` call `navigate()` during render (move to effect/`<Navigate>`); Google-OAuth pending users can strand on `/login` (route role-less pending users to `/waitlist`); unsubscribe-link auto-opt-out can re-enable other prefs (build new prefs from the loaded row); orphaned migrated team member still renders (UI/query filter in `useClubTeam` and/or an `ON DELETE SET NULL` FK once the 0-orphan detection query is confirmed); `/privacy` doesn't name Supabase/Vercel as processors; admin approval doesn't set `reviewed_by`; `bookmarks` has no uniqueness constraint; dead/duplicated code (`AuthContext.signUp`, `ClubProfileSetup` local `CATEGORY_OPTIONS`/bespoke logo). Batch these opportunistically. *(see individual inventory entries)*
+**WS8 — UX polish & data hygiene** — **✅ DONE (2026-07-14)**
+All eight items shipped: `Waitlist`/`WaitlistRejected` now redirect via `<Navigate>` (no render-time `navigate()`); `Login` routes role-less pending/rejected OAuth users to `/waitlist`/`/waitlist-rejected` via `useWaitlist`; unsubscribe auto-opt-out builds from the freshly loaded prefs row (no more re-enabling others); `club_team_members` got a self-healing `ON DELETE SET NULL` FK on `user_id` (migration `20260714000200`, pre-nulls any dead reference) — the existing UI already hides the Message button for null `user_id`; `/privacy` names Supabase/Vercel/Resend; `approveUser`/`rejectUser` record `reviewed_by`; opportunity/event bookmark partial unique indexes added (migration `20260714000100`, `useBookmarks` already idempotent on `23505`); and the documented dead/duplicated code removed (`AuthContext.signUp`, `ClubProfileSetup`'s local `CATEGORY_OPTIONS`→`CLUB_CATEGORIES`, bespoke header→`<Logo>`). Completion record in "▶ Start here". *(individual inventory entries marked fixed below.)*
 
 **WS9 — Future features (only after WS1–WS4 land and stability holds)** — **[deferred]**
 From `prd.md`'s roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Do not start net-new features while the trust/correctness workstreams (WS1–WS4) have open items.
@@ -419,7 +456,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Rows referencing an `auth.users` id that no longer exists should not render as real members.
 - **Root cause (CONFIRMED via schema):** `public.club_team_members.user_id` is **nullable with no foreign key** (only `club_id` has an FK, to `club_profiles`) — verified with `\d club_team_members`. So rows whose `user_id` points at an old Lovable Cloud auth UUID (never migrated into the new `auth.users`) are perfectly valid and are never cleaned up by a cascade. `useClubTeam` (`src/hooks/useClubTeam.ts:19-20`) fetches `select("*")` and renders every row with no check that the referenced user exists. Team members are keyed by email (`club_team_members_club_id_email_key`), so the roster entry persists regardless of the auth account. Fix: one-off orphan cleanup + UI/query filtering (and/or add an FK with `ON DELETE SET NULL`).
 - **Suspected location:** `club_team_members` table; `src/hooks/useClubTeam.ts`.
-- **Status:** Found (not yet fixed). Root cause confirmed this pass.
+- **Status:** **Fixed in WS8 (2026-07-14).** Migration `20260714000200` adds a self-guarding `FK (user_id) → auth.users(id) ON DELETE SET NULL`: it first NULLs any `user_id` absent from `auth.users` (dead references only — keeps the roster row's name/email/role), then adds the FK so future auth deletions self-heal. The existing `ClubDetail`/`TeamManagement` UI already hides the "Message" button when `user_id` is null, so a nulled orphan degrades gracefully (no ghost target). Prod orphans were already cleaned during QA; a **read-only orphan check** (in the WS8 completion record) must be run before `db push` to confirm the expected zero-orphan state, though the migration is safe even if any remain. Harness-verified: standalone-user delete nulls the link and keeps the row; a simulated orphan is nulled with the row surviving; idempotent.
 
 #### [Infra] `zothub.app` DNS cut over to Vercel — *Known Item #3*
 - **Severity:** High (was blocking launch)
@@ -556,7 +593,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Redirects should happen in an effect, not the render body.
 - **Root cause (CONFIRMED in browser):** Both pages do `if (!user) { navigate("/login"); return null; }` in the render body (`src/pages/Waitlist.tsx:47-50`, `src/pages/WaitlistRejected.tsx:19-22`). It "works" (it redirects) but is a React anti-pattern that logs errors and is fragile. Fix: move the redirect into `useEffect` (or use `<Navigate>`).
 - **Suspected location:** `src/pages/Waitlist.tsx`, `src/pages/WaitlistRejected.tsx`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS8 (2026-07-14).** Both pages now return `<Navigate to="/login" replace />` instead of calling `navigate()` in the render body. A Playwright smoke test asserts both routes redirect a logged-out visitor to `/login` with no page error.
 
 #### [Privacy] Privacy policy doesn't name Supabase or Vercel as processors
 - **Severity:** Medium
@@ -564,7 +601,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** PRD Appendix D and the launch checklist require the policy to accurately list the current processors (Supabase, Vercel, Resend). No stale "Lovable" reference remains (good).
 - **Root cause:** `src/pages/Privacy.tsx:85` lists Resend only. Fix: name Supabase (database/auth/storage) and Vercel (hosting) explicitly.
 - **Suspected location:** `src/pages/Privacy.tsx`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS8 (2026-07-14).** The "Service Providers" line now names Supabase (database/auth/storage), Vercel (hosting), and Resend (email) explicitly.
 
 #### [Auth] Google-OAuth pending users can get stranded on the login page
 - **Severity:** Low
@@ -572,33 +609,33 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** A pending user should land on `/waitlist` regardless of signup method.
 - **Root cause:** Login/Signup redirect effects key off `role`, which is null for OAuth-pending users. (Note: the Google OAuth path as a whole was not verifiable end-to-end here — provider config on the new project is "assumed working, not re-verified" per the migration doc.)
 - **Suspected location:** `src/pages/Login.tsx`, `src/contexts/AuthContext.tsx` (`handleNewOAuthUser`).
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS8 (2026-07-14).** `Login`'s redirect effect now consumes `useWaitlist` and sends a logged-in role-less user to `/waitlist` (pending) or `/waitlist-rejected` (rejected) once waitlist load settles; `null`/`approved` status never triggers a spurious redirect. Not exercisable end-to-end here (no OAuth provider/seeded pending OAuth account in this environment); verified by reading the flow.
 
 #### [Notifications] Unsubscribe-link auto-opt-out can re-enable other preferences
 - **Severity:** Low
 - **Repro:** Disable some preference in-app. Then click an "Unsubscribe from X" link in any email. The X preference is disabled, but previously-disabled preferences may flip back to `true`.
 - **Root cause:** `Unsubscribe.checkAuthAndLoadPreferences` builds `newPrefs` from the **stale initial-default** `preferences` state (all `true`) rather than the freshly loaded values, then saves it (`src/pages/Unsubscribe.tsx:60-66`). Because `setPreferences` is async, the closure still holds defaults. Fix: build `newPrefs` from the loaded row.
 - **Suspected location:** `src/pages/Unsubscribe.tsx`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS8 (2026-07-14).** The auto-opt-out now builds `newPrefs` from a local `loadedPrefs` (the freshly fetched row, defaults only when no row exists) rather than the stale `preferences` state, so only the email link's `type` is disabled and every other loaded preference is preserved.
 
 #### [Data] `bookmarks` has no uniqueness constraint
 - **Severity:** Low
 - **Repro:** Rapid/concurrent bookmark toggles can create duplicate `bookmarks` rows for the same `(user_id, opportunity_id)` etc. (no unique constraint — verified via `pg_constraint`).
 - **Root cause:** Client-side `isBookmarked` guard only; no DB uniqueness. Fix: add a partial unique index per target column.
 - **Suspected location:** `bookmarks` table; `src/hooks/useBookmarks.ts`.
-- **Status:** **Partially fixed in WS3 (2026-07-11).** The **club-follow** case is now DB-unique: migration `20260710000300` adds a partial unique index `bookmarks_user_club_unique (user_id, club_id) WHERE club_id IS NOT NULL` (with a one-time dedup keeping the earliest row per pair), and `useBookmarks` treats the resulting `23505` on a club follow as idempotent success. **Still open:** the `opportunity_id`/`event_id` bookmark cases have no partial unique index yet (a follow-up can add `… (user_id, opportunity_id) WHERE opportunity_id IS NOT NULL` and the event equivalent, plus the same `23505` handling, which already covers all types generically).
+- **Status:** **Fully fixed as of WS8 (2026-07-14).** WS3 (migration `20260710000300`) made club follows DB-unique; WS8 (migration `20260714000100`) adds the two remaining partial unique indexes `bookmarks_user_opportunity_unique (user_id, opportunity_id) WHERE opportunity_id IS NOT NULL` and `bookmarks_user_event_unique (user_id, event_id) WHERE event_id IS NOT NULL`, each preceded by a one-time earliest-wins dedup. `useBookmarks` already treats `23505` on insert as idempotent success for all types. Verified on the harness: duplicate opportunity insert rejected; 3 seeded duplicates deduped to the earliest; idempotent on re-run.
 
 #### [Auth] Admin approval doesn't record `reviewed_by`
 - **Severity:** Low
 - **Repro:** Approve/reject a waitlist entry; the `waitlist.reviewed_by` column stays null (only `reviewed_at`/`status` are set).
 - **Root cause:** `approveUser`/`rejectUser` don't set `reviewed_by` (`src/hooks/useWaitlist.ts:116-127, 148-156`). Fix: set it to the admin's id for audit trail.
 - **Suspected location:** `src/hooks/useWaitlist.ts`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS8 (2026-07-14).** `approveUser`/`rejectUser` resolve the acting admin via `supabase.auth.getUser()` and write `reviewed_by` (null-safe) alongside `status`/`reviewed_at`.
 
 #### [Cleanup] Dead / duplicated code (non-blocking)
 - **Severity:** Low
 - **Details:** (a) `AuthContext.signUp` (`src/contexts/AuthContext.tsx:179-252`) is exposed but never called — email signup goes through `send-otp`/`verify-otp`; it also contains a divergent second copy of the waitlist/profile-creation logic (a foot-gun if someone wires it up). (b) `ClubProfileSetup` re-declares `CATEGORY_OPTIONS` locally instead of importing `CLUB_CATEGORIES` from `src/lib/constants.ts`, and uses a bespoke Sparkles+"ZotHub" header instead of the shared `<Logo>` component (visual inconsistency).
-- **Status:** Found (not yet fixed). Do not fix ad hoc — for a later cleanup pass.
+- **Status:** **Fixed in WS8 (2026-07-14).** (a) `AuthContext.signUp` removed (function + context-type entry + provider value; confirmed no callers). (b) `ClubProfileSetup` now imports `CLUB_CATEGORIES` (identical list, local copy deleted) and renders the shared `<Logo>` component.
 
 #### [Tooling] ESLint reports 26 errors (build & typecheck are clean)
 - **Severity:** Low
@@ -733,9 +770,9 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
 - **Future-safe guidance (documented, not executed — avoids touching active data):**
   - **Detection query (safe, read-only)** to re-check before any cleanup:
     `SELECT 'club_team_members' t, ctm.id FROM club_team_members ctm LEFT JOIN auth.users u ON ctm.user_id = u.id WHERE ctm.user_id IS NOT NULL AND u.id IS NULL;` (repeat for `student_profiles`, `club_profiles`).
-  - **Preferred hardening (a future migration, only after confirming the detection query returns 0 rows so it can't fail on live orphans):** add `FK (user_id) REFERENCES auth.users(id) ON DELETE SET NULL` (or `CASCADE` for profiles) to `club_team_members` so future auth deletions can't leave orphans. Not added now because adding an FK while any orphan row exists would error, and the intent is explicitly to not risk active data.
-  - **Alternative / complementary:** UI-level filtering — the team roster (`useClubTeam`) could hide rows whose `user_id` is set but no longer resolves. Deferred (Medium, still open in the audit list).
-- **Status:** Documented. No destructive change made.
+  - **Preferred hardening — ✅ done in WS8 (migration `20260714000200`):** the `club_team_members` FK `(user_id) → auth.users(id) ON DELETE SET NULL` is now added. To avoid the "errors if an orphan exists" problem, the migration is self-guarding — it NULLs any dead `user_id` (references absent from `auth.users`; never an active account) *before* adding the FK, so it can't fail on live orphans. The read-only detection query above should still be run pre-`db push` to confirm the expected zero-orphan state. (The profile tables `student_profiles`/`club_profiles` were left as-is — out of WS8's documented scope; their orphans were cleaned in QA.)
+  - **Alternative / complementary (UI):** the team roster already hides the "Message" button for a null `user_id`, so a nulled orphan renders as a plain (non-actionable) roster entry rather than a ghost with a broken link.
+- **Status:** **Hardened in WS8 (2026-07-14)** — FK added (self-healing); no destructive change to active data.
 
 ---
 

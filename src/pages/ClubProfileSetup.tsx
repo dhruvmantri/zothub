@@ -16,10 +16,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { clubProfileSchema, validateInput, formatValidationErrors } from "@/lib/validation";
-import { 
-  Sparkles, 
-  Building2, 
-  LinkIcon, 
+import {
+  Building2,
+  LinkIcon,
   Image,
   Globe,
   Linkedin,
@@ -28,26 +27,8 @@ import {
   Loader2
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-
-const CATEGORY_OPTIONS = [
-  "Academic",
-  "Arts & Culture",
-  "Business & Finance",
-  "Community Service",
-  "Engineering",
-  "Gaming & Esports",
-  "Health & Wellness",
-  "Media & Journalism",
-  "Music & Performance",
-  "Political & Advocacy",
-  "Professional Development",
-  "Religious & Spiritual",
-  "Science & Research",
-  "Social",
-  "Sports & Recreation",
-  "Technology",
-  "Other"
-];
+import { Logo } from "@/components/Logo";
+import { CLUB_CATEGORIES } from "@/lib/constants";
 
 // Discord icon component
 const DiscordIcon = ({ className }: { className?: string }) => (
@@ -200,15 +181,8 @@ export default function ClubProfileSetup() {
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Zot<span className="text-accent">Hub</span>
-            </span>
-          </Link>
-          
+          <Logo />
+
           <Button variant="ghost" size="sm" asChild>
             <Link to="/club/dashboard">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -258,7 +232,7 @@ export default function ClubProfileSetup() {
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORY_OPTIONS.map((cat) => (
+                    {CLUB_CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>

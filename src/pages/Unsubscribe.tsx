@@ -48,20 +48,28 @@ export default function Unsubscribe() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!error && prefs) {
-        setPreferences({
-          application_updates: prefs.application_updates,
-          event_reminders: prefs.event_reminders,
-          new_messages: prefs.new_messages,
-          deadline_reminders: prefs.deadline_reminders,
-          team_invitations: prefs.team_invitations ?? true,
-          new_post_notifications: prefs.new_post_notifications ?? true,
-        });
-      }
+      // Start from the freshly loaded row (falling back to the defaults for a
+      // user with no prefs row yet). Building the auto-opt-out below from this
+      // local value — NOT the `preferences` state — is the fix: setState is
+      // async, so the state still holds the initial all-true defaults here, and
+      // saving from it would silently re-enable every other preference.
+      const loadedPrefs = (!error && prefs)
+        ? {
+            application_updates: prefs.application_updates,
+            event_reminders: prefs.event_reminders,
+            new_messages: prefs.new_messages,
+            deadline_reminders: prefs.deadline_reminders,
+            team_invitations: prefs.team_invitations ?? true,
+            new_post_notifications: prefs.new_post_notifications ?? true,
+          }
+        : { ...preferences };
 
-      // If coming from email with type param, auto-disable that type
-      if (type && type in preferences) {
-        const newPrefs = { ...preferences, [type]: false };
+      setPreferences(loadedPrefs);
+
+      // If coming from email with a type param, auto-disable only that type,
+      // preserving every other freshly loaded preference.
+      if (type && type in loadedPrefs) {
+        const newPrefs = { ...loadedPrefs, [type]: false };
         setPreferences(newPrefs);
         await savePreferences(newPrefs, user.id);
         setShowSuccess(true);

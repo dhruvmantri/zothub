@@ -80,4 +80,21 @@ test.describe("auth entry points smoke", () => {
     await expect(page.getByText("Log in to ZotHub")).toBeVisible();
     expect(errors).toEqual([]);
   });
+
+  // WS8: Waitlist / WaitlistRejected now redirect logged-out visitors via
+  // <Navigate> instead of calling navigate() in the render body. The redirect
+  // must still land on /login, and crucially without any render-time React
+  // warning/error (collectPageErrors also catches console errors would-be
+  // "cannot update a component while rendering" surfaced as pageerror).
+  for (const route of ["/waitlist", "/waitlist-rejected"]) {
+    test(`${route} redirects a logged-out visitor to /login`, async ({
+      page,
+    }) => {
+      const errors = collectPageErrors(page);
+      await page.goto(route);
+      await expect(page).toHaveURL(/\/login$/);
+      await expect(page.getByText("Log in to ZotHub")).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+  }
 });
