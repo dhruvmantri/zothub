@@ -82,7 +82,7 @@ export default function Privacy() {
               <div className="space-y-4 text-muted-foreground">
                 <p><strong className="text-foreground">With Clubs:</strong> When you apply to an opportunity or RSVP to an event, the hosting club receives your application data and relevant profile information.</p>
                 <p><strong className="text-foreground">With Students:</strong> Clubs' public profiles and posted opportunities/events are visible to all users.</p>
-                <p><strong className="text-foreground">Service Providers:</strong> We use third-party services for email delivery (Resend), authentication, and hosting. These providers only access data necessary to perform their services.</p>
+                <p><strong className="text-foreground">Service Providers:</strong> We use third-party services to operate ZotHub: <strong className="text-foreground">Supabase</strong> (database, authentication, and file storage), <strong className="text-foreground">Vercel</strong> (application hosting), and <strong className="text-foreground">Resend</strong> (transactional email delivery). These providers only access the data necessary to perform their services.</p>
                 <p><strong className="text-foreground">Legal Requirements:</strong> We may disclose information if required by law or to protect our rights, safety, or property.</p>
                 <p className="font-medium text-foreground">We do not sell your personal information to third parties.</p>
               </div>

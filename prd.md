@@ -115,7 +115,7 @@ The platform uses a **waitlist-gated signup flow**:
 ### Email & scheduled jobs
 - ✅ Four Supabase Edge Functions deployed (`send-email`, `send-otp`, `verify-otp`, `send-reminders`), `RESEND_API_KEY` set, `zothub.app` sending domain verified with Resend, sender address `notifications@zothub.app`.
 - ✅ Hourly `send-reminders-hourly` cron job (event reminders, deadline reminders, new-post notifications, all with idempotency via `reminder_logs`) — **confirmed live in production (2026-07-13)** via a read-only `cron.job` query: exists, schedule `0 * * * *`, `active = true`, command calls the deployed `send-reminders` Edge Function. (Scheduled manually out-of-repo; the job itself is not owned by a migration.)
-- 🟡 Nightly `archive_past_events()` auto-archive: **now committed in-repo** (migration `20260713000100`, WS6 — idempotent `cron.schedule`, `0 9 * * *` UTC) but pending `supabase db push --linked` + live `cron.job` confirmation.
+- ✅ Nightly `archive_past_events()` auto-archive: scheduled via migration `20260713000100` (WS6 — idempotent `cron.schedule`, `0 9 * * *` UTC), **pushed to production and confirmed live** (2026-07-13): the `cron.job` query shows `archive-past-events-nightly` active alongside `send-reminders-hourly`.
 
 ### Infrastructure
 - ✅ Hosting: Vercel (migrated from Lovable).
@@ -142,10 +142,10 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Anonymous browsing is inconsistent**~~ — ✅ **Closed (WS5, 2026-07-12).** Product decision: **public discovery.** Logged-out visitors can now browse active clubs, opportunities, and events consistently (RLS: `opportunities`/`events` SELECT is `TO public USING (is_active = true)`); anon access to the club's private `email` was removed. Writes and private data remain authenticated-only.
 
 **Operational / trust**
-- ~~**Nightly `archive_past_events()` job scheduling is unverified**~~ — 🟡 **Committed in-repo (WS6, 2026-07-13):** migration `20260713000100` schedules the nightly archive via `cron.schedule` (idempotent; verified end-to-end on a local pg_cron harness). Still pending: `supabase db push --linked` and a live `cron.job` check of the new archive job — exact read-only SQL in `plan.md`'s Launch-ops checklist. (`send-reminders-hourly` is already confirmed live in production, 2026-07-13.) *(plan.md WS6.)*
+- ~~**Nightly `archive_past_events()` job scheduling is unverified**~~ — ✅ **Done (WS6, 2026-07-13):** migration `20260713000100` schedules the nightly archive via `cron.schedule`, was pushed to production, and the `cron.job` query confirmed both `archive-past-events-nightly` and `send-reminders-hourly` active. *(plan.md WS6.)*
 - **Launch-ops ownership** — a support contact/mailbox, a committed `/admin` waitlist-queue owner, and a routine DB backup cadence still need to be established (outside code; also a Lovable-decommission prerequisite). Now tracked with `REQUIRED` placeholders in `plan.md`'s **Launch-ops checklist**. *(plan.md WS6.)*
-- **`/privacy` doesn't name Supabase or Vercel** as data processors (it names Resend and generic "hosting/auth"). *(plan.md WS8.)*
-- Assorted **UX/data-hygiene** items (waitlist redirect anti-pattern, OAuth-pending routing, unsubscribe stale-state, orphaned team-member rendering, missing `bookmarks` uniqueness, admin `reviewed_by` not recorded). *(plan.md WS8.)*
+- ~~**`/privacy` doesn't name Supabase or Vercel** as data processors~~ — ✅ **Fixed (WS8, 2026-07-14):** the Service Providers line now names Supabase (database/auth/storage), Vercel (hosting), and Resend (email). *(plan.md WS8.)*
+- ~~Assorted **UX/data-hygiene** items~~ — ✅ **Fixed in WS8 (2026-07-14):** waitlist redirect anti-pattern (now `<Navigate>`), OAuth-pending routing (role-less pending users routed to `/waitlist`), unsubscribe stale-state (auto-opt-out preserves loaded prefs), orphaned team-member rendering (self-healing `ON DELETE SET NULL` FK on `club_team_members.user_id`, migration `20260714000200`), `bookmarks` uniqueness (opportunity/event partial unique indexes, migration `20260714000100`), and admin `reviewed_by` now recorded. The two DB migrations are pending `supabase db push --linked`; the frontend fixes ship via the normal Vercel flow. *(plan.md WS8.)*
 
 **Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
 
@@ -223,7 +223,7 @@ Core tables: `user_roles`, `student_profiles`, `club_profiles`, `opportunities`,
 - Admins (via the `/admin` role) can see waitlist entries for approval purposes.
 
 ### Data retention & privacy policy
-No self-service account deletion exists yet; deletion requests are handled manually. A privacy policy is live at `/privacy`. **Known gap:** it names Resend but not Supabase or Vercel as processors — update it to list all current processors (Supabase, Vercel, Resend; no longer Lovable). Tracked in `plan.md` WS8.
+No self-service account deletion exists yet; deletion requests are handled manually. A privacy policy is live at `/privacy` and (as of WS8, 2026-07-14) names all current processors — **Supabase** (database/auth/storage), **Vercel** (hosting), **Resend** (email); no Lovable reference.
 
 ---
 
@@ -253,7 +253,7 @@ No dedicated analytics platform required at this scale — derive metrics from d
 - [x] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
 - [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly *(operational owner assignment — outside code)*
 - [ ] Support contact live and documented *(depends on `@zothub.app` mailbox now that DNS is live)*
-- [ ] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent *(`send-reminders-hourly` ✅ confirmed live in production 2026-07-13 — exists, `0 * * * *`, active, calls the deployed `send-reminders` Edge Function; the archive schedule is committed in-repo — migration `20260713000100`, WS6 — but still needs `db push` + the post-push `cron.job` check in `plan.md`'s Launch-ops checklist)*
+- [x] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent *(✅ confirmed live in production 2026-07-13: both `send-reminders-hourly` (`0 * * * *`, calls the deployed `send-reminders` Edge Function) and `archive-past-events-nightly` (`0 9 * * *`, migration `20260713000100`) exist and are active)*
 
 **Post-launch infra cleanup:** Supabase migration-history repair ✅ **done** (future migrations use normal `db push`). Lovable decommission still **open** — a deliberate future manual step gated on the checklist in `plan.md`; Lovable no longer serves production traffic but is kept as the rollback path during the stability-monitoring window.
 

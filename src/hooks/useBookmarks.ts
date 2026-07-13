@@ -88,10 +88,11 @@ export function useBookmarks(type: BookmarkType) {
           .from("bookmarks")
           .insert({ user_id: user.id, [columnName]: id });
 
-        // Club follows are DB-unique via a partial unique index, so a duplicate
-        // insert (double-click, retry, or concurrent follow) raises 23505. Treat
-        // that as success — the relationship already exists — instead of surfacing
-        // a raw error, keeping the action idempotent.
+        // All bookmark types are DB-unique via per-column partial unique
+        // indexes (club follows in WS3; opportunity/event in WS8), so a
+        // duplicate insert (double-click, retry, or concurrent toggle) raises
+        // 23505. Treat that as success — the bookmark already exists — instead
+        // of surfacing a raw error, keeping the action idempotent.
         if (error && error.code !== "23505") throw error;
 
         setBookmarkedIds((prev) => new Set(prev).add(id));

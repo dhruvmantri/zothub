@@ -116,12 +116,17 @@ export function useWaitlistAdmin() {
         return { success: false, error: roleError.message };
       }
 
+      // Record the reviewing admin for the audit trail (null-safe if the
+      // session can't be resolved for any reason).
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+
       // Update waitlist status
       const { error: waitlistError } = await supabase
         .from("waitlist")
         .update({
           status: "approved",
           reviewed_at: new Date().toISOString(),
+          reviewed_by: adminUser?.id ?? null,
         })
         .eq("user_id", userId);
 
@@ -149,12 +154,16 @@ export function useWaitlistAdmin() {
 
   const rejectUser = async (userId: string, email: string, reason?: string) => {
     try {
+      // Record the reviewing admin for the audit trail (null-safe).
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+
       const { error: waitlistError } = await supabase
         .from("waitlist")
         .update({
           status: "rejected",
           rejection_reason: reason || null,
           reviewed_at: new Date().toISOString(),
+          reviewed_by: adminUser?.id ?? null,
         })
         .eq("user_id", userId);
 

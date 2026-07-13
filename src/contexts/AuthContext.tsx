@@ -10,7 +10,6 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole;
   isLoading: boolean;
-  signUp: (email: string, password: string, role: "student" | "club") => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: (intendedRole?: "student" | "club") => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -176,81 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, selectedRole: "student" | "club") => {
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      if (data.user) {
-        // Add to waitlist instead of user_roles (pending admin approval)
-        const { error: waitlistError } = await supabase
-          .from("waitlist")
-          .insert({ 
-            user_id: data.user.id, 
-            email: email,
-            role: selectedRole,
-            status: "pending"
-          });
-
-        if (waitlistError) {
-          console.error("Error inserting waitlist entry:", waitlistError);
-          return { error: waitlistError as unknown as Error };
-        }
-
-        // Create initial profile based on role (but they'll be gated by waitlist)
-        if (selectedRole === "student") {
-          const { error: profileError } = await supabase
-            .from("student_profiles")
-            .insert({ 
-              user_id: data.user.id, 
-              email: email 
-            });
-          if (profileError) {
-            console.error("Error creating student profile:", profileError);
-          }
-        } else {
-          const { error: profileError } = await supabase
-            .from("club_profiles")
-            .insert({ 
-              user_id: data.user.id, 
-              email: email,
-              club_name: "My Club" // Placeholder, will be updated in profile setup
-            });
-          if (profileError) {
-            console.error("Error creating club profile:", profileError);
-          }
-        }
-
-        // Send waitlist confirmation email
-        await supabase.functions.invoke("send-email", {
-          body: {
-            type: "waitlist_confirmation",
-            to: email,
-            data: { role: selectedRole },
-          },
-        });
-
-        // Don't set role since they're on waitlist
-        setRole(null);
-      }
-
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
-  };
-
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -307,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, isLoading, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, isLoading, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

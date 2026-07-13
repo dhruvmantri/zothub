@@ -7,12 +7,14 @@ import { Logo } from "@/components/Logo";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWaitlist } from "@/hooks/useWaitlist";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signInWithGoogle, user, role } = useAuth();
+  const { status: waitlistStatus, isLoading: waitlistLoading } = useWaitlist();
   const { toast } = useToast();
   
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,9 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && role) {
+    if (!user) return;
+
+    if (role) {
       if (from) {
         navigate(from);
       } else if (role === "club") {
@@ -37,8 +41,20 @@ export default function LoginPage() {
       } else {
         navigate("/student/dashboard");
       }
+      return;
     }
-  }, [user, role, navigate, from]);
+
+    // Logged in but role-less (e.g. a Google-OAuth user still awaiting admin
+    // approval — roles are only granted on approval). Without this, the
+    // role-gated branch above never fires and the user is stranded on /login.
+    // Route them by waitlist status once it has loaded.
+    if (waitlistLoading) return;
+    if (waitlistStatus === "pending") {
+      navigate("/waitlist", { replace: true });
+    } else if (waitlistStatus === "rejected") {
+      navigate("/waitlist-rejected", { replace: true });
+    }
+  }, [user, role, waitlistStatus, waitlistLoading, navigate, from]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
