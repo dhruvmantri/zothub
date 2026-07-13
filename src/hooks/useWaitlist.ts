@@ -16,9 +16,8 @@ interface WaitlistEntry {
   reviewed_by: string | null;
 }
 
-interface WaitlistAdminEntry extends WaitlistEntry {
-  // Additional fields for admin view
-}
+// Admin view currently uses the same shape; extend here if it diverges.
+type WaitlistAdminEntry = WaitlistEntry;
 
 export function useWaitlist() {
   const { user } = useAuth();

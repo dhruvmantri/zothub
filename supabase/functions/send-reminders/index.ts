@@ -27,6 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     const results = {
       eventReminders: 0,
       deadlineReminders: 0,
+      newPostEmails: 0,
       errors: [] as string[],
     };
 
@@ -428,7 +429,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    (results as any).newPostEmails = newPostEmails;
+    results.newPostEmails = newPostEmails;
     console.log("Reminder results:", results);
 
     return new Response(JSON.stringify(results), {

@@ -161,17 +161,19 @@ export function RSVPReview() {
       }
 
       // Transform the data
-      const transformedRsvps: RSVP[] = (data || []).map((rsvp: any) => ({
+      const transformedRsvps: RSVP[] = (data || []).map((rsvp) => ({
         id: rsvp.id,
         status: rsvp.status || "confirmed",
         created_at: rsvp.created_at,
-        answers: rsvp.answers || [],
+        // JSONB column; the RSVP form writes FormAnswer[] here.
+        answers: (rsvp.answers || []) as unknown as FormAnswer[],
         event: {
           id: rsvp.event.id,
           title: rsvp.event.title,
           event_date: rsvp.event.event_date,
           location: rsvp.event.location || null,
-          rsvp_questions: rsvp.event.rsvp_questions || [],
+          // JSONB column; the question builder writes FormQuestion[] here.
+          rsvp_questions: (rsvp.event.rsvp_questions || []) as unknown as FormQuestion[],
           requires_approval: rsvp.event.requires_approval || false,
           club_profiles: {
             club_name: rsvp.event.club_profiles?.club_name || "Unknown Club"

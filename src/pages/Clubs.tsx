@@ -96,7 +96,7 @@ export default function ClubsPage() {
       }
 
       // Merge counts into clubs
-      const clubsWithCounts: Club[] = (clubsData || []).map((club: any) => ({
+      const clubsWithCounts: Club[] = (clubsData || []).map((club) => ({
         ...club,
         opportunity_count: oppCountMap[club.id] || 0,
         event_count: eventCountMap[club.id] || 0,
@@ -111,7 +111,7 @@ export default function ClubsPage() {
   };
 
   const filteredAndSortedClubs = useMemo(() => {
-    let result = clubs.filter((club) => {
+    const result = clubs.filter((club) => {
       const matchesSearch =
         club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
