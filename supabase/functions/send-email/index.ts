@@ -110,7 +110,7 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
         `,
       };
 
-    case "application_status":
+    case "application_status": {
       const statusColors: Record<string, string> = {
         accepted: "#22c55e",
         rejected: "#ef4444",
@@ -141,6 +141,7 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
           </div>
         `,
       };
+    }
 
     case "application_notification":
       return {

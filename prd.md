@@ -266,7 +266,7 @@ No dedicated analytics platform required at this scale — derive metrics from d
 - Self-service account deletion (privacy/compliance).
 - Email digest (weekly summary of new opportunities from followed clubs).
 - Enhanced analytics (funnel analysis, cohort retention).
-- Automated end-to-end tests (a Playwright config exists in the repo but currently references an unavailable package — needs repair before it's usable; expand coverage once fixed).
+- Automated end-to-end tests — ✅ the broken Playwright config was **repaired in WS7 (2026-07-13)**: standard `@playwright/test` setup plus a 9-test backend-independent smoke suite (`npm run test:e2e`) covering public discovery, auth entry points, 404, and protected-route redirects. Next step here: expand to authenticated journeys (apply/RSVP/review) against a seeded backend.
 
 ### Medium-term (if traction grows meaningfully: 100+ clubs, 2,000+ students)
 - **Comprehensive UI/UX revision** — design-system consistency audit, full empty/loading/error-state pass, mobile-specific optimization, accessibility audit, possible visual refresh. Deliberately scoped for *after* launch, informed by real usage data.

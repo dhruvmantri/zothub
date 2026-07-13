@@ -18,6 +18,7 @@ import {
   Users,
   Bookmark,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -187,7 +188,7 @@ export default function StudentDashboard() {
       if (applicationsRes.error) {
         console.error("Error fetching applications:", applicationsRes.error);
       } else {
-        const transformedApps: ApplicationData[] = (applicationsRes.data || []).map((app: any) => ({
+        const transformedApps: ApplicationData[] = (applicationsRes.data || []).map((app) => ({
           id: app.id,
           status: app.status || "pending",
           created_at: app.created_at,
@@ -204,7 +205,7 @@ export default function StudentDashboard() {
       if (rsvpsRes.error) {
         console.error("Error fetching RSVPs:", rsvpsRes.error);
       } else {
-        const transformedRsvps: RsvpData[] = (rsvpsRes.data || []).map((rsvp: any) => ({
+        const transformedRsvps: RsvpData[] = (rsvpsRes.data || []).map((rsvp) => ({
           id: rsvp.id,
           event: {
             id: rsvp.event.id,
@@ -222,7 +223,7 @@ export default function StudentDashboard() {
         const bookmarks = bookmarksRes.data || [];
         setBookmarkCount(bookmarks.length);
         // Count club follows separately
-        const clubFollows = bookmarks.filter((b: any) => b.club_id !== null);
+        const clubFollows = bookmarks.filter((b) => b.club_id !== null);
         setFollowingCount(clubFollows.length);
       }
 
@@ -236,7 +237,7 @@ export default function StudentDashboard() {
 
       // Process bookmarked opportunities
       if (!bookmarkedOppsRes.error && bookmarkedOppsRes.data) {
-        const opps = bookmarkedOppsRes.data.map((item: any) => ({
+        const opps = bookmarkedOppsRes.data.map((item) => ({
           id: item.opportunity.id,
           title: item.opportunity.title,
           deadline: item.opportunity.deadline,
@@ -247,7 +248,7 @@ export default function StudentDashboard() {
 
       // Process bookmarked events
       if (!bookmarkedEventsRes.error && bookmarkedEventsRes.data) {
-        const evts = bookmarkedEventsRes.data.map((item: any) => ({
+        const evts = bookmarkedEventsRes.data.map((item) => ({
           id: item.event.id,
           title: item.event.title,
           event_date: item.event.event_date,
@@ -279,7 +280,13 @@ export default function StudentDashboard() {
   };
 
   // Calculate stats
-  const stats = [
+  const stats: Array<{
+    label: string;
+    value: number;
+    icon: LucideIcon;
+    color: string;
+    link?: string;
+  }> = [
     { label: "Applications", value: applications.length, icon: FileText, color: "text-accent" },
     { label: "Following", value: followingCount, icon: Users, color: "text-primary", link: "/student/feed" },
     { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-emerald-500", link: "/student/messages" },
@@ -326,9 +333,9 @@ export default function StudentDashboard() {
             );
 
             return (
-              <Card key={stat.label} className={(stat as any).link ? "hover:bg-secondary/50 transition-colors cursor-pointer" : ""}>
-                {(stat as any).link ? (
-                  <Link to={(stat as any).link}>{content}</Link>
+              <Card key={stat.label} className={stat.link ? "hover:bg-secondary/50 transition-colors cursor-pointer" : ""}>
+                {stat.link ? (
+                  <Link to={stat.link}>{content}</Link>
                 ) : (
                   content
                 )}

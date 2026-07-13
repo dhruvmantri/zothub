@@ -135,8 +135,8 @@ export function ClubAnalytics() {
       }
 
       // Calculate opportunity stats with application counts
-      let applicationsByOpp: Record<string, number> = {};
-      let applicationsByStatus: Record<string, number> = {
+      const applicationsByOpp: Record<string, number> = {};
+      const applicationsByStatus: Record<string, number> = {
         pending: 0,
         reviewed: 0,
         accepted: 0,
@@ -159,7 +159,7 @@ export function ClubAnalytics() {
       }
 
       // Calculate event stats with RSVP counts
-      let rsvpsByEvent: Record<string, number> = {};
+      const rsvpsByEvent: Record<string, number> = {};
 
       if (eventIds.length > 0) {
         const { data: rsvps, error: rsvpError } = await supabase

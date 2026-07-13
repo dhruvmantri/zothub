@@ -116,7 +116,7 @@ export default function StudentFeed() {
       // Combine and sort feed items
       const allItems: FeedItem[] = [];
 
-      (opportunities || []).forEach((opp: any) => {
+      (opportunities || []).forEach((opp) => {
         allItems.push({
           type: "opportunity",
           id: opp.id,
@@ -131,7 +131,7 @@ export default function StudentFeed() {
         });
       });
 
-      (events || []).forEach((event: any) => {
+      (events || []).forEach((event) => {
         allItems.push({
           type: "event",
           id: event.id,

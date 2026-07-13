@@ -161,16 +161,18 @@ export function ApplicationReview() {
       }
 
       // Transform the data
-      const transformedApplications: Application[] = (data || []).map((app: any) => ({
+      const transformedApplications: Application[] = (data || []).map((app) => ({
         id: app.id,
         status: app.status || "pending",
         created_at: app.created_at,
         resume_url: app.resume_url,
-        answers: app.answers || [],
+        // JSONB column; the application form writes FormAnswer[] here.
+        answers: (app.answers || []) as unknown as FormAnswer[],
         opportunity: {
           id: app.opportunity.id,
           title: app.opportunity.title,
-          application_questions: app.opportunity.application_questions || []
+          // JSONB column; the question builder writes FormQuestion[] here.
+          application_questions: (app.opportunity.application_questions || []) as unknown as FormQuestion[]
         },
         student: {
           id: app.student.id,
