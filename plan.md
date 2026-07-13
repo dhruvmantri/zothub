@@ -29,18 +29,33 @@
 > **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below.
-> **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below. The recommended next pass is **WS6**.
+> **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below.
+> **🟡 WS6 (Scheduler & launch-ops hardening) — code portion COMPLETE (2026-07-13); the workstream stays OPEN on human-only ops steps** (db push, live `cron.job` verification, launch-ops placeholders — see the WS6 status block below and the Launch-ops checklist). The recommended next **coding** pass is **WS7** once WS6's human steps are done (or in parallel, since they don't touch code).
 
-### Workstream 6 — Scheduler & launch-ops hardening *(recommended next)*
+### Workstream 6 — Scheduler & launch-ops hardening *(in progress — code complete, human ops steps remain)*
 
 **In one line:** `archive_past_events()` is defined but has no committed `cron.schedule`; confirm the hourly reminder cron and schedule the nightly archive, plus the outside-code launch-ops items.
+
+> **WS6 status (2026-07-13): the in-repo code portion is DONE; the workstream stays OPEN on human-only steps.**
+>
+> **Shipped this pass:**
+> - **Migration `20260713000100_ws6_schedule_archive_past_events.sql`** — schedules `cron.schedule('archive-past-events-nightly', '0 9 * * *', 'SELECT public.archive_past_events();')` (09:00 UTC = 01:00 PST / 02:00 PDT; the exact hour is not load-bearing since the function archives events already >1h past). Idempotent (unschedule-if-exists then schedule; re-running never duplicates the job). It touches **only** its own job name — any other cron job (notably the manually created `send-reminders-hourly`) is left alone. It **fails loudly** (RAISE EXCEPTION) if `pg_cron` is somehow absent rather than silently skipping. Archival semantics (`archive_past_events()` body) are **unchanged**; the function was reviewed and no correctness bug blocks scheduling (it flips `is_active=false` for active events >1h past `event_date`; verified it archives a past event and leaves a future one untouched).
+> - **Toast pluralization fix** — `useBookmarks` built "Please log in to bookmark opportunitys" via naive `` `${type}s` ``; a proper plural map (`TYPE_PLURALS`) now yields "opportunities"/"events"/"clubs". All other bookmark/follow toasts were audited: the success toast uses the singular ("Opportunity bookmarked") and the club branch uses the WS4 Follow/Following wording — none were affected. (Inventory entry below.)
+> - **Launch-ops checklist** recorded in-repo (section below) with `OWNER REQUIRED` / `MAILBOX REQUIRED` / `CADENCE REQUIRED` placeholders — no names/policies invented.
+>
+> **Verified (local PG16.13 harness, real pg_cron 1.6.2 via `shared_preload_libraries`, `pg_net` stubbed — it's only `CREATE EXTENSION`'d, never invoked, and isn't packaged for stock Ubuntu):** all 40 migrations apply cleanly in order (pg_cron pre-enabled in the harness prep, mirroring production where the dashboard enabled it before migration `20260121010216`'s `IF NOT EXISTS` ran); re-applying the WS6 migration twice leaves exactly **one** `archive-past-events-nightly` row and a simulated pre-existing `send-reminders-hourly` job **byte-identical**; a real pg_cron background-worker run of the exact committed command string succeeded (`job_run_details` status `succeeded`) and archived a 2-days-past event while leaving a future event active. `tsc -p tsconfig.app.json --noEmit` + `npm run build` clean; lint on the touched TS file: 0 errors (pre-existing exhaustive-deps warning only). *Harness caveat:* the local worker needed `cron.use_background_workers = on` (the default localhost-connection mode can't reach a socket-only harness cluster); production Supabase runs pg_cron in its normal configuration, so this is a harness detail, not a product one.
+>
+> **Remaining to close WS6 (human-only, exact steps):**
+> 1. `npx supabase db push --linked` (applies only `20260713000100_ws6_schedule_archive_past_events.sql`) and deploy the frontend via the normal Vercel flow (ships the `useBookmarks` toast fix). No Edge Function redeploy.
+> 2. ~~Confirm `send-reminders-hourly` exists~~ — ✅ **Confirmed live in production (maintainer, 2026-07-13)** via the read-only `cron.job` query: the job exists, schedule `0 * * * *`, `active = true`, and its command calls the deployed `send-reminders` Edge Function. **Still remaining:** after the push, run the same read-only SQL to confirm `archive-past-events-nightly` appears and its first nightly run succeeds (`cron.job_run_details`).
+> 3. Fill in the three `REQUIRED` placeholders in the Launch-ops checklist (support mailbox, `/admin` queue owner, backup cadence) and check off its items.
 
 **Why this is next**
 - With the trust/correctness workstreams (WS1–WS5) done, the remaining Medium item is operational: the nightly auto-archive isn't scheduled in the repo, so `is_active` staleness can skew club dashboards/analytics (user-facing impact is limited because the Events list already filters by date).
 
 **Scope (do)**
 1. Schedule the nightly `archive_past_events()` via `cron.schedule` in a migration (confirm `pg_cron` availability / the established scheduling pattern first — note `send-reminders-hourly` was scheduled manually out-of-repo).
-2. Confirm `send-reminders-hourly` exists (`select * from cron.job;`) and document it in-repo.
+2. Confirm `send-reminders-hourly` exists (`select * from cron.job;`) and document it in-repo. *(✅ done — confirmed live 2026-07-13; see the status block above.)*
 3. Record the outside-code launch-ops items (support contact/mailbox, `/admin` waitlist-queue owner, routine DB backup/export cadence — also a Lovable-decommission prerequisite).
 
 **Boundaries (do NOT, this pass)**
@@ -223,8 +238,8 @@ All five items shipped (migration `20260711000100` + `send-email` + client): (a)
 **WS5 — Discovery access-model consistency (anonymous browsing)** — **✅ DONE (2026-07-12)**
 Product decision: **public discovery.** Migration `20260712000100` makes `opportunities`/`events` SELECT `TO public USING (is_active = true)` (anon can browse active rows) and applies **least-privilege per-column anon grants** on all three discovery tables — excluding `club_profiles.email`, the `views` counters, internal timestamps, and the auth-only `application_questions`/`rsvp_questions` — so even a direct `select("*")` by anon fails. Three detail-page queries were adjusted so anon never requests an ungranted column. Verified anon reads only active discovery rows (allowlisted columns only, no email/private tables/writes) and authenticated/club-owner flows unchanged. Completion record in "▶ Start here". *([Discovery/RLS] Logged-out visitors… — fixed.)*
 
-**WS6 — Scheduler & launch-ops hardening** — **[Medium/operational]**
-`archive_past_events()` is defined but **no `cron.schedule` for it exists in the repo** — schedule the nightly archive and confirm `send-reminders-hourly` via `select * from cron.job;` (the Events list already filters by date, so user impact is limited; `is_active` staleness affects analytics). Also the operational launch items that are **outside code**: name a support contact / mailbox, confirm the `/admin` waitlist-queue owner, and establish a routine DB backup/export cadence (also a Lovable-decommission prerequisite). *([Cron] `archive_past_events()`…)*
+**WS6 — Scheduler & launch-ops hardening** — **[Medium/operational] — 🟡 code complete (2026-07-13); OPEN on human ops steps**
+The nightly archive is now committed: migration `20260713000100` schedules `archive-past-events-nightly` (`0 9 * * *` UTC → `SELECT public.archive_past_events();`), idempotently and without touching any other cron job; the `useBookmarks` "opportunitys" toast-pluralization bug was fixed in the same pass; the **Launch-ops checklist** (above the Lovable checklist) records the outside-code items with `REQUIRED` placeholders. `send-reminders-hourly` was **confirmed live in production (2026-07-13)** via the read-only `cron.job` query (exists, `0 * * * *`, active, command calls the deployed `send-reminders` Edge Function). **Still open (human-only):** `supabase db push --linked` + Vercel deploy; after the push, run the checklist's read-only `cron.job` SQL to confirm `archive-past-events-nightly`; fill in the support-mailbox / admin-owner / backup-cadence placeholders. Status record in "▶ Start here". *([Cron] `archive_past_events()`…)*
 
 **WS7 — Test / lint / type hardening** — **[Low, enables everything else]**
 Repair the Playwright config (references an unavailable package → no runnable e2e) and add a smoke-level e2e for the core flows; clear the ESLint errors (`no-explicit-any`, `no-case-declarations`, a `require()` import — none break `build`/`tsc`); optionally opt into the React Router v7 future flags to silence console warnings. Raising the verification floor de-risks every later workstream. *([Tooling] ESLint…; [Console] React Router…)*
@@ -234,6 +249,34 @@ Repair the Playwright config (references an unavailable package → no runnable 
 
 **WS9 — Future features (only after WS1–WS4 land and stability holds)** — **[deferred]**
 From `prd.md`'s roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Do not start net-new features while the trust/correctness workstreams (WS1–WS4) have open items.
+
+---
+
+## Launch-ops checklist (WS6 — human-only items)
+
+> Outside-code operational items from WS6. Placeholders (`OWNER REQUIRED`, `MAILBOX REQUIRED`, `CADENCE REQUIRED`) must be filled in by the maintainer — do **not** invent names, addresses, or policies. The backup item is also a prerequisite of the Lovable decommission checklist below.
+
+- [ ] **Support contact:** `MAILBOX REQUIRED` — stand up the support mailbox (the PRD assumes an `@zothub.app` address now that DNS is live), document it here and on the `/privacy` contact line, and confirm someone reads it.
+- [ ] **`/admin` waitlist-queue owner:** `OWNER REQUIRED` — name the person committed to checking the `/admin` approval queue regularly (an unapproved user is fully blocked, so a stale queue directly blocks growth).
+- [ ] **DB backup/export cadence:** `CADENCE REQUIRED` — establish a routine Supabase snapshot / `pg_dump` cadence, record it here, and verify one backup restores.
+- [x] **`send-reminders-hourly` confirmed live** — ✅ verified in production by the maintainer (2026-07-13) via the read-only query below: the job exists, schedule `0 * * * *`, `active = true`, and its command calls the deployed `send-reminders` Edge Function. (It remains scheduled out-of-repo — the job itself is deliberately not owned by a migration.)
+- [ ] **Cron verification for the archive job (read-only; run in the Supabase SQL editor or `psql` against the linked project — after `20260713000100` is pushed):**
+  ```sql
+  -- 1) Both jobs exist, active, with the expected schedules:
+  --    send-reminders-hourly        '0 * * * *' (confirmed live 2026-07-13)
+  --    archive-past-events-nightly  '0 9 * * *' → SELECT public.archive_past_events();
+  select jobid, jobname, schedule, command, active
+  from cron.job
+  order by jobname;
+
+  -- 2) Recent runs succeeded (check again the morning after the push for the
+  --    first nightly archive run):
+  select j.jobname, d.status, d.return_message, d.start_time, d.end_time
+  from cron.job_run_details d
+  join cron.job j using (jobid)
+  order by d.start_time desc
+  limit 20;
+  ```
 
 ---
 
@@ -483,7 +526,14 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** PRD/launch checklist expects a scheduled nightly archive; it's listed 🟡 unconfirmed.
 - **Root cause (code/schema):** The function exists (`migration 20251223162738:56`) but there is **no `cron.schedule(...)` for it** anywhere in the migrations or repo (only `send-reminders-hourly` was scheduled, manually, per the migration runbook). Mitigating factor: the Events listing filters `event_date >= now` (`src/pages/Events.tsx:65-66`), so past events are hidden from students regardless — but `is_active` staying `true` can skew club dashboards/analytics and any query keyed on `is_active` alone. Live `cron.job` couldn't be queried from this environment (egress-blocked); flagged for confirmation + scheduling. Fix: schedule the job (and confirm `send-reminders-hourly` via `select * from cron.job;`).
 - **Suspected location:** cron scheduling (Supabase); `archive_past_events()`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in repo (WS6, 2026-07-13)** — migration `20260713000100_ws6_schedule_archive_past_events.sql` commits the nightly `cron.schedule` (idempotent; only its own job name; verified end-to-end on a local harness with real pg_cron 1.6.2). **Pending deploy + live confirmation:** `supabase db push --linked`, then the read-only `cron.job` checks in the Launch-ops checklist for the new archive job. (`send-reminders-hourly` was separately confirmed live in production, 2026-07-13: exists, `0 * * * *`, active, calls the deployed `send-reminders` Edge Function.)
+
+#### [UI/Copy] Bookmark login-prompt toast says "opportunitys" *(found during WS6)*
+- **Severity:** Low
+- **Repro:** While logged out, click the bookmark icon on an opportunity (list or detail page) → toast reads "Please log in to bookmark opportunitys".
+- **Expected vs. actual:** "…bookmark opportunities". Naive `` `${type}s` `` pluralization in `useBookmarks.toggleBookmark`; "event"/"club" happened to pluralize correctly (and the club branch uses the Follow wording anyway), so only "opportunity" surfaced it.
+- **Root cause / fix:** replaced the template-string pluralization with an explicit `TYPE_PLURALS` map in `src/hooks/useBookmarks.ts` (the single source of the broken string). Audited the hook's other toasts ("Opportunity/Event bookmarked", "Bookmark removed", Following/Unfollowed, error toasts) — all correct and unchanged.
+- **Status:** **Fixed in WS6 (2026-07-13).**
 
 #### [Auth/Console] `Waitlist` and `WaitlistRejected` call `navigate()` during render
 - **Severity:** Medium
