@@ -28,28 +28,56 @@
 > **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below.
-> **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below. The recommended next pass is **WS5**.
+> **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below.
+> **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below. The recommended next pass is **WS6**.
 
-### Workstream 5 — Discovery access-model consistency (anonymous browsing) *(recommended next — product decision required)*
+### Workstream 6 — Scheduler & launch-ops hardening *(recommended next)*
 
-**In one line:** logged-out visitors can read `club_profiles` (policy `TO public`) but not `opportunities`/`events` (`TO authenticated`), while the landing page has a public "Browse Opportunities" CTA — the three discovery tables are inconsistent.
+**In one line:** `archive_past_events()` is defined but has no committed `cron.schedule`; confirm the hourly reminder cron and schedule the nightly archive, plus the outside-code launch-ops items.
 
 **Why this is next**
-- With WS1–WS4 (the trust/correctness workstreams) done, this is the top remaining Medium item. It's **product-decision-dependent**: confirm the intended access model before changing RLS.
+- With the trust/correctness workstreams (WS1–WS5) done, the remaining Medium item is operational: the nightly auto-archive isn't scheduled in the repo, so `is_active` staleness can skew club dashboards/analytics (user-facing impact is limited because the Events list already filters by date).
 
 **Scope (do)**
-1. Decide the model: gated beta (require login for all discovery — add auth to the landing CTA / routes) **or** public discovery (add anon SELECT policies for active `opportunities`/`events` rows, matching `club_profiles`). Confirm intent against `prd.md`'s Access Model **and with the maintainer** before touching RLS.
-2. Make the three tables (`club_profiles`, `opportunities`, `events`) consistent with the chosen model.
+1. Schedule the nightly `archive_past_events()` via `cron.schedule` in a migration (confirm `pg_cron` availability / the established scheduling pattern first — note `send-reminders-hourly` was scheduled manually out-of-repo).
+2. Confirm `send-reminders-hourly` exists (`select * from cron.job;`) and document it in-repo.
+3. Record the outside-code launch-ops items (support contact/mailbox, `/admin` waitlist-queue owner, routine DB backup/export cadence — also a Lovable-decommission prerequisite).
 
 **Boundaries (do NOT, this pass)**
-- Don't touch the scheduler (WS6) or start net-new features (WS9). Note anything you find; don't fix here.
+- Don't start net-new features (WS9) or the test/lint hardening (WS7) unless directly required.
 
 **Evidence to inspect before coding**
-- `pg_policies` for `opportunities`/`events`/`club_profiles`; the landing page "Browse Opportunities" CTA and the `/opportunities`, `/events`, `/clubs` routes; `prd.md` Access Model section.
+- `archive_past_events()` (migration `20251223162738`), any `cron.*` usage in migrations, `pg_cron`/`pg_net` availability, and `supabase/functions/send-reminders`.
 
 **Done / verification looks like**
-- The three discovery tables behave consistently for anon under the chosen model; verify on the harness with `SET ROLE anon`. `tsc`/`build` clean.
-- **Deployment note:** DB-only RLS migration (`supabase db push`) if policies change; no edge/Vercel unless routes change.
+- The nightly archive is scheduled (or the scheduling mechanism + exact manual step is documented if `cron.schedule` can't be committed); harness applies cleanly. `tsc`/`build` clean.
+- **Deployment note:** likely a DB migration (`supabase db push`) and/or a documented manual `cron.schedule` step; no edge/Vercel unless touched.
+
+---
+
+#### ✅ WS5 completion record (2026-07-12)
+
+**Product decision (maintainer): PUBLIC DISCOVERY** — logged-out (anon) visitors may browse active clubs/opportunities/events; every write and all private data still require auth.
+
+**Investigation findings:** the discovery routes (`/`, `/clubs`, `/clubs/:id`, `/opportunities`, `/opportunities/:id`, `/events`, `/events/:id`) are **already public** (not behind `ProtectedRoute`); the Landing "Browse Opportunities" CTA already targets `/opportunities`; gated actions already prompt login for anon (Apply is gated to `role === "student"` with a "Log In to Apply" CTA; RSVP shows "Log in to RSVP"; follow/bookmark toast "Please log in"; Apply/RSVP forms re-check `user`). The discovery list/detail queries select only safe columns and embed just `club_profiles(club_name, logo_url)` + `applications(id)`/`rsvps(id)` counts. The **only** blockers were RLS: `opportunities`/`events` SELECT policies were `TO authenticated`, and `club_profiles`' `TO public USING(true)` policy exposed the club **email** to anon (contradicting the original `get_club_public_profile()` design, which excludes email). The RLS/policy change is the core of WS5; a follow-up least-privilege hardening pass added exact per-column anon grants (below), which required three small detail-page query changes so anon never requests an ungranted (auth-only) column.
+
+**Migration `20260712000100_ws5_public_discovery.sql`** (idempotent; applies cleanly on a fresh 39-migration harness). Uses **least-privilege column grants** — anon rows are restricted by RLS, and anon *columns* are restricted by grant, so a direct `select("*")` by anon fails (can't read excluded columns) even on an otherwise-visible active row:
+- `opportunities` / `events` — SELECT policy → `TO public USING (is_active = true)` (anon + authenticated, active rows only); club-owner "view all their own (incl. inactive)" + all write policies untouched. Anon column grant reduced from table-level to an exact allowlist: `REVOKE SELECT … FROM anon` then `GRANT SELECT (<allowlist>)`.
+  - opportunities anon allowlist (10): `id, club_id, title, type, description, requirements, deadline, is_active, created_at, show_application_count`. Excluded: `application_questions` (auth-only apply form), `views` (analytics), `updated_at`.
+  - events anon allowlist (10): `id, club_id, title, description, event_date, location, capacity, banner_url, is_active, requires_approval`. Excluded: `rsvp_questions` (auth-only RSVP form), `views`, `created_at`, `updated_at`.
+- `club_profiles` — row access stays public (needed for the `club_name`/`logo_url` embeds). Anon column allowlist (11): `id, user_id, club_name, description, category, logo_url, banner_url, website_url, instagram_url, discord_url, linkedin_url`. Excluded: **`email`** (private contact), `views`, `created_at`, `updated_at`. **`user_id` is intentionally kept** — the SELECT RLS policies on `opportunities`/`events`/`applications`/`rsvps` all subquery `club_profiles.user_id` in their club-owner check (`club_id IN (SELECT id FROM club_profiles WHERE user_id = auth.uid())`), evaluated with the caller's privileges; without anon SELECT on that column, anon reads of opportunities/events and the applications/rsvps discovery embeds fail with "permission denied" at plan time. It is a non-sensitive UUID (not email/PII; auth.users is never anon-exposed). The grant exists solely for RLS evaluation: the **logged-out UI does not request `user_id`** (ClubDetail adds it to its select only when authenticated, for messaging); a direct anon `select("user_id")` remains technically possible because the RLS dependency forces the column grant.
+- **Caveat:** anon's grants on all three tables are now column-level, so any future column must be `GRANT`ed to anon explicitly to be publicly discoverable.
+
+**Client changes (least-privilege — anon must not request an ungranted column):**
+- `EventDetail` used `select("*")` on events → replaced with an explicit public column list; `rsvp_questions` (auth-only) is added to the select only when logged in; the unused `views` field was dropped.
+- `OpportunityDetail` — `application_questions` (auth-only) is added to the select only when logged in.
+- `ClubDetail` — `user_id` is added to the club select **only when authenticated** (needed to message the club owner); the logged-out UI never requests it. The "Contact Club" button and the `ContactClubDialog` are gated on `club.user_id` being present, so messaging can't open/target an undefined owner across the auth loading→resolved transition. `email`/`views` were never selected.
+
+**Data-exposure review (per column):** *Required-for-discovery* → the anon allowlists above. *Excluded (private/internal)* → `club_profiles.email` (private contact), `views` on all three (analytics counters), `opportunities.updated_at` / `events.created_at`+`updated_at` (internal timestamps), `opportunities.application_questions` + `events.rsvp_questions` (form config used only by the authenticated apply/RSVP flows). *Kept in the grant with justification, but NOT requested by the anon UI* → `club_profiles.user_id` (RLS-policy dependency, non-sensitive UUID; ClubDetail selects it only when authenticated — see above). Private tables (`applications`, `rsvps`, `messages`, `notifications`, `student_profiles`) return 0 rows for anon (RLS); the count embeds return empty arrays (no error, no leak). Pre-existing, out of scope: **authenticated** users can still read any club's `email` — a lower-risk exposure among logged-in UCI users; not changed to avoid touching authenticated `select("*")` flows.
+
+**Verified (local PG16 harness, Supabase-style default grants, RLS as gatekeeper):** **direct-API tests** — anon `select("*")` on each of the three tables → permission denied; anon explicit selection of every allowlisted column → succeeds (active rows only); anon selection of each excluded column (`application_questions`, `rsvp_questions`, `email`, `views`, `created_at`/`updated_at`) → permission denied. Active rows visible, inactive hidden; the public list/detail column sets and the `applications`/`rsvps` embeds succeed and return 0 private rows. Authenticated student sees active discovery + own applications/rsvps/messages/notifications and can read `application_questions`; club owner sees own rows incl. drafts, reads `rsvp_questions`, and INSERT/UPDATE/DELETE succeed. Migration idempotent (re-applied twice; `email` still denied). `tsc -p tsconfig.app.json --noEmit` + `npm run build` clean; lint on the 3 touched files has 0 new errors (pre-existing exhaustive-deps warnings only).
+
+**Deployment steps a human must run (after merge; nothing deployed by this branch):** `supabase db push --linked` (applies only `20260712000100_ws5_public_discovery.sql`) **and** deploy the frontend via the normal **Vercel** flow (the 3 detail-page query changes ship with it). **No** Edge Function redeploy. Rollback: revert the migration (restore the `TO authenticated` policies and a table-level `GRANT SELECT … TO anon`) and the client query changes; low risk.
 
 ---
 
@@ -192,8 +220,8 @@ Clubs now receive a reliable in-app notification (`on_new_application` trigger, 
 **WS4 — Event RSVP integrity & email correctness** — **✅ DONE (2026-07-11)**
 All five items shipped (migration `20260711000100` + `send-email` + client): (a) DB capacity guard on `rsvps` (`BEFORE INSERT/UPDATE`, event-row `FOR UPDATE` lock — verified no overbooking under concurrency); (b) dedicated `rsvp_declined` email template + status branch; (c) club-decline in-app notification distinguished from student self-cancel via `auth.uid()` (server-authoritative); (d) RSVP confirmation/status emails gated server-side on `event_reminders` (WS1 authoritative-derivation pattern, `rsvpId`-based); (e) live rsvps realtime — `rsvps` published + a targeted EventDetail (via `useEventRSVP`) subscription for the student's own RSVP. Also included the **club Follow/Following/Unfollow terminology cleanup** (`bookmarks` table unchanged). Completion record in "▶ Start here". *([Events] Event capacity… — fixed; [Events/Email] Declining an RSVP… — fixed; rsvps realtime — done.)*
 
-**WS5 — Discovery access-model consistency (anonymous browsing)** — **[Medium, product decision]**
-Logged-out visitors can read `club_profiles` (policy `TO public`) but **not** `opportunities`/`events` (policies `TO authenticated`), while the landing page has a public "Browse Opportunities" CTA. Decide the intended model (gated beta ⇒ require login for all discovery, or public ⇒ add anon SELECT policies for active rows) and make the three tables consistent. Product-decision-dependent — confirm intent (see `prd.md` Access Model) before changing RLS. *([Discovery/RLS] Logged-out visitors…)*
+**WS5 — Discovery access-model consistency (anonymous browsing)** — **✅ DONE (2026-07-12)**
+Product decision: **public discovery.** Migration `20260712000100` makes `opportunities`/`events` SELECT `TO public USING (is_active = true)` (anon can browse active rows) and applies **least-privilege per-column anon grants** on all three discovery tables — excluding `club_profiles.email`, the `views` counters, internal timestamps, and the auth-only `application_questions`/`rsvp_questions` — so even a direct `select("*")` by anon fails. Three detail-page queries were adjusted so anon never requests an ungranted column. Verified anon reads only active discovery rows (allowlisted columns only, no email/private tables/writes) and authenticated/club-owner flows unchanged. Completion record in "▶ Start here". *([Discovery/RLS] Logged-out visitors… — fixed.)*
 
 **WS6 — Scheduler & launch-ops hardening** — **[Medium/operational]**
 `archive_past_events()` is defined but **no `cron.schedule` for it exists in the repo** — schedule the nightly archive and confirm `send-reminders-hourly` via `select * from cron.job;` (the Events list already filters by date, so user impact is limited; `is_active` staleness affects analytics). Also the operational launch items that are **outside code**: name a support contact / mailbox, confirm the `/admin` waitlist-queue owner, and establish a routine DB backup/export cadence (also a Lovable-decommission prerequisite). *([Cron] `archive_past_events()`…)*
@@ -415,7 +443,7 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Expected vs. actual:** Inconsistent — either all public discovery pages should work for anon, or none should be public.
 - **Root cause (CONFIRMED via `pg_policies`):** `opportunities` and `events` SELECT policies are `TO authenticated` only, while `club_profiles`/`club_followers` are `TO public`. The migration granted `anon` table-level SELECT on opportunities/events, but the RLS policy role (`authenticated`) overrides that, so anon is denied. Fix: add anon-visible SELECT policies for active opportunities/events (or make the routes require auth to match the gated model — but note clubs are already public).
 - **Suspected location:** RLS policies on `opportunities`, `events`.
-- **Status:** Found (not yet fixed).
+- **Status:** **Fixed in WS5 (2026-07-12) — public discovery.** Migration `20260712000100` sets `opportunities`/`events` SELECT to `TO public USING (is_active = true)` so anon can browse active rows, consistent with `club_profiles`, with **least-privilege per-column anon grants** on all three tables (excludes `email`, `views`, internal timestamps, and the auth-only `application_questions`/`rsvp_questions`; keeps `club_profiles.user_id` because the club-owner RLS subqueries require it). Three detail-page queries adjusted so anon never requests an ungranted column. Verified via direct-API tests (`SET ROLE anon`/`authenticated`): anon `select("*")` and every excluded column denied; allowlisted columns + embeds succeed for active rows only; authenticated + club-owner flows unchanged.
 
 #### [Notifications] Client-side transactional emails ignore notification preferences
 - **Severity:** Medium
