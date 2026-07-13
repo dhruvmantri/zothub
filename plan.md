@@ -32,7 +32,8 @@
 > **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below.
 > **🟡 WS6 (Scheduler & launch-ops hardening) — code COMPLETE, merged & deployed, production cron verified (2026-07-13); the workstream stays OPEN only on human-owned launch-ops ownership items** (support mailbox, `/admin` waitlist owner, backup/export cadence — see the WS6 status block below and the Launch-ops checklist).
 > **✅ WS7 (Test / lint / type hardening) is COMPLETE (2026-07-13).** Completion record below.
-> **✅ WS8 (UX polish & data hygiene) is COMPLETE (2026-07-14).** Completion record below. The remaining backlog is **WS9 (future features)** — do not start net-new features while any launch-readiness item is open; the immediate remaining work is WS6's human-owned launch-ops ownership items.
+> **✅ WS8 (UX polish & data hygiene) is COMPLETE (2026-07-14).** Completion record below.
+> **🟡 Auth-orphan cleanup (Lovable-era references) — code COMPLETE in repo (2026-07-14); pending the read-only production audit + `db push`.** Migrations `20260714000300` (deterministic row cleanup) + `20260714000400` (restore/add every auth.users FK). **Before pushing: run `scripts/audit_auth_orphans.sql` against production and STOP if any MANUAL-REVIEW section (B1/B2/B3) returns rows.** Completion record below. The remaining backlog is **WS9 (future features)** — do not start net-new features while any launch-readiness item is open; the immediate remaining work is WS6's human-owned launch-ops ownership items plus this pass's production audit + push.
 
 ### Workstream 6 — Scheduler & launch-ops hardening *(code complete, merged & deployed; only launch-ops ownership items remain)*
 
@@ -87,6 +88,48 @@
 
 ---
 
+#### 🟡 Auth-orphan cleanup record (Lovable-era references, 2026-07-14) — in repo; pending production audit + push
+
+**New production facts (maintainer-confirmed, 2026-07-14):** `public.user_roles` has **8 rows** whose `user_id` no longer exists in `auth.users`, and **3 valid rows**. Since migration `20251223013805` *declares* an FK on that column, the only way those orphans can exist is that **production lost the original 7 auth.users FKs when it was built by `pg_restore`** (auth.users was intentionally never migrated, so the constraints couldn't validate at restore time). The two post-repair FKs applied via `db push` — `rsvps.status_updated_by` (WS4) and `club_team_members.user_id` (WS8) — are real in production (WS8's maintainer-verified).
+
+**Full schema audit — all 15 user-ID columns, classified** (`scripts/audit_auth_orphans.sql` is the runnable read-only version):
+
+| column | orphan classification | cleanup (mig `000300`) | FK (mig `000400`) |
+|---|---|---|---|
+| `user_roles.user_id` | **safe to delete** — a role grant for a nonexistent account authorizes nothing (`auth.uid()` can never match) and anchors no content | DELETE | CASCADE (as declared) |
+| `bookmarks.user_id` | safe to delete — private saved-list of a dead account | DELETE | CASCADE (as declared) |
+| `notifications.user_id` | safe to delete — inbox of a dead account | DELETE | CASCADE (as declared) |
+| `notification_preferences.user_id` | safe to delete — settings of a dead account | DELETE | CASCADE (new) |
+| `reminder_logs.user_id` | safe to delete — cron dedup ledger for a recipient that can never recur (new accounts get new UUIDs) | DELETE | CASCADE (new) |
+| `club_followers.user_id` | safe to delete — legacy table, unread since WS3; doubly inert | DELETE | CASCADE (new) |
+| `waitlist.user_id` | safe to delete — a queue entry that can never be approved (its auth account doesn't exist; approving would only re-create orphaned `user_roles` rows) | DELETE | CASCADE (new) |
+| `messages` — **both** parties dead | safe to delete — invisible to every living user under RLS | DELETE | CASCADE ×2 (as declared) |
+| `messages` — exactly **one** party dead | **preserve** — the living party's conversation history (req: don't delete historical content) | none (manual review) | (same FKs; NOT VALID fallback) |
+| `student_profiles.user_id` | **requires manual review** — anchors applications/RSVPs (expected 0; cleaned in 2026-07-09 QA) | none | CASCADE (as declared; NOT VALID fallback) |
+| `club_profiles.user_id` | **requires manual review** — anchors opportunities/events/applications (expected 0) | none | CASCADE (as declared; NOT VALID fallback) |
+| `waitlist.reviewed_by` | **safe to null** — audit metadata; the review record itself is kept | SET NULL | SET NULL (new) |
+| `page_views.user_id` | **safe to null** — column is already "nullable for anonymous visitors"; the analytics row keeps counting | SET NULL | SET NULL (new) |
+| `club_team_members.user_id` | already self-healing (WS8 FK, production-confirmed) | audit-only | excluded (exists) |
+| `rsvps.status_updated_by` | orphans impossible (WS4 FK enforced since the column was created) | audit-only | excluded (exists) |
+
+*Not user references (audited, out of scope):* `notifications.related_id`, `reminder_logs.target_id`, `page_views.item_id` (polymorphic content ids); `applications.student_id`/`rsvps.student_id`/`*.club_id` (public→public FKs — these restored intact, so profile-layer orphans are impossible); `email_verifications` (email-keyed, no user column).
+
+**What shipped:**
+- **`scripts/audit_auth_orphans.sql`** — the read-only production audit: section 0 (which auth FKs actually exist), A (orphan counts for all 15 columns + valid `user_roles` sanity count, expected 3), B1–B3 (row-level MANUAL-REVIEW detail with dependency counts — **any rows here mean STOP before pushing**), C1–C2 (row-level detail of exactly what `000300` deletes).
+- **Migration `20260714000300`** — deletes only the deterministic-junk classes above; nulls `waitlist.reviewed_by`/`page_views.user_id` dead references; **never touches** profiles, one-party-dead messages, or anything anchoring content. Idempotent; a complete no-op on a database that never lost its FKs.
+- **Migration `20260714000400`** — restores/adds all 13 auth.users FKs via a catalog-driven DO block (matches any existing FK by column + referenced table, regardless of name). Missing FKs are added **NOT VALID first** (always succeeds; enforces all *future* writes immediately), then validated; if legacy rows still violate — only possible for the manual-review classes — validation is skipped with a WARNING naming the exact `VALIDATE CONSTRAINT` follow-up, and **no row is ever modified**. Idempotent; re-running after review resolves the rows completes validation.
+
+**Verified (two local PG16.13 harnesses):**
+- *Pristine path:* all **44** migrations apply cleanly in order; both new migrations re-run twice (idempotent); end state **15 auth FKs, 15 validated**; audit script runs clean and read-only.
+- *Production-drift simulation:* applied the 42 pre-existing migrations, dropped the 7 original auth FKs (as the restore did), seeded the known facts (8 orphaned + 3 valid `user_roles`) plus one orphan of every class **and** the preservation cases (orphaned club+student profiles anchoring an opportunity + 2 applications; one-party-dead messages both directions; dead reviewer on a valid waitlist row; dead viewer on a page_view; anonymous page_view). The audit script reported **exactly** the seeded matrix — including trigger-generated orphan notifications it caught generically. `000300`: all delete-class orphans removed; `user_roles` = 3; every valid sibling row survived; `reviewed_by` nulled with row kept; all 3 page_views kept (dead viewer nulled); both-dead message deleted; **both one-sided messages, both orphaned profiles, the dead club's opportunity, and both applications preserved**; re-run idempotent. `000400`: 15 FKs total, the 4 expected left NOT VALID (profiles ×2, messages ×2) with actionable warnings; **future-write enforcement proven on both a validated FK and a NOT VALID FK** (23503); CASCADE and SET NULL actions exercised live; re-run creates no duplicates; after simulating the manual review, a re-run validated everything (**15/15**). `tsc`/`build` clean; lint 0 errors (31 pre-existing warnings); Playwright smoke 11/11 (no frontend changes).
+
+**Production-only steps (in order — nothing was run against production from this branch; this environment has no access):**
+1. **Run `scripts/audit_auth_orphans.sql`** (read-only) in the Supabase SQL editor. Expect: section 0 shows only the WS4/WS8 FKs; section A shows `user_roles = 8` and 0 elsewhere; valid `user_roles` = 3; B1/B2/B3 empty. **If any B section returns rows: STOP — resolve each row deliberately before pushing** (the migrations are still safe — `000300` won't touch those rows and `000400` will leave the affected FK NOT VALID — but review first is the agreed gate). Review C1/C2 so every deleted row is a known quantity.
+2. After merge: `npx supabase db push --linked` (applies `20260714000300` + `20260714000400` only). No Edge Function redeploy; no frontend change ships in this pass.
+3. Post-push confirmation (read-only): re-run the audit script — section A should be all zeros with `valid_user_roles = 3`, and section 0 should list **15 FKs, all `convalidated = t`**. If any warning fired during push, it names the exact `VALIDATE CONSTRAINT` command to run after resolving the flagged rows.
+
+---
+
 #### ✅ WS8 completion record (2026-07-14)
 
 **All eight documented WS8 items shipped (no new dependencies; no auth/RLS/email/discovery behavior changed beyond the fixes themselves):**
@@ -116,10 +159,7 @@ where ctm.user_id is not null
 ```
 The Google-OAuth pending→`/waitlist` routing (item 2) could not be exercised end-to-end here (no OAuth provider / seeded pending OAuth account in this environment; provider config on the owned project is "assumed working, not re-verified" per the migration doc). It was verified by reading the auth/waitlist flow: the effect only redirects a logged-in, role-less user on a settled `pending`/`rejected` status, so approved and normal-login users are unaffected.
 
-**Deployment steps a human must run (after merge; nothing deployed by this branch):**
-1. Run the read-only orphan check above against the linked project (confirm 0 rows expected).
-2. `npx supabase db push --linked` — applies `20260714000100_ws8_bookmark_uniqueness.sql` and `20260714000200_ws8_club_team_members_user_fk.sql` only.
-3. Frontend ships via the normal Vercel flow on merge. **No** Edge Function redeploy. Rollback: drop the two new bookmark indexes / the `club_team_members_user_id_fkey` FK, and revert the frontend; low risk (additive indexes + a self-healing FK + local UI/hook changes).
+**Deployed & production-verified (maintainer, 2026-07-14):** WS8 is merged and fully deployed — both WS8 bookmark unique indexes exist in production, the `club_team_members.user_id` FK exists with `ON DELETE SET NULL`, and the migration history is fully synced. Frontend shipped via the normal Vercel flow; no Edge Function redeploy was needed.
 
 ---
 
@@ -772,7 +812,14 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
     `SELECT 'club_team_members' t, ctm.id FROM club_team_members ctm LEFT JOIN auth.users u ON ctm.user_id = u.id WHERE ctm.user_id IS NOT NULL AND u.id IS NULL;` (repeat for `student_profiles`, `club_profiles`).
   - **Preferred hardening — ✅ done in WS8 (migration `20260714000200`):** the `club_team_members` FK `(user_id) → auth.users(id) ON DELETE SET NULL` is now added. To avoid the "errors if an orphan exists" problem, the migration is self-guarding — it NULLs any dead `user_id` (references absent from `auth.users`; never an active account) *before* adding the FK, so it can't fail on live orphans. The read-only detection query above should still be run pre-`db push` to confirm the expected zero-orphan state. (The profile tables `student_profiles`/`club_profiles` were left as-is — out of WS8's documented scope; their orphans were cleaned in QA.)
   - **Alternative / complementary (UI):** the team roster already hides the "Message" button for a null `user_id`, so a nulled orphan renders as a plain (non-actionable) roster entry rather than a ghost with a broken link.
-- **Status:** **Hardened in WS8 (2026-07-14)** — FK added (self-healing); no destructive change to active data.
+- **Status:** **Hardened in WS8 (2026-07-14)** — FK added (self-healing); no destructive change to active data. **Superseded by the Auth-orphan cleanup pass (2026-07-14):** `scripts/audit_auth_orphans.sql` now audits *all 15* user-ID columns (not just these three tables), and migrations `20260714000300`/`20260714000400` clean the deterministic-junk classes and restore/add every auth.users FK. See the new inventory entry below and the cleanup record in "▶ Start here".
+
+#### [Data] Production lost the original auth.users FKs in pg_restore; user_roles carries 8 orphaned Lovable-era rows
+- **Severity:** Medium (data hygiene / integrity; no user-facing behavior — a dead UUID can never authenticate, so RLS renders these rows inert)
+- **Facts (maintainer-confirmed against production, 2026-07-14):** `public.user_roles` has **8 rows** whose `user_id` is absent from `auth.users` and **3 valid rows**. Migration `20251223013805` declares `user_roles.user_id REFERENCES auth.users(id) ON DELETE CASCADE`, so those orphans can only exist because the FK is missing in production.
+- **Root cause (CONFIRMED by deduction + schema):** production was built by `pg_restore` from the Lovable dump with `auth.users` intentionally not migrated; the 7 declared FKs to `auth.users` (`user_roles`, `student_profiles`, `club_profiles`, `bookmarks`, `messages`×2, `notifications`) could not validate against the empty/fresh `auth.users` and were lost. Six further user-ID columns (`notification_preferences`, `waitlist.user_id`, `waitlist.reviewed_by`, `page_views.user_id`, `club_followers`, `reminder_logs`) never had FKs at all. Only the post-repair FKs (`rsvps.status_updated_by` WS4, `club_team_members.user_id` WS8) are enforced in production.
+- **Fix:** the Auth-orphan cleanup pass — read-only audit `scripts/audit_auth_orphans.sql`, deterministic cleanup `20260714000300`, FK restoration `20260714000400` (NOT VALID fallback so ambiguous legacy rows are never destroyed and the push can never fail). Full classification + verification in the cleanup record in "▶ Start here".
+- **Status:** **Fixed in repo (2026-07-14); pending the read-only production audit, merge, and `db push`.**
 
 ---
 

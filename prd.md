@@ -145,7 +145,8 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Nightly `archive_past_events()` job scheduling is unverified**~~ — ✅ **Done (WS6, 2026-07-13):** migration `20260713000100` schedules the nightly archive via `cron.schedule`, was pushed to production, and the `cron.job` query confirmed both `archive-past-events-nightly` and `send-reminders-hourly` active. *(plan.md WS6.)*
 - **Launch-ops ownership** — a support contact/mailbox, a committed `/admin` waitlist-queue owner, and a routine DB backup cadence still need to be established (outside code; also a Lovable-decommission prerequisite). Now tracked with `REQUIRED` placeholders in `plan.md`'s **Launch-ops checklist**. *(plan.md WS6.)*
 - ~~**`/privacy` doesn't name Supabase or Vercel** as data processors~~ — ✅ **Fixed (WS8, 2026-07-14):** the Service Providers line now names Supabase (database/auth/storage), Vercel (hosting), and Resend (email). *(plan.md WS8.)*
-- ~~Assorted **UX/data-hygiene** items~~ — ✅ **Fixed in WS8 (2026-07-14):** waitlist redirect anti-pattern (now `<Navigate>`), OAuth-pending routing (role-less pending users routed to `/waitlist`), unsubscribe stale-state (auto-opt-out preserves loaded prefs), orphaned team-member rendering (self-healing `ON DELETE SET NULL` FK on `club_team_members.user_id`, migration `20260714000200`), `bookmarks` uniqueness (opportunity/event partial unique indexes, migration `20260714000100`), and admin `reviewed_by` now recorded. The two DB migrations are pending `supabase db push --linked`; the frontend fixes ship via the normal Vercel flow. *(plan.md WS8.)*
+- ~~Assorted **UX/data-hygiene** items~~ — ✅ **Fixed in WS8 (2026-07-14), merged & deployed:** waitlist redirect anti-pattern (now `<Navigate>`), OAuth-pending routing (role-less pending users routed to `/waitlist`), unsubscribe stale-state (auto-opt-out preserves loaded prefs), orphaned team-member rendering (self-healing `ON DELETE SET NULL` FK on `club_team_members.user_id`, migration `20260714000200`), `bookmarks` uniqueness (opportunity/event partial unique indexes, migration `20260714000100`), and admin `reviewed_by` now recorded. Production-verified (maintainer, 2026-07-14): both bookmark unique indexes exist, the `club_team_members.user_id` FK exists with `ON DELETE SET NULL`, and migration history is fully synced. *(plan.md WS8.)*
+- 🟡 **Lovable-era orphaned auth references** — production lost the original `auth.users` FKs in the `pg_restore` (confirmed: `user_roles` carries 8 rows pointing at never-migrated Lovable UUIDs, vs 3 valid). **Fixed in repo (2026-07-14):** a read-only audit (`scripts/audit_auth_orphans.sql`, all 15 user-ID columns), a deterministic cleanup migration (`20260714000300` — deletes only inert per-user junk; historical content and any ambiguous row is preserved for manual review), and FK restoration (`20260714000400`, safe NOT VALID fallback). Pending: the read-only production audit, merge, and `supabase db push --linked`. *(plan.md — Auth-orphan cleanup record.)*
 
 **Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
 
@@ -343,7 +344,9 @@ SELECT
   MIN(requested_at) FILTER (WHERE status = 'pending') AS oldest_pending
 FROM waitlist;
 
--- Orphaned auth references (Known Issue #2) -- check other tables too
+-- Orphaned auth references (Known Issue #2) — the full audit covering all 15
+-- user-ID columns lives in scripts/audit_auth_orphans.sql (read-only).
+-- Single-table spot check:
 SELECT ctm.* FROM club_team_members ctm
 LEFT JOIN auth.users u ON ctm.user_id = u.id
 WHERE ctm.user_id IS NOT NULL AND u.id IS NULL;
