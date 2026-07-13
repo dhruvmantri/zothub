@@ -7,10 +7,17 @@
 --
 -- Rows are restricted by RLS (below); COLUMNS are restricted by least-privilege
 -- column grants so a direct `select("*")` by anon cannot read internal/private
--- fields even on an otherwise-visible active row. Anon's column allowlist is the
--- exact union of columns the public (logged-out) routes need; auth-only fields
--- (application_questions, rsvp_questions, club user_id for messaging) are excluded
--- and the client fetches them only when logged in.
+-- fields even on an otherwise-visible active row. Anon's column allowlist covers
+-- the columns the public (logged-out) routes render, with two distinct cases for
+-- fields that are not part of the logged-out experience:
+--   * application_questions (opportunities) and rsvp_questions (events) are
+--     EXCLUDED from the anon grants entirely; they back the auth-only apply/RSVP
+--     forms and are requested only when authenticated.
+--   * club_profiles.user_id, by contrast, is INCLUDED in the anon grant, but not
+--     for the UI: it remains granted to anon solely because the current club-owner
+--     RLS subqueries reference it (see section 3). The logged-out UI does not
+--     explicitly request user_id; only the authenticated ClubDetail page requests
+--     it, and only for messaging.
 
 -- 1. Opportunities -------------------------------------------------------------
 --    Row policy: active rows visible to everyone (anon + authenticated). The
