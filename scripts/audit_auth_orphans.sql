@@ -1,132 +1,140 @@
 -- ============================================================================
--- READ-ONLY audit: Lovable-era orphaned auth.users references (2026-07-14)
+-- READ-ONLY audit: orphaned auth.users references (project date 2026-07-13)
 --
--- Run in the Supabase SQL editor (or psql) against the linked project BEFORE
--- pushing migrations 20260714000300 / 20260714000400. Nothing here writes.
+-- Run BEFORE pushing migrations 20260713000200 (row cleanup) and
+-- 20260713000300 (FK restore). Nothing here writes.
 --
--- Background: production was built by pg_restore from the Lovable Cloud dump;
--- auth.users was intentionally NOT migrated (fresh OTP signups instead), so
--- the original schema's 7 FKs to auth.users could not validate at restore
--- time and were lost. Known production fact (maintainer, 2026-07-14):
--- user_roles has 8 rows whose user_id no longer exists in auth.users, and
--- 3 valid rows.
+-- HOW TO RUN IN THE SUPABASE SQL EDITOR: the editor shows only the LAST
+-- result set when several statements run together, so run each numbered query
+-- (Q1..Q5) SEPARATELY — highlight one query and press Cmd/Ctrl+Enter. Each
+-- returns exactly one result set. In psql you can run the whole file.
 --
--- Expected results are noted per section. Any deviation in the
--- "MANUAL REVIEW" sections (B) means: STOP — do not push the migrations
--- until each listed row is deliberately resolved.
+-- Context (inference, not a proven restore record): production was stood up by
+-- pg_restore from the Lovable dump with auth.users intentionally not migrated,
+-- so the originally-declared auth.users FKs most likely could not validate and
+-- were lost, leaving orphaned rows. Maintainer-confirmed: user_roles has 8
+-- orphaned rows and 3 valid.
+--
+-- GATE: if Q4 (manual-review / preservation) returns any row, STOP — resolve
+-- each deliberately before pushing. The FK migration will HARD-FAIL on an
+-- orphaned profile rather than leave an unvalidated constraint.
 -- ============================================================================
 
--- ---------------------------------------------------------------------------
--- 0. Which FKs to auth.users actually exist in production right now.
---    Expected: ONLY rsvps.status_updated_by (WS4) and club_team_members.user_id
---    (WS8) — the two applied via db push after the migration-history repair.
---    The 7 originally-declared FKs are expected to be MISSING (restore loss).
--- ---------------------------------------------------------------------------
-SELECT c.conrelid::regclass AS table_name,
+
+-- Q1 — which auth.users FKs actually exist right now, verified by referenced
+-- column and ON DELETE action. Expected: ONLY rsvps.status_updated_by and
+-- club_team_members.user_id (both SET NULL), from WS4/WS8. The 11 columns the
+-- cleanup manages are expected to be MISSING here (restore loss / never had one).
+SELECT c.conrelid::regclass                         AS table_name,
        (SELECT a.attname FROM pg_attribute a
-         WHERE a.attrelid = c.conrelid AND a.attnum = c.conkey[1]) AS column_name,
-       c.conname,
-       c.confdeltype, -- 'c' = CASCADE, 'n' = SET NULL
-       c.convalidated
+         WHERE a.attrelid = c.conrelid AND a.attnum = c.conkey[1])   AS ref_column,
+       (SELECT a.attname FROM pg_attribute a
+         WHERE a.attrelid = c.confrelid AND a.attnum = c.confkey[1]) AS references_col,
+       CASE c.confdeltype WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL'
+            WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT'
+            WHEN 'd' THEN 'SET DEFAULT' END          AS on_delete,
+       c.convalidated                                AS validated
 FROM pg_constraint c
-WHERE c.contype = 'f'
-  AND c.confrelid = 'auth.users'::regclass
+WHERE c.contype = 'f' AND c.confrelid = 'auth.users'::regclass
 ORDER BY 1, 2;
 
--- ---------------------------------------------------------------------------
--- A. Orphan COUNTS per user-ID column (all 15 columns; one row per column).
---    Expected: user_roles = 8 (known fact); everything else expected 0, but
---    this is exactly what this audit exists to confirm.
--- ---------------------------------------------------------------------------
-SELECT * FROM (
-  SELECT 'user_roles.user_id'               AS ref, (SELECT count(*) FROM public.user_roles x               WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id))     AS orphans, 'DELETE (mig 000300)'      AS planned_action
-  UNION ALL
-  SELECT 'student_profiles.user_id',            (SELECT count(*) FROM public.student_profiles x         WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'MANUAL REVIEW — see B1'
-  UNION ALL
-  SELECT 'club_profiles.user_id',               (SELECT count(*) FROM public.club_profiles x            WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'MANUAL REVIEW — see B2'
-  UNION ALL
-  SELECT 'bookmarks.user_id',                   (SELECT count(*) FROM public.bookmarks x                 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300)'
-  UNION ALL
-  SELECT 'messages (BOTH parties dead)',        (SELECT count(*) FROM public.messages m                  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
-                                                                                                            AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id)), 'DELETE (mig 000300)'
-  UNION ALL
-  SELECT 'messages (exactly ONE party dead)',   (SELECT count(*) FROM public.messages m                  WHERE (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id))
-                                                                                                            <> (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id))), 'MANUAL REVIEW — see B3 (preserved)'
-  UNION ALL
-  SELECT 'notifications.user_id',               (SELECT count(*) FROM public.notifications x             WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300)'
-  UNION ALL
-  SELECT 'notification_preferences.user_id',    (SELECT count(*) FROM public.notification_preferences x  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300)'
-  UNION ALL
-  SELECT 'waitlist.user_id',                    (SELECT count(*) FROM public.waitlist x                  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300) — see C2'
-  UNION ALL
-  SELECT 'waitlist.reviewed_by (dead reviewer)',(SELECT count(*) FROM public.waitlist x                  WHERE x.reviewed_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.reviewed_by)), 'SET NULL (mig 000300)'
-  UNION ALL
-  SELECT 'page_views.user_id (dead viewer)',    (SELECT count(*) FROM public.page_views x                WHERE x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),          'SET NULL (mig 000300)'
-  UNION ALL
-  SELECT 'club_followers.user_id',              (SELECT count(*) FROM public.club_followers x            WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300; legacy table, unread since WS3)'
-  UNION ALL
-  SELECT 'reminder_logs.user_id',               (SELECT count(*) FROM public.reminder_logs x             WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (mig 000300)'
-  UNION ALL
-  SELECT 'club_team_members.user_id',           (SELECT count(*) FROM public.club_team_members x         WHERE x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),          'none — WS8 FK self-heals (expected 0)'
-  UNION ALL
-  SELECT 'rsvps.status_updated_by',             (SELECT count(*) FROM public.rsvps x                     WHERE x.status_updated_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.status_updated_by)), 'none — WS4 FK enforced since creation (expected 0)'
-) audit
-ORDER BY ref;
 
--- Sanity: valid (non-orphaned) user_roles rows. Expected: 3 (known fact).
+-- Q2 — orphan COUNTS per managed class, with the planned action. Expected:
+-- user_roles = 8 (known); all other counts expected 0 (this is what confirms it).
+SELECT ref, orphans, planned_action FROM (
+  SELECT 1 AS ord, 'user_roles.user_id'               AS ref, (SELECT count(*) FROM public.user_roles x               WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id))     AS orphans, 'DELETE'                       AS planned_action
+  UNION ALL SELECT 2,  'bookmarks.user_id',                   (SELECT count(*) FROM public.bookmarks x                 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE'
+  UNION ALL SELECT 3,  'notifications.user_id',               (SELECT count(*) FROM public.notifications x             WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE'
+  UNION ALL SELECT 4,  'notification_preferences.user_id',    (SELECT count(*) FROM public.notification_preferences x  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE'
+  UNION ALL SELECT 5,  'reminder_logs.user_id',               (SELECT count(*) FROM public.reminder_logs x             WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE'
+  UNION ALL SELECT 6,  'club_followers.user_id',              (SELECT count(*) FROM public.club_followers x            WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE (legacy table)'
+  UNION ALL SELECT 7,  'waitlist.user_id',                    (SELECT count(*) FROM public.waitlist x                  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'DELETE'
+  UNION ALL SELECT 8,  'messages (BOTH parties dead)',        (SELECT count(*) FROM public.messages m                  WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
+                                                                                                                        AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id)), 'DELETE'
+  UNION ALL SELECT 9,  'waitlist.reviewed_by (dead reviewer)',(SELECT count(*) FROM public.waitlist x                  WHERE x.reviewed_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.reviewed_by)), 'SET NULL'
+  UNION ALL SELECT 10, 'page_views.user_id (dead viewer)',    (SELECT count(*) FROM public.page_views x                WHERE x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),          'SET NULL'
+  -- preservation / manual-review classes (NOT auto-cleaned):
+  UNION ALL SELECT 11, 'student_profiles.user_id  [REVIEW]',  (SELECT count(*) FROM public.student_profiles x         WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'MANUAL REVIEW — Q4'
+  UNION ALL SELECT 12, 'club_profiles.user_id  [REVIEW]',     (SELECT count(*) FROM public.club_profiles x            WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),     'MANUAL REVIEW — Q4'
+  UNION ALL SELECT 13, 'messages (exactly ONE party dead)',   (SELECT count(*) FROM public.messages m                  WHERE (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id))
+                                                                                                                        <> (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id))), 'PRESERVED (no FK) — Q4'
+  -- already enforced (expected 0):
+  UNION ALL SELECT 14, 'club_team_members.user_id',           (SELECT count(*) FROM public.club_team_members x         WHERE x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)),          'none (WS8 FK)'
+  UNION ALL SELECT 15, 'rsvps.status_updated_by',             (SELECT count(*) FROM public.rsvps x                     WHERE x.status_updated_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.status_updated_by)), 'none (WS4 FK)'
+) audit ORDER BY ord;
+
+
+-- Q3 — ROW-LEVEL detail of EVERY row migration 20260713000200 will DELETE or
+-- SET NULL, one consolidated result set (one row per affected row). Review
+-- this so nothing the cleanup changes is a surprise. Expected: 8 user_roles
+-- DELETE rows and nothing else (unless other classes also carry orphans).
+SELECT action, tbl, row_id, dead_user_id, detail FROM (
+  SELECT 'DELETE'::text AS action, 'user_roles'::text AS tbl, x.id AS row_id, x.user_id AS dead_user_id, ('role='||x.role)::text AS detail
+    FROM public.user_roles x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'bookmarks', x.id, x.user_id, 'opp='||coalesce(x.opportunity_id::text,'-')||' event='||coalesce(x.event_id::text,'-')||' club='||coalesce(x.club_id::text,'-')
+    FROM public.bookmarks x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'notifications', x.id, x.user_id, x.type||': '||x.title
+    FROM public.notifications x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'notification_preferences', x.id, x.user_id, 'prefs row'
+    FROM public.notification_preferences x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'reminder_logs', x.id, x.user_id, 'type='||x.reminder_type
+    FROM public.reminder_logs x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'club_followers', x.id, x.user_id, 'club='||x.club_id
+    FROM public.club_followers x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'waitlist', x.id, x.user_id, x.email||' ('||x.role||'/'||x.status||')'
+    FROM public.waitlist x WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+  UNION ALL
+  SELECT 'DELETE', 'messages (both dead)', m.id, m.sender_id, 'receiver='||m.receiver_id||' created='||m.created_at
+    FROM public.messages m
+    WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
+      AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id)
+  UNION ALL
+  SELECT 'SET NULL reviewed_by', 'waitlist', x.id, x.reviewed_by, 'entry kept ('||x.email||'/'||x.status||')'
+    FROM public.waitlist x WHERE x.reviewed_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.reviewed_by)
+  UNION ALL
+  SELECT 'SET NULL user_id', 'page_views', x.id, x.user_id, 'analytics row kept ('||x.item_type||')'
+    FROM public.page_views x WHERE x.user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id)
+) rows ORDER BY action, tbl, row_id;
+
+
+-- Q4 — MANUAL-REVIEW / PRESERVATION detail. Migration 20260713000200 NEVER
+-- touches these rows. If ANY row appears here, STOP: resolve the profile rows
+-- deliberately before pushing (the FK migration hard-fails on an orphaned
+-- profile). One-party-dead messages are informational (preserved; no FK added).
+-- Expected: no rows.
+SELECT klass, row_id, dead_user_id, detail FROM (
+  SELECT 'student_profile (anchors content)'::text AS klass, sp.id AS row_id, sp.user_id AS dead_user_id,
+         (coalesce(sp.full_name,'?')||' <'||sp.email||'>  applications='
+          ||(SELECT count(*) FROM public.applications a WHERE a.student_id = sp.id)
+          ||' rsvps='||(SELECT count(*) FROM public.rsvps r WHERE r.student_id = sp.id))::text AS detail
+    FROM public.student_profiles sp WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = sp.user_id)
+  UNION ALL
+  SELECT 'club_profile (anchors content)', cp.id, cp.user_id,
+         cp.club_name||' <'||cp.email||'>  opportunities='
+          ||(SELECT count(*) FROM public.opportunities o WHERE o.club_id = cp.id)
+          ||' events='||(SELECT count(*) FROM public.events e WHERE e.club_id = cp.id)
+          ||' applications_received='||(SELECT count(*) FROM public.applications a
+               JOIN public.opportunities o ON o.id = a.opportunity_id WHERE o.club_id = cp.id)
+    FROM public.club_profiles cp WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = cp.user_id)
+  UNION ALL
+  SELECT 'message (one party dead — PRESERVED)', m.id,
+         CASE WHEN NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id) THEN m.sender_id ELSE m.receiver_id END,
+         CASE WHEN NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
+              THEN 'sender dead; live receiver='||m.receiver_id
+              ELSE 'receiver dead; live sender='||m.sender_id END
+    FROM public.messages m
+    WHERE (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id))
+       <> (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id))
+) review ORDER BY klass, row_id;
+
+
+-- Q5 — sanity: valid (non-orphaned) user_roles rows. Expected: 3 (known fact).
 SELECT count(*) AS valid_user_roles
 FROM public.user_roles ur
 WHERE EXISTS (SELECT 1 FROM auth.users u WHERE u.id = ur.user_id);
-
--- ---------------------------------------------------------------------------
--- B. MANUAL-REVIEW detail. Migration 000300 NEVER touches these rows; if any
---    query below returns rows, STOP and resolve each one deliberately before
---    pushing (000400 will still apply safely — it leaves the affected FK
---    NOT VALID with a warning instead of failing).
--- ---------------------------------------------------------------------------
-
--- B1. Orphaned student profiles + the historical content anchored to them.
---     Expected 0 (cleaned manually during 2026-07-09 QA).
-SELECT sp.id, sp.email, sp.full_name, sp.user_id AS dead_user_id,
-       (SELECT count(*) FROM public.applications a WHERE a.student_id = sp.id) AS applications,
-       (SELECT count(*) FROM public.rsvps r WHERE r.student_id = sp.id)        AS rsvps
-FROM public.student_profiles sp
-WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = sp.user_id);
-
--- B2. Orphaned club profiles + the historical content anchored to them.
---     Expected 0 (cleaned manually during 2026-07-09 QA).
-SELECT cp.id, cp.club_name, cp.email, cp.user_id AS dead_user_id,
-       (SELECT count(*) FROM public.opportunities o WHERE o.club_id = cp.id) AS opportunities,
-       (SELECT count(*) FROM public.events e WHERE e.club_id = cp.id)        AS events,
-       (SELECT count(*) FROM public.applications a JOIN public.opportunities o ON o.id = a.opportunity_id WHERE o.club_id = cp.id) AS applications_received
-FROM public.club_profiles cp
-WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = cp.user_id);
-
--- B3. Messages where exactly ONE party is dead — the living party's history.
---     These are PRESERVED (never auto-deleted). Expected 0.
-SELECT m.id, m.created_at,
-       CASE WHEN NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
-            THEN 'sender dead' ELSE 'receiver dead' END AS dead_side,
-       m.sender_id, m.receiver_id
-FROM public.messages m
-WHERE (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id))
-   <> (NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id))
-ORDER BY m.created_at;
-
--- ---------------------------------------------------------------------------
--- C. DELETE-class detail — exactly what migration 000300 will remove.
---    Review before pushing so nothing is a surprise.
--- ---------------------------------------------------------------------------
-
--- C1. The orphaned role grants (expected: the 8 known rows).
-SELECT ur.id, ur.user_id AS dead_user_id, ur.role, ur.created_at
-FROM public.user_roles ur
-WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = ur.user_id)
-ORDER BY ur.created_at;
-
--- C2. Orphaned waitlist entries (queue rows that can never be approved —
---     the auth account they gate no longer exists).
-SELECT w.id, w.email, w.role, w.status, w.requested_at, w.user_id AS dead_user_id
-FROM public.waitlist w
-WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = w.user_id)
-ORDER BY w.requested_at;

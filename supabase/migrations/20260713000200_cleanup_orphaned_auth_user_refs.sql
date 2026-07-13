@@ -1,11 +1,25 @@
--- Cleanup of Lovable-era orphaned auth.users references — part 1 of 2 (rows).
+-- Cleanup of orphaned auth.users references — part 1 of 2 (rows).
 --
--- Background: production was built by pg_restore from the Lovable Cloud dump
--- and auth.users was intentionally never migrated, so public rows referencing
--- old Lovable auth UUIDs are orphans, and the original schema's FKs to
--- auth.users were lost in the restore (confirmed: user_roles carries orphaned
--- rows despite migration 20251223013805 declaring an FK). Part 2
--- (20260714000400) re-establishes the FKs.
+-- Companion: 20260713000300_restore_auth_user_fks.sql (re-establishes the FKs).
+--
+-- Timestamp note: these two migrations carry the actual project date
+-- (2026-07-13) and therefore sort BEFORE the already-applied WS8 migrations
+-- (2026-07-14). Their logic is independent of WS8 (they touch no bookmark
+-- index and neither adds/needs the club_team_members or rsvps FKs), so apply
+-- order does not matter; `supabase db push` applies them as new, previously
+-- unrecorded versions.
+--
+-- Why orphans exist (inference, not a directly-verified restore record):
+-- production was stood up by pg_restore from the Lovable Cloud dump, and
+-- auth.users was intentionally not migrated (fresh OTP signups were used
+-- instead). Migration 20251223013805 DECLARES an FK on user_roles.user_id ->
+-- auth.users, yet production carries user_roles rows whose user_id is absent
+-- from auth.users (maintainer-confirmed: 8 orphaned, 3 valid). The most
+-- consistent explanation is that the originally-declared auth.users FKs could
+-- not validate against the fresh/empty auth.users at restore time and were
+-- dropped/skipped. This migration does not depend on that history being
+-- proven; it simply removes rows referencing a nonexistent auth account,
+-- guarded so it is a no-op on any database whose FKs were never lost.
 --
 -- This migration removes ONLY rows that are deterministically junk — per-user
 -- private state belonging to an auth account that no longer exists, which no
@@ -18,23 +32,26 @@
 --     club_followers (legacy table, unread since WS3), waitlist (a queue
 --     entry that can never be approved; approving would only re-create
 --     orphaned user_roles rows), and messages where BOTH parties are dead
---     (invisible to every living user).
+--     (invisible to every living user: the messages SELECT policy is
+--     `sender_id = auth.uid() OR receiver_id = auth.uid()`, which no live
+--     session can satisfy for two dead UUIDs).
 --
 --   SET NULL class (reference cleared, row/value kept):
 --     waitlist.reviewed_by (audit metadata — the review record stays),
 --     page_views.user_id (column is already "nullable for anonymous
 --     visitors"; the analytics row keeps counting).
 --
--- Deliberately NOT touched (manual-review classes — never auto-deleted):
+-- Deliberately NOT touched (manual-review / preservation classes):
 --   * student_profiles / club_profiles with a dead user_id — they anchor
 --     historical content (applications, opportunities, events, RSVPs).
---     Expected 0 in production (cleaned during 2026-07-09 QA); confirm via
---     scripts/audit_auth_orphans.sql sections B1/B2 BEFORE pushing.
+--     Expected 0 in production (cleaned during 2026-07-09 QA); the FK
+--     migration HARD-FAILS rather than silently skipping if any remain, so
+--     confirm via scripts/audit_auth_orphans.sql sections C1/C2 BEFORE pushing.
 --   * messages where exactly ONE party is dead — the living party's
---     conversation history (audit section B3).
---   * club_team_members.user_id — already self-healing via the WS8 FK
---     (production-confirmed). rsvps.status_updated_by — FK enforced since
---     the column was created (WS4); orphans impossible.
+--     conversation history is preserved (no messages FK is added; see the
+--     companion migration's header for why).
+--   * club_team_members.user_id (WS8 FK) and rsvps.status_updated_by (WS4 FK)
+--     are already enforced in production.
 --
 -- Idempotent and forward-only: every statement is a WHERE-guarded no-op once
 -- clean, and a full no-op on a database whose FKs were never lost.
@@ -61,8 +78,9 @@ WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id);
 DELETE FROM public.waitlist x
 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id);
 
--- Messages: only when BOTH sides are dead. A message with one living party is
--- that user's conversation history and is preserved (manual-review class).
+-- Messages: ONLY when BOTH sides are dead. A message with one living party is
+-- that user's conversation history and is preserved (no messages FK is added,
+-- so this is a one-time cleanup of rows no living user can ever read).
 DELETE FROM public.messages m
 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
   AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id);
