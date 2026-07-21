@@ -1,8 +1,8 @@
 -- ============================================================================
 -- READ-ONLY audit: orphaned auth.users references (project date 2026-07-13)
 --
--- Run BEFORE pushing migrations 20260713000200 (row cleanup) and
--- 20260713000300 (FK restore). Nothing here writes.
+-- Run BEFORE pushing migrations 20260714000300 (row cleanup) and
+-- 20260714000400 (FK restore). Nothing here writes.
 --
 -- HOW TO RUN IN THE SUPABASE SQL EDITOR: the editor shows only the LAST
 -- result set when several statements run together, so run each numbered query
@@ -64,7 +64,7 @@ SELECT ref, orphans, planned_action FROM (
 ) audit ORDER BY ord;
 
 
--- Q3 — ROW-LEVEL detail of EVERY row migration 20260713000200 will DELETE or
+-- Q3 — ROW-LEVEL detail of EVERY row migration 20260714000300 will DELETE or
 -- SET NULL, one consolidated result set (one row per affected row). Review
 -- this so nothing the cleanup changes is a surprise. Expected: 8 user_roles
 -- DELETE rows and nothing else (unless other classes also carry orphans).
@@ -103,7 +103,7 @@ SELECT action, tbl, row_id, dead_user_id, detail FROM (
 ) rows ORDER BY action, tbl, row_id;
 
 
--- Q4 — MANUAL-REVIEW / PRESERVATION detail. Migration 20260713000200 NEVER
+-- Q4 — MANUAL-REVIEW / PRESERVATION detail. Migration 20260714000300 NEVER
 -- touches these rows. If ANY row appears here, STOP: resolve the profile rows
 -- deliberately before pushing (the FK migration hard-fails on an orphaned
 -- profile). One-party-dead messages are informational (preserved; no FK added).

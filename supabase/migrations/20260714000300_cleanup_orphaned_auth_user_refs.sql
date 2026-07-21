@@ -1,13 +1,13 @@
 -- Cleanup of orphaned auth.users references — part 1 of 2 (rows).
 --
--- Companion: 20260713000300_restore_auth_user_fks.sql (re-establishes the FKs).
+-- Companion: 20260714000400_restore_auth_user_fks.sql (re-establishes the FKs).
 --
--- Timestamp note: these two migrations carry the actual project date
--- (2026-07-13) and therefore sort BEFORE the already-applied WS8 migrations
--- (2026-07-14). Their logic is independent of WS8 (they touch no bookmark
--- index and neither adds/needs the club_team_members or rsvps FKs), so apply
--- order does not matter; `supabase db push` applies them as new, previously
--- unrecorded versions.
+-- Timestamp note: these two migrations use the next unused versions after the
+-- already-applied WS8 migrations (…000100 / …000200), so they sort AFTER all
+-- applied production migrations (monotonically increasing history). Their
+-- logic is independent of WS8 (they touch no bookmark index and neither
+-- adds/needs the club_team_members or rsvps FKs); `supabase db push` applies
+-- them as the next new versions.
 --
 -- Why orphans exist (inference, not a directly-verified restore record):
 -- production was stood up by pg_restore from the Lovable Cloud dump, and

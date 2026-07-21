@@ -1,6 +1,6 @@
 -- Cleanup of orphaned auth.users references — part 2 of 2 (foreign keys).
 --
--- Companion: 20260713000200_cleanup_orphaned_auth_user_refs.sql (must run
+-- Companion: 20260714000300_cleanup_orphaned_auth_user_refs.sql (must run
 -- first; see its header for the timestamp/ordering note and the root-cause
 -- inference). Run scripts/audit_auth_orphans.sql against production and clear
 -- the manual-review classes BEFORE pushing.
