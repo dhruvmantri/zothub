@@ -46,10 +46,12 @@
 --     historical content (applications, opportunities, events, RSVPs).
 --     Expected 0 in production (cleaned during 2026-07-09 QA); the FK
 --     migration HARD-FAILS rather than silently skipping if any remain, so
---     confirm via scripts/audit_auth_orphans.sql sections C1/C2 BEFORE pushing.
+--     confirm via scripts/audit_auth_orphans.sql query Q4 BEFORE pushing.
 --   * messages where exactly ONE party is dead — the living party's
---     conversation history is preserved (no messages FK is added; see the
---     companion migration's header for why).
+--     conversation history is preserved (messages carry NO auth FK: the
+--     companion migration DROPS any existing one and does not recreate it, so
+--     deleting the dead account never cascades away the survivor's history;
+--     see the companion migration's header for why).
 --   * club_team_members.user_id (WS8 FK) and rsvps.status_updated_by (WS4 FK)
 --     are already enforced in production.
 --
@@ -79,8 +81,9 @@ DELETE FROM public.waitlist x
 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = x.user_id);
 
 -- Messages: ONLY when BOTH sides are dead. A message with one living party is
--- that user's conversation history and is preserved (no messages FK is added,
--- so this is a one-time cleanup of rows no living user can ever read).
+-- that user's conversation history and is preserved (messages carry no auth FK
+-- once the companion migration drops it, so this is a one-time cleanup of rows
+-- no living user can ever read).
 DELETE FROM public.messages m
 WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.sender_id)
   AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = m.receiver_id);

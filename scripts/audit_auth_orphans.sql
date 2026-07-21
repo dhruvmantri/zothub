@@ -22,9 +22,15 @@
 
 
 -- Q1 — which auth.users FKs actually exist right now, verified by referenced
--- column and ON DELETE action. Expected: ONLY rsvps.status_updated_by and
--- club_team_members.user_id (both SET NULL), from WS4/WS8. The 11 columns the
--- cleanup manages are expected to be MISSING here (restore loss / never had one).
+-- column and ON DELETE action. Expected today: rsvps.status_updated_by and
+-- club_team_members.user_id (both SET NULL, from WS4/WS8), PLUS — on production
+-- — the two legacy messages FKs (messages.sender_id / messages.receiver_id,
+-- ON DELETE CASCADE) that the restore did NOT lose. Migration 20260714000400
+-- DELIBERATELY DROPS both messages FKs (CASCADE would erase a surviving user's
+-- conversation history) and does not recreate them. The 11 columns the cleanup
+-- manages are expected to be MISSING here (restore loss / never had one).
+-- After the two migrations, this query should list exactly 13 FKs, all
+-- validated, with NO messages rows.
 SELECT c.conrelid::regclass                         AS table_name,
        (SELECT a.attname FROM pg_attribute a
          WHERE a.attrelid = c.conrelid AND a.attnum = c.conkey[1])   AS ref_column,

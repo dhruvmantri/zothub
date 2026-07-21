@@ -6,9 +6,9 @@
 -- the manual-review classes BEFORE pushing.
 --
 -- Re-establishes the auth.users foreign keys that production most likely lost
--- in the pg_restore (see companion), and adds first-time FK protection to the
--- user-ID columns that never had one. This migration NEVER modifies or deletes
--- a row.
+-- in the pg_restore (see companion), adds first-time FK protection to the
+-- user-ID columns that never had one, and REMOVES the legacy messages FKs.
+-- This migration NEVER modifies or deletes a row.
 --
 -- Managed columns and their ON DELETE action (CASCADE mirrors the actions
 -- declared in migration 20251223013805 for the columns that originally had an
@@ -21,29 +21,64 @@
 --   SET NULL (metadata that should outlive the account):
 --     waitlist.reviewed_by, page_views.user_id.
 --
--- Deliberately EXCLUDED:
---   * messages.sender_id / messages.receiver_id — NO FK is added. Both columns
---     are NOT NULL, so ON DELETE SET NULL is impossible without a schema change;
---     ON DELETE CASCADE would delete a LIVING user's conversation history when
---     the other party is deleted (contradicting the preservation decision); and
---     ON DELETE RESTRICT/NO ACTION would block deleting any account that has
---     ever sent/received a message. Preserving message history while still
---     allowing account deletion needs a separate product decision (e.g. make
---     the columns nullable + SET NULL, or a tombstone/"deleted user" sentinel).
---     Until then messages keep their current (no-FK) behavior; the companion
---     migration one-time-deletes only the both-parties-dead messages.
---   * club_team_members.user_id (WS8) and rsvps.status_updated_by (WS4) —
---     already enforced in production; left untouched.
+-- messages.sender_id / messages.receiver_id — NO FK is kept, and any existing
+-- one is DROPPED (step 1 below). Both columns are NOT NULL, so ON DELETE SET
+-- NULL is impossible without a schema change; the original ON DELETE CASCADE
+-- (declared in 20251223013805, and still present on databases that did not
+-- lose it in the restore — production DOES currently have it) would delete a
+-- LIVING user's conversation history when the other party is deleted, which
+-- contradicts the preservation decision; ON DELETE RESTRICT/NO ACTION would
+-- block deleting any account that ever sent/received a message. Preserving
+-- message history while still allowing account deletion needs a separate
+-- product decision (make the columns nullable + SET NULL, or a "deleted user"
+-- tombstone). Until then messages carry NO auth FK on BOTH pristine and
+-- drifted/production databases — this migration converges them to that state.
+-- The companion migration one-time-deletes only the both-parties-dead messages.
+--
+-- Excluded (left untouched): club_team_members.user_id (WS8) and
+-- rsvps.status_updated_by (WS4) — already enforced in production.
 --
 -- Success state is unambiguous: this migration completes ONLY if all 11 managed
--- FKs are present AND validated. If any orphan remains for a managed column
--- (only possible for the manual-review classes the companion does not clean —
--- orphaned student/club profiles), the ADD CONSTRAINT raises and the whole
--- migration FAILS with guidance, rather than leaving an unvalidated constraint.
--- Idempotent: an already-present FK with the expected referenced column and
--- ON DELETE action is skipped; a present FK on a managed column with an
--- UNEXPECTED referenced column or action raises (never silently accepted).
+-- FKs are present AND validated AND messages carries no auth FK. If any orphan
+-- remains for a managed column (only possible for the manual-review classes the
+-- companion does not clean — orphaned student/club profiles), the ADD CONSTRAINT
+-- raises and the whole migration FAILS with guidance, rather than leaving an
+-- unvalidated constraint. Idempotent: an already-present FK with the expected
+-- referenced column and ON DELETE action is skipped; a present FK on a managed
+-- column with an UNEXPECTED referenced column or action raises; the messages
+-- drop is a no-op once the FKs are gone.
 
+-- Step 1 — remove any legacy auth.users FK on messages (see header). Identified
+-- robustly by referencing column + referenced auth.users.id, NOT by a fixed
+-- constraint name, and NOT recreated. No-op on a database whose messages FKs
+-- were already lost/removed (drift/production-after-this-migration).
+DO $dropmsgfk$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT c.conname,
+           (SELECT a.attname FROM pg_attribute a
+             WHERE a.attrelid = c.conrelid AND a.attnum = c.conkey[1]) AS col
+    FROM pg_constraint c
+    WHERE c.conrelid = 'public.messages'::regclass
+      AND c.contype = 'f'
+      AND c.confrelid = 'auth.users'::regclass
+      AND cardinality(c.conkey) = 1
+      AND (SELECT a.attname FROM pg_attribute a
+             WHERE a.attrelid = c.confrelid AND a.attnum = c.confkey[1]) = 'id'
+      AND (SELECT a.attname FROM pg_attribute a
+             WHERE a.attrelid = c.conrelid AND a.attnum = c.conkey[1])
+          IN ('sender_id', 'receiver_id')
+  LOOP
+    EXECUTE format('ALTER TABLE public.messages DROP CONSTRAINT %I', r.conname);
+    RAISE NOTICE 'orphan-cleanup: dropped legacy FK % on messages.% (auth.users '
+                 'CASCADE removed to preserve surviving-party history; not recreated)',
+                 r.conname, r.col;
+  END LOOP;
+END
+$dropmsgfk$;
+
+-- Step 2 — add/validate the 11 managed auth.users FKs.
 DO $orphfk$
 DECLARE
   spec        record;
@@ -117,8 +152,8 @@ BEGIN
         'orphan-cleanup: public.%.% still has rows with no matching auth.users row, '
         'so its foreign key cannot validate. This is a manual-review class the '
         'companion migration does not auto-delete (orphaned student/club profiles '
-        'anchor historical content). Run scripts/audit_auth_orphans.sql sections '
-        'C1/C2, resolve those rows deliberately, then re-push. (Failing on purpose '
+        'anchor historical content). Run scripts/audit_auth_orphans.sql query Q4, '
+        'resolve those rows deliberately, then re-push. (Failing on purpose '
         'rather than adding an unvalidated constraint.)',
         spec.tbl, spec.col;
     END;
