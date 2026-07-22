@@ -36,12 +36,11 @@ const features = [
   }
 ];
 
-const stats = [
-  { value: "200+", label: "Active Clubs" },
-  { value: "1,500+", label: "Opportunities" },
-  { value: "10K+", label: "Students" },
-  { value: "500+", label: "Events Monthly" },
-];
+// The fabricated stats block that used to live here ("200+ Active Clubs",
+// "10K+ Students") was removed on 2026-07-23. Production has one club, and any
+// visitor could disprove the numbers in two clicks by opening /clubs — which
+// makes false social proof worse than none during club outreach.
+// The brand pass replaces this section with something honest and specific.
 
 export default function Landing() {
   return (
@@ -75,22 +74,6 @@ export default function Landing() {
                 <Link to="/opportunities">Browse Opportunities</Link>
               </Button>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 border-y border-border">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-3xl md:text-4xl font-semibold text-foreground mb-1">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -201,7 +184,7 @@ export default function Landing() {
               Ready to get involved?
             </h2>
             <p className="text-muted-foreground mb-8">
-              Join thousands of UCI students and clubs already using ZotHub to connect and grow.
+              Built for UCI. We're onboarding our first clubs now — come in early.
             </p>
             <Button size="lg" asChild>
               <Link to="/signup">

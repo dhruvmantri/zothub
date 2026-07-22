@@ -146,18 +146,52 @@ const handler = async (req: Request): Promise<Response> => {
     const userId = authData.user.id;
     const role = verification.role;
 
-    // NOTE: the user_roles row is intentionally NOT created here. Roles are
-    // granted by the admin at waitlist approval (useWaitlist.approveUser).
-    // Inserting the role at signup caused approval to fail with a duplicate
-    // key and trapped pending users in a redirect loop (see plan.md Bug
-    // Inventory, Phase 2 fixes).
+    // ── Access model (2026-07-23) ──────────────────────────────────────────
+    // Students are auto-approved; clubs still go through the /admin queue.
+    //
+    // Why this is safe for students: reaching this line already proves the
+    // signer controls an @uci.edu mailbox. send-otp rejects non-UCI domains,
+    // the code was delivered to that address and entered correctly, and the
+    // BEFORE INSERT trigger on auth.users (migration 20260709000300) is the
+    // authoritative gate that just let createUser through. Manual approval was
+    // adding latency, not a security property — and a student who signs up at
+    // the Involvement Fair booth and waits hours to be let in is simply gone.
+    //
+    // Clubs stay gated: a club account can post opportunities and collect
+    // student applications, so it warrants a human look.
+    //
+    // Historical note: roles used to be granted only at admin approval, because
+    // inserting the role at signup collided with approval's insert and trapped
+    // pending users in a redirect loop (plan.md Bug Inventory, Phase 2). That
+    // collision is gone — approveUser now upserts with ignoreDuplicates, and a
+    // student auto-approved here never reaches the approval path anyway.
+    let autoApproved = role === "student";
 
-    // Add to waitlist
+    if (autoApproved) {
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role });
+
+      if (roleError) {
+        // Fail safe, not open: without a role row the account is authenticated
+        // but unauthorized, and an "approved" waitlist row would wave it past
+        // ProtectedRoute into a dashboard it can't populate. Fall back to the
+        // admin queue so a human can finish the job.
+        console.error("Error granting student role, falling back to queue:", roleError);
+        autoApproved = false;
+      }
+    }
+
+    // Add to waitlist. Auto-approved students still get a row — it keeps the
+    // signup audit trail intact and keeps /admin a complete picture of who
+    // joined, rather than only showing the accounts that needed review.
     const { error: waitlistError } = await supabase.from("waitlist").insert({
       user_id: userId,
       email: email.toLowerCase(),
       role: role,
-      status: "pending",
+      status: autoApproved ? "approved" : "pending",
+      // reviewed_by stays null: no human reviewed this one.
+      reviewed_at: autoApproved ? new Date().toISOString() : null,
     });
 
     if (waitlistError) {
@@ -185,7 +219,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Send waitlist confirmation email
+    // Send the email that matches what actually happened: auto-approved users
+    // get the welcome/approved email, queued users get "you're on the list."
+    // Sending "you're on the waitlist" to a student who is already inside
+    // would be actively confusing.
     try {
       await fetch(`${supabaseUrl}/functions/v1/send-email`, {
         method: "POST",
@@ -194,13 +231,13 @@ const handler = async (req: Request): Promise<Response> => {
           Authorization: `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
-          type: "waitlist_confirmation",
+          type: autoApproved ? "waitlist_approved" : "waitlist_confirmation",
           to: email,
           data: { role },
         }),
       });
     } catch (emailError) {
-      console.error("Error sending waitlist confirmation:", emailError);
+      console.error("Error sending signup email:", emailError);
       // Non-fatal, continue
     }
 
@@ -213,11 +250,14 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Account created successfully for:", email);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Account created successfully!",
         userId,
-        role
+        role,
+        // Lets the client route correctly without re-querying: auto-approved
+        // users go straight to their dashboard, queued users to /waitlist.
+        autoApproved,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

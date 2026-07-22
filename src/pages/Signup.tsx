@@ -151,13 +151,41 @@ export default function SignupPage() {
         return;
       }
 
-      toast({
-        title: "Account created!",
-        description: "Welcome to ZotHub. Please log in to continue.",
+      // Sign the new account in rather than bouncing to /login. The password
+      // was just proven correct by verify-otp (it hash-matches the one held
+      // with the OTP), so re-asking for it is pure friction — and the fair-booth
+      // signup is exactly where friction loses the user.
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      // Redirect to login page
-      navigate("/login");
+      if (signInError) {
+        // The account exists and is valid; only the convenience step failed.
+        // Send them to /login rather than stranding them on the OTP screen.
+        console.error("Auto sign-in after signup failed:", signInError);
+        toast({
+          title: "Account created!",
+          description: "Welcome to ZotHub. Please log in to continue.",
+        });
+        navigate("/login");
+        return;
+      }
+
+      if (data?.autoApproved) {
+        toast({
+          title: "Welcome to ZotHub!",
+          description: "Your account is ready.",
+        });
+        navigate("/student/dashboard");
+      } else {
+        // Clubs still go through the /admin review queue.
+        toast({
+          title: "Account created!",
+          description: "Your club is pending review — we'll email you once it's approved.",
+        });
+        navigate("/waitlist");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Verification failed";
       setOtpError(message);
