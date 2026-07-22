@@ -21,9 +21,16 @@
 
 ---
 
-## ▶ Start here — status & orientation
+## ▶ Start here — recommended next workstream
 
-> **The ranked backlog is fully cleared (WS1–WS8 + auth-orphan cleanup, all production-verified as of 2026-07-13); there is no outstanding "next coding pass."** A fresh session should: triage any newly-appeared production incident first (add it to the Confirmed bug & risk inventory and handle it in a focused pass); otherwise pick a specific **WS9** deferred feature (see the Backlog) — its trust/correctness gate is met. The completion records below and the full **"Backlog — ranked workstreams"** are the history this state is drawn from.
+> **The correctness/data-hygiene backlog (WS1–WS8 + auth-orphan cleanup) is fully cleared and production-verified (2026-07-13). The project is now in a pre-launch experience phase.** The recommended next pass is **WS10 — Design Direction & Brand (mockup + spec)**, the first of three phases in the **Pre-Launch Experience Roadmap** (WS10 → WS11 → WS12; see the Backlog and `prd.md`'s "Pre-Launch Experience Roadmap"). Triage any newly-appeared production incident first (add it to the Confirmed bug & risk inventory), otherwise start WS10.
+>
+> **Phase overview (see per-workstream detail blocks below):**
+> - **WS10 — Design Direction & Brand:** a clickable design-direction mockup (via `artifact-design`) of the hero screens + a committed design spec (`docs/design-system.md`). Locks brand (evolve vs. rebrand), theme (dark-only vs. light), and typography before any re-skin. *User approves the mockup + spec before WS11.*
+> - **WS11 — Design System Implementation & UX Refresh:** implement the spec; re-skin the existing shells/pages in **vertical slices** (public → student → club → admin), folding each screen's coupled UX fix and dead-code cleanup into its slice. Keeps the routing/state/hooks wiring intact.
+> - **WS12 — New Feature Build-out:** the comprehensive catalog of net-new surfaces/features (support center, digest, saved searches, recommendations, account deletion, etc.), each tagged launch-blocking vs post-launch and verified at build. (Absorbs the former WS9 "future features.")
+>
+> **Guardrail:** the correctness backbone (capacity enforcement, realtime, RLS, application/RSVP integrity, email idempotency, cron) is solid — **re-skin, don't rebuild the wiring**; preserve all correctness migrations and the smoke suite.
 
 > **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
@@ -35,7 +42,7 @@
 > **✅ WS8 (UX polish & data hygiene) is COMPLETE (2026-07-14).** Completion record below.
 > **✅ Auth-orphan cleanup — COMPLETE & production-verified (2026-07-13).** Migrations `20260714000300` (deterministic row cleanup) + `20260714000400` (restore/add the 11 managed auth.users FKs, drop the retained `messages` CASCADE FKs, fail loud on orphaned profiles) were pushed to production, migration history is synchronized, and the post-push audit confirmed zero orphans, `valid_user_roles = 3`, and **13 validated auth FKs with `messages` intentionally FK-free**. Completion record below.
 >
-> **All engineering workstreams (WS1–WS8 + auth-orphan cleanup) are complete.** The only remaining coding backlog is **WS9 (deferred post-launch features)** — its trust/correctness gate (WS1–WS4) is satisfied, so WS9 is unblocked whenever the team chooses to start it. There is **no outstanding engineering pass**; new sessions should pick a specific WS9 feature or a newly-found defect rather than "the next workstream."
+> **All correctness/data-hygiene workstreams (WS1–WS8 + auth-orphan cleanup) are complete.** The active plan is the **Pre-Launch Experience Roadmap (WS10 → WS11 → WS12)** above — a design-direction mockup, then a design-system + UX refresh, then a feature build-out. The former WS9 "future features" are absorbed into WS12.
 
 #### ✅ WS6 completion record (Scheduler & launch-ops hardening, 2026-07-13)
 
@@ -45,6 +52,47 @@
 - **Verified** on the local PG16.13 harness (real pg_cron 1.6.2): all migrations apply cleanly; re-applying the WS6 migration is idempotent; a real pg_cron background-worker run of the committed command archived a past event and left a future one active. `tsc`/`build` clean; lint 0 errors on the touched file.
 
 **Operational ownership — decided and recorded (2026-07-13):** the three outside-code items are now assigned (support contact, `/admin` waitlist-queue owner, backup cadence). They live in the **Operational responsibilities** section below and are reflected in `prd.md`'s Launch Readiness Criteria. WS6 is therefore fully closed.
+
+---
+
+## Pre-Launch Experience Roadmap — WS10 → WS11 → WS12 (active plan)
+
+> **Why this phase exists.** The correctness/data-hygiene backbone is done and solid; two code explorations (2026-07-13) confirmed the remaining pre-launch weaknesses are **experiential and visual**, not correctness: no onboarding/first-run, dead-end "complete your profile first" toasts (no link), no in-product help/support, unguarded high-regret review actions with no revert, a missing club→applicant message path, an unreachable `reviewed` status, shallow discovery search (client substring on title+club only, `limit(50)`, no pagination), and a signup that bounces to `/login` after OTP. Design-system debt: forced-dark single theme (no light palette), a phantom `font-display` class used 39× that resolves to nothing, an orphaned `DashboardLayout.tsx`, badge-color drift between list/detail, two mobile-nav paradigms, a skeleton/real-card mismatch, and dead `Index.tsx` + `club_followers`.
+>
+> **Phase-order rationale (critique baked in).** (1) Screen-coupled UX fixes and dead-code cleanups ride *inside* the re-skin (WS11), not a separate later phase — you're already touching those screens. (2) Re-skin in **vertical slices**, not one big-bang, so each slice is shippable/verifiable. (3) The mockup phase outputs a **written design spec** so the refresh implements rather than re-decides. (4) Accessibility + mobile are acceptance criteria in WS11, not deferred. (5) Every WS12 feature is tagged launch-blocking vs post-launch so "all features" stays honestly sequenced. (6) *Optional fast-path:* if launch timing tightens, the pure-logic experiential fixes (auto-sign-in after OTP, profile-link CTAs, review confirmations/revert, admin new-signup alerts) can ship as a small pass before the redesign; otherwise they ride in the WS11 slices. (7) Preserve the backbone — re-skin, don't rebuild the wiring; keep all correctness migrations and the smoke suite.
+
+#### ⏭️ WS10 — Design Direction & Brand (mockup + spec) — *recommended next pass* — **[planned]**
+
+**Goal:** lock the visual/interaction direction before touching 30+ screens.
+**Do:**
+- Build a **self-contained clickable design-direction mockup** (via the `artifact-design` skill) of the hero screens: Landing/marketing, a discovery list (`Opportunities`), a detail page, `StudentDashboard`, and a club review/dashboard screen.
+- **Decisions to lock:** evolve the current indigo `#5565dd` / coral `#dd7255` on dark **vs.** a fresh rebrand; **dark-only vs. add light mode**; the real display typeface behind `font-display`; unify the two mobile-nav paradigms.
+- **Output:** a committed **`docs/design-system.md`** design spec — tokens (color, type scale, spacing, radius, shadow, motion), component treatments, empty/loading/error patterns, nav model, mobile + a11y baseline. This is the contract WS11 implements.
+**Evidence to inspect:** `tailwind.config.ts`, `src/index.css`, `src/components/ui/*`, `src/components/Logo.tsx`, `src/components/ui/page-transition.tsx`, the Landing/discovery/dashboard pages.
+**Done / verification:** the user reviews and **approves the mockup + spec** before WS11 begins. (No app code changes required in WS10 beyond the mockup artifact + the spec doc.)
+
+#### ⏭️ WS11 — Design System Implementation & UX Refresh (vertical slices) — **[planned]**
+
+**Goal:** implement the WS10 spec and re-skin every surface, folding each screen's UX fix + cleanup into its slice. Keep routing/state/hooks (`RoleBasedLayout`, `Student/ClubLayout`, `DashboardTabs`, card + hooks layer) intact.
+- **Foundation first:** define/fix `font-display` + type scale; shared `<EmptyState>`; route all loading through `PageLoader`; single type→badge-color map; unified card treatment; motion via `ui/page-transition.tsx`; theme decision from WS10. **Delete dead code:** `src/pages/Index.tsx`, `src/components/dashboard/DashboardLayout.tsx`, unused `club_followers` reads/types.
+- **WS11a — Public/marketing + discovery:** `Landing`, `Opportunities`/`Events`/`Clubs`, detail pages. Fold in: server-side search depth + true multi-facet filters + pagination; logged-out apply/RSVP CTA carries return-to context.
+- **WS11b — Student:** `StudentDashboard`, `StudentFeed`, `StudentProfileSetup`, `StudentMessages`. Fold in: auto-sign-in after OTP; first-run/profile-completion flow + nudges; replace dead-end "complete your profile" toasts (`ApplicationForm.tsx`) with inline links.
+- **WS11c — Club:** `ClubHome` tabs, `CreateOpportunity`/`CreateEvent` + edits, `ApplicationReview`/`RSVPReview`, `ClubAnalytics`, `TeamManagement`. Fold in: confirmation dialogs + revert on accept/reject; wire the `reviewed` status; **"Message applicant"** from review (backend exists); theme-aware analytics palettes (via `dataviz`).
+- **WS11d — Admin + shared:** `AdminDashboard`, `Notifications`. Fold in: admin new-signup alert (email/in-app); bulk approve/reject.
+**Per-slice done / verification:** matches the spec visually; a11y + mobile pass; `tsc -p tsconfig.app.json --noEmit`, `npm run build`, focused lint clean; Playwright smoke expanded for the slice; targeted manual drive. Each slice is its own branch/PR.
+
+#### ⏭️ WS12 — New Feature Build-out (comprehensive catalog) — **[planned]** *(absorbs former WS9)*
+
+**Goal:** build the net-new surfaces/capabilities not coupled to a single re-skinned screen. **Tag each [launch-blocking] / [post-launch] and verify scope at build time.** Full catalog in `prd.md`'s Pre-Launch Experience Roadmap; summary:
+- **Support & trust:** in-product **Support Center** (`/help`: FAQ, Contact Support → `zothub.uci@gmail.com`, Report an Issue, troubleshooting) **[launch-blocking]**; self-service account deletion **[compliance]**; update the live `/privacy` contact line **[launch-blocking, tiny]**.
+- **Onboarding/activation:** profile-completeness indicator + guided checklist; post-login return-to-context (if not fully covered in WS11a).
+- **Student engagement:** weekly email digest of followed-club posts; saved searches / opportunity alerts; application tracking timeline; personalized/matched recommendations.
+- **Club recruiting:** applicant notes/rating/shortlisting; templated status-change messaging; saved application filter views.
+- **Discovery/search:** full-text server-side search; multi-facet filters; pagination (if not fully delivered in WS11a).
+- **Admin/access model:** relax gated beta → open `@uci.edu` signup (keep OTP + DB domain trigger); admin audit surfacing.
+- **Platform/quality:** error monitoring (e.g. Sentry); RSVP confirmation-email consistency (no-questions path currently sends none); expanded authenticated-journey e2e; accessibility audit pass.
+- **Parked (post-launch/long-term):** multi-campus, premium/monetization, paid ticketing.
+**Per-feature done / verification:** same rigor as WS1–WS8 (`tsc`/`build`/lint, expanded Playwright, the local Postgres harness for DB changes, targeted manual drive).
 
 ---
 
@@ -285,12 +333,12 @@ Group related issues into **workstreams**, not a flat bug list. A good workstrea
 
 ## Development stages (current)
 
-**As of 2026-07-13 the ranked bug/correctness backlog (WS1–WS8 + auth-orphan cleanup) is fully cleared and production-verified.** The project is past the "drive down the backlog" phase; what remains is standing operational monitoring, the launch-readiness ownership items (now decided — see **Operational responsibilities**), and optional deferred features (WS9). Stages below are retained as the cadence model.
+**As of 2026-07-13 the ranked bug/correctness backlog (WS1–WS8 + auth-orphan cleanup) is fully cleared and production-verified.** The project is past the "drive down the backlog" phase and into the **Pre-Launch Experience Roadmap (WS10 → WS11 → WS12)** — a design-direction mockup, a design-system + UX refresh, then a feature build-out (see "▶ Start here"). Stages below are retained as the cadence model.
 
 1. **Stability monitoring (ongoing).** Keep watching production for regressions before anything irreversible (especially Lovable decommission). Spot-check: auth (signup → OTP → waitlist → approval → dashboard), storage (resume upload + club view), email deliverability (Resend), DNS/TLS on `zothub.app` + `www.zothub.app`, and the Supabase logs. A clean run of several consecutive days remains the gate for Lovable decommission. Keep the Lovable fallback untouched.
 2. **Medium/Low bug backlog — ✅ cleared.** All ranked workstreams (WS1–WS8) and the auth-orphan cleanup are done; see **"Backlog — ranked workstreams."** Address any newly-found defect by adding it to the Confirmed bug & risk inventory and handling it in a focused pass.
-3. **Product polish / launch-readiness — largely done.** Privacy-policy accuracy, lint/test cleanup, UX/data-hygiene, and the scheduler are complete; the remaining launch-readiness items are operational ownership (now recorded) and the pre-launch **user support experience** (captured as a Planned Product Area in `prd.md`, to be scoped after the current roadmap). Continue opportunistic empty/loading/error-state and accessibility polish informed by real usage.
-4. **Optional post-launch feature development (WS9 — unblocked).** The trust/correctness gate is satisfied, so features may start whenever the team chooses. Candidates live in `prd.md`'s Post-Launch Roadmap (email digest, self-service account deletion, richer analytics, relaxing the gated-beta access model, etc.).
+3. **Pre-launch experience — ⏭️ active (WS10 → WS11 → WS12).** The design-direction mockup + spec (WS10), the design-system + UX refresh re-skinning every surface in vertical slices and folding in the experiential dead-end fixes (WS11), and the new-feature build-out incl. the in-product support center (WS12). This is where the experiential/visual pre-launch weaknesses are addressed. Privacy-policy accuracy, lint/test cleanup, and the scheduler are already done.
+4. **Post-launch feature development.** Items tagged post-launch within the WS12 catalog and the parked long-term list (multi-campus, monetization, ticketing) — after launch and once the roadmap above is delivered.
 
 ---
 
@@ -322,10 +370,14 @@ The Playwright config is repaired (standard `@playwright/test` `defineConfig` �
 **WS8 — UX polish & data hygiene** — **✅ DONE (2026-07-14)**
 All eight items shipped: `Waitlist`/`WaitlistRejected` now redirect via `<Navigate>` (no render-time `navigate()`); `Login` routes role-less pending/rejected OAuth users to `/waitlist`/`/waitlist-rejected` via `useWaitlist`; unsubscribe auto-opt-out builds from the freshly loaded prefs row (no more re-enabling others); `club_team_members` got a self-healing `ON DELETE SET NULL` FK on `user_id` (migration `20260714000200`, pre-nulls any dead reference) — the existing UI already hides the Message button for null `user_id`; `/privacy` names Supabase/Vercel/Resend; `approveUser`/`rejectUser` record `reviewed_by`; opportunity/event bookmark partial unique indexes added (migration `20260714000100`, `useBookmarks` already idempotent on `23505`); and the documented dead/duplicated code removed (`AuthContext.signUp`, `ClubProfileSetup`'s local `CATEGORY_OPTIONS`→`CLUB_CATEGORIES`, bespoke header→`<Logo>`). Completion record in "▶ Start here". *(individual inventory entries marked fixed below.)*
 
-**WS9 — Future features (deferred; trust/correctness gate now satisfied)** — **[deferred, unblocked]**
-WS1–WS8 and the auth-orphan cleanup are all complete, so the "no net-new features while WS1–WS4 have open items" gate is met — WS9 is unblocked whenever the team chooses to start it. From `prd.md`'s Post-Launch Roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Each is its own future workstream; none is in progress.
+**WS10 — Design Direction & Brand (mockup + spec)** — **[planned] — recommended next pass**
+Clickable design-direction mockup (via `artifact-design`) of the hero screens + a committed `docs/design-system.md` spec. Locks brand (evolve current indigo/coral-on-dark vs. rebrand), theme (dark-only vs. light), and typography before any re-skin. User approves the mockup + spec before WS11. Detail block in "▶ Start here".
 
-> **Also captured (not yet a workstream): a pre-launch user support experience** (Help/Support page, FAQ, Contact Support, Report an Issue, troubleshooting — see `prd.md`'s **Planned Product Areas**). It is intentionally *not* broken into a WS item yet; it will be scoped into a workstream once the current roadmap is finished.
+**WS11 — Design System Implementation & UX Refresh (vertical slices)** — **[planned]**
+Implement the WS10 spec and re-skin every surface in slices (WS11a public/discovery, WS11b student, WS11c club, WS11d admin/shared), keeping the routing/state/hooks wiring intact and folding each screen's coupled UX fix + dead-code cleanup into its slice (onboarding dead-ends, review-action safety + `reviewed` + club→applicant messaging, search depth/pagination, delete `Index.tsx`/`DashboardLayout.tsx`/`club_followers`, fix `font-display`/badges/loaders). a11y + mobile are acceptance criteria. Detail block in "▶ Start here".
+
+**WS12 — New Feature Build-out (comprehensive catalog)** — **[planned] — absorbs former WS9**
+Net-new surfaces/features, each tagged launch-blocking vs post-launch, verified at build: **Support Center** (`/help`/FAQ/Contact/Report-an-Issue), self-service account deletion, `/privacy` contact fix, weekly digest, saved searches/alerts, recommendations, applicant notes/rating, templated messaging, richer search/filters, relax gated beta → open `@uci.edu`, error monitoring, RSVP-email consistency, expanded e2e, a11y audit; parked: multi-campus/monetization/ticketing. Full catalog in `prd.md`'s Pre-Launch Experience Roadmap; detail block in "▶ Start here". *(The former WS9 "future features" and the previously-parked "user support experience" Planned Product Area are both folded in here.)*
 
 ---
 
@@ -670,6 +722,18 @@ Severity legend: **Blocker** (feature is unusable / blocks launch), **High** (co
 - **Severity:** Low
 - **Details:** Every route logs two `React Router Future Flag Warning` messages (`v7_startTransition`, `v7_relativeSplatPath`). Cosmetic; opt-in flags silence them. No functional impact.
 - **Status:** **Fixed in WS7 (2026-07-13).** Both flags opted in on `BrowserRouter`; verified in-browser that the warnings no longer log and the smoke suite (routing incl. redirects and the 404 splat) passes.
+
+#### [Pre-launch experience] Findings from the 2026-07-13 UX/design exploration (tracked to WS10–WS12)
+- **Severity:** Medium (experiential; no correctness impact) — grouped because they're addressed by the Pre-Launch Experience Roadmap.
+- **Onboarding dead-ends:** approved users land on a dashboard with no first-run guidance; "complete your profile first" toasts (`ApplicationForm.tsx`, `CreateOpportunity.tsx`, `CreateEvent.tsx`) have **no link** to the profile page; signup bounces to `/login` after OTP instead of auto-signing-in. → **WS11b.**
+- **Review-action safety:** bulk "Reject All" and single-click accept/reject in `ApplicationReview.tsx` fire with no confirmation and **no revert**; the `reviewed` status is referenced in badges/analytics but **no control sets it** (unreachable). → **WS11c.**
+- **Missing club→applicant message path:** `ApplicationReview.tsx` has no "Message applicant" affordance despite the PRD "message accepted candidates" journey; backend messaging exists. → **WS11c.**
+- **Shallow discovery search:** `Opportunities.tsx` filters client-side over **title + club name only** across a `limit(50)` fetch with **no pagination**, despite the "full-text search" claim. → **WS11a / WS12.**
+- **Design-system debt:** phantom `font-display` class used 39× (no `display` key in `tailwind.config.ts`); badge type→color map differs between list (`OpportunityCard`) and detail (`OpportunityDetail`); guards render a bespoke `Loader2` instead of `PageLoader`; skeleton/real-card size mismatch on `Opportunities`; two mobile-nav paradigms (hamburger vs bottom bar). → **WS11 foundation.**
+- **Dead code:** `src/pages/Index.tsx` ("Welcome to Your Blank App" scaffold, unrouted); `src/components/dashboard/DashboardLayout.tsx` (orphaned second dashboard shell, imported by nothing); `club_followers` table (unread since WS3). → **WS11 foundation (delete).**
+- **RSVP email inconsistency:** the no-questions RSVP path (`useEventRSVP.handleRSVP`) never sends a confirmation email while the `RSVPForm` path does. → **WS12.**
+- **No in-product support:** no `/help`/`/faq`/`/support` route anywhere. → **WS12 (Support Center, launch-blocking).**
+- **Status:** Found (2026-07-13); scheduled into WS10–WS12. Not yet fixed.
 
 ### Workflows checked with no material issues
 - **Public pages render + responsive:** landing, `/opportunities`, `/events`, `/clubs`, `/login`, `/signup` (+role variants), `/forgot-password`, `/privacy`, `/unsubscribe`, `/404` all render at 1280px and 375px with **no horizontal overflow**; data pages show clean "Failed to load"/empty states (not blank/crash) when the backend is unreachable. `ProtectedRoute`/`AdminRoute` correctly send logged-out users to `/login`.
