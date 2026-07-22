@@ -1,6 +1,6 @@
 # ZotHub Product Requirements Document
 
-**Version:** 3.3
+**Version:** 3.4
 **Last Updated:** 2026-07-13
 **Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed** and the project is in **normal product-development mode** (a short stability-monitoring window is running before Lovable decommission) — see `plan.md` for the active development plan.
 **Author:** Claude, reconciled against the live codebase
@@ -146,7 +146,14 @@ These are **confirmed** current gaps between the product spec above and what shi
 - ~~**Launch-ops ownership**~~ — ✅ **Decided (WS6, 2026-07-13):** support contact = **`zothub.uci@gmail.com`**; `/admin` waitlist-queue owner = **Dhruv** (twice daily during beta); DB backup policy = weekly manual export + a backup before every schema migration (owner Dhruv). Recorded in `plan.md`'s **Operational responsibilities** section. *(plan.md WS6.)*
 - ~~**`/privacy` doesn't name Supabase or Vercel** as data processors~~ — ✅ **Fixed (WS8, 2026-07-14):** the Service Providers line now names Supabase (database/auth/storage), Vercel (hosting), and Resend (email). *(plan.md WS8.)*
 - ~~Assorted **UX/data-hygiene** items~~ — ✅ **Fixed in WS8 (2026-07-14), merged & deployed:** waitlist redirect anti-pattern (now `<Navigate>`), OAuth-pending routing (role-less pending users routed to `/waitlist`), unsubscribe stale-state (auto-opt-out preserves loaded prefs), orphaned team-member rendering (self-healing `ON DELETE SET NULL` FK on `club_team_members.user_id`, migration `20260714000200`), `bookmarks` uniqueness (opportunity/event partial unique indexes, migration `20260714000100`), and admin `reviewed_by` now recorded. Production-verified (maintainer, 2026-07-14): both bookmark unique indexes exist, the `club_team_members.user_id` FK exists with `ON DELETE SET NULL`, and migration history is fully synced. *(plan.md WS8.)*
-- ~~**Orphaned auth references**~~ — ✅ **Closed (auth-orphan cleanup, 2026-07-13), production-verified.** Production carried `user_roles` rows pointing at never-migrated auth UUIDs (8 orphaned vs 3 valid); the most likely cause (strong inference, not a proven restore record) is that some originally-declared `auth.users` FKs were lost when production was built by `pg_restore`. Migrations `20260714000300` (deterministic cleanup of inert per-user junk; historical content and any ambiguous row preserved for manual review) and `20260714000400` (restore/validate the 11 application auth FKs; **drop** the retained `messages.sender_id`/`receiver_id` CASCADE FKs without recreating them — CASCADE would destroy a surviving user's history, and the NOT NULL columns rule out SET NULL) were pushed to production; migration history is synchronized. Post-push audit (`scripts/audit_auth_orphans.sql`): **zero orphans across all 15 user-ID columns**, `valid_user_roles = 3`, **13 auth.users FKs all validated**, `messages` intentionally FK-free. *Re-adding `messages` referential integrity is a documented future product decision — see the Post-Launch Roadmap.* *(plan.md — Auth-orphan cleanup record.)*
+- ~~**Orphaned auth references**~~ — ✅ **Closed (auth-orphan cleanup, 2026-07-13), production-verified.** Production carried `user_roles` rows pointing at never-migrated auth UUIDs (8 orphaned vs 3 valid); the most likely cause (strong inference, not a proven restore record) is that some originally-declared `auth.users` FKs were lost when production was built by `pg_restore`. Migrations `20260714000300` (deterministic cleanup of inert per-user junk; historical content and any ambiguous row preserved for manual review) and `20260714000400` (restore/validate the 11 application auth FKs; **drop** the retained `messages.sender_id`/`receiver_id` CASCADE FKs without recreating them — CASCADE would destroy a surviving user's history, and the NOT NULL columns rule out SET NULL) were pushed to production; migration history is synchronized. Post-push audit (`scripts/audit_auth_orphans.sql`): **zero orphans across all 15 user-ID columns**, `valid_user_roles = 3`, **13 auth.users FKs all validated**, `messages` intentionally FK-free. *Re-adding `messages` referential integrity is a documented future product decision (nullable columns + SET NULL, or a "deleted user" tombstone) — see the follow-up note in `plan.md`'s Auth-orphan cleanup record.* *(plan.md — Auth-orphan cleanup record.)*
+
+**Experience & launch-readiness (the pre-launch roadmap addresses these — WS10–WS12)**
+- **No onboarding / first-run, and dead-end profile prompts** — approved users land on a dashboard with no guidance; "complete your profile first" appears only as an un-linked error when a student tries to apply or a club tries to post; signup bounces to `/login` after OTP. *(→ WS11b.)*
+- **Unguarded high-regret review actions** — bulk "Reject All" and single-click accept/reject fire with no confirmation and no revert; the `reviewed` status is shown but unreachable; clubs can't message an applicant from the review screen. *(→ WS11c.)*
+- **Shallow discovery search** — despite the "full-text search" capability claim, search is client-side substring over title + club name only, over a 50-row fetch with no pagination. *(→ WS11a / WS12.)*
+- **No in-product help/support** — only an email address; no Help/FAQ/Contact/Report-an-Issue surface. *(→ WS12 Support Center, launch-blocking.)*
+- **Design-system debt & forced-dark single theme** — no light palette, an unused display-font class, inconsistent badges/loaders/empty-states, and some orphaned/dead code. *(→ WS10 decides theme/brand; WS11 implements.)*
 
 **Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
 
@@ -261,30 +268,48 @@ No dedicated analytics platform required at this scale — derive metrics from d
 
 ---
 
-## 🧭 Planned Product Areas (pre-launch — to scope after the current roadmap)
+## 🚀 Pre-Launch Experience Roadmap
 
-These are product areas we intend to design and build **before public launch**, captured here so they aren't forgotten. They are **not yet active workstreams and not broken into implementation tasks** — each will be properly scoped into a future workstream once the current roadmap is complete.
+**Where we are:** the correctness/data-hygiene backbone (WS1–WS8 + auth-orphan cleanup) is complete and production-verified. A 2026-07-13 exploration confirmed the remaining pre-launch weaknesses are **experiential and visual, not correctness** — no onboarding/first-run, dead-end "complete your profile first" prompts with no link, no in-product help/support, unguarded high-regret review actions with no revert, a missing club→applicant message path, an unreachable `reviewed` status, and shallow discovery search — plus design-system debt (forced-dark single theme, an unused display-font class, inconsistent badges/loaders, orphaned/dead code). This roadmap addresses them in three phases before public launch. *(Engineering execution + per-workstream detail: `plan.md` WS10–WS12.)*
 
-- **User support experience.** A proper in-product way for users to get help, rather than relying only on the support email (`zothub.uci@gmail.com`). Ideas to explore when this is scoped: a **Help / Support page**, an **FAQ**, a **Contact Support** flow, a **Report an Issue** path, **troubleshooting resources**, and any other appropriate user-help workflows. *No design or implementation has been done or is scheduled — this is a placeholder to ensure a real support experience is scoped and built before launch.*
+**Phase order & rationale:** screen-coupled UX fixes and cleanups ride *inside* the refresh (not a later phase); the app is re-skinned in **vertical slices** (public → student → club → admin) rather than one big-bang; the mockup phase produces a written design spec the refresh implements; accessibility + mobile are acceptance criteria (not deferred); and the correctness backbone is preserved (re-skin, don't rebuild the wiring).
+
+### Phase 1 — Design Direction & Brand (WS10)
+A clickable design-direction mockup of the hero screens (Landing, discovery, a detail page, student + club dashboards) plus a committed design spec. **Decisions locked here:** evolve the current indigo/coral-on-dark identity vs. a fresh rebrand; dark-only vs. adding a light mode; typography; a unified navigation model. The mockup + spec are reviewed and approved before implementation.
+
+### Phase 2 — Design System Implementation & UX Refresh (WS11)
+Implement the spec and re-skin every surface in slices, folding each screen's UX fix into its slice: onboarding & first-run (auto-sign-in after OTP, profile-completion guidance, inline links replacing dead-end prompts); review-action safety (confirmations + revert, wire the `reviewed` state, club→applicant messaging); discovery search depth + filters + pagination; consistent empty/loading/error states, badges, and motion; accessibility + mobile throughout. The routing/state/data layer is preserved.
+
+### Phase 3 — New Feature Build-out (WS12)
+Net-new surfaces and capabilities. **"No skimping" catalog — every item tagged for honest sequencing** ([launch-blocking] must ship before public launch; [post-launch] can follow):
+
+- **In-product Support Center** *[launch-blocking]* — a Help/Support page: **FAQ**, **Contact Support** (to `zothub.uci@gmail.com`), **Report an Issue**, **troubleshooting resources**, and related user-help workflows. (Formerly the "user support experience" Planned Product Area.)
+- **Self-service account deletion** *[launch-blocking — privacy/compliance]* (currently manual).
+- **`/privacy` contact line** updated to `zothub.uci@gmail.com` *[launch-blocking, tiny]*.
+- **Onboarding polish** — profile-completeness indicator + guided checklist; post-login return-to-context *[launch-blocking]*.
+- **Weekly email digest** of new opportunities from followed clubs *[post-launch]*.
+- **Saved searches / opportunity alerts** — notify students when matching opportunities post *[post-launch]*.
+- **Application tracking timeline / history** for students *[post-launch]*.
+- **Personalized/matched recommendations** (skills/interests) *[post-launch]*.
+- **Club recruiting tools** — applicant notes / rating / shortlisting; templated status-change messaging; saved application filter views *[post-launch]*.
+- **Discovery/search** — full-text server-side search + multi-facet filters + pagination (if not fully delivered in Phase 2) *[launch-blocking for basic depth; advanced facets post-launch]*.
+- **Access model** — relax gated beta → open `@uci.edu` signup (keep OTP + the DB email-domain trigger as gates) *[post-launch]*.
+- **Enhanced analytics** (funnel, cohort retention) *[post-launch]*.
+- **Error monitoring** (e.g., Sentry) *[post-launch]*.
+- **RSVP confirmation-email consistency** — the no-questions RSVP path currently sends no email *[launch-blocking, small]*.
+- **Expanded end-to-end tests** — the Playwright suite (repaired in WS7) grows to cover authenticated apply/RSVP/review journeys against a seeded backend *[post-launch]*.
 
 ---
 
-## 📅 Post-Launch Roadmap
+## 📅 Post-Launch Roadmap (after launch)
 
-### Near-term (after validating initial usage)
-- Relax the access model from gated-approval to open `@uci.edu` signup.
-- Self-service account deletion (privacy/compliance).
-- Email digest (weekly summary of new opportunities from followed clubs).
-- Enhanced analytics (funnel analysis, cohort retention).
-- Automated end-to-end tests — ✅ the broken Playwright config was **repaired in WS7 (2026-07-13)**: standard `@playwright/test` setup plus a 9-test backend-independent smoke suite (`npm run test:e2e`) covering public discovery, auth entry points, 404, and protected-route redirects. Next step here: expand to authenticated journeys (apply/RSVP/review) against a seeded backend.
+Parked until after public launch; the pre-launch items above take precedence. Items tagged *[post-launch]* in the WS12 catalog land here in priority order once launched.
 
-### Medium-term (if traction grows meaningfully: 100+ clubs, 2,000+ students)
-- **Comprehensive UI/UX revision** — design-system consistency audit, full empty/loading/error-state pass, mobile-specific optimization, accessibility audit, possible visual refresh. Deliberately scoped for *after* launch, informed by real usage data.
-- Error monitoring (e.g., Sentry) for proactive bug detection.
-- Personalized/matched recommendations.
+### Longer-term (if traction grows: 100+ clubs, 2,000+ students)
 - Multi-campus expansion.
+- A second design/usage-data-informed UX iteration once real usage data exists (the pre-launch refresh above is the *first* comprehensive pass).
 
-### Long-term (if monetization is pursued)
+### Monetization (if pursued)
 - Premium club features, paid event ticketing, sponsored/promoted opportunities.
 
 ---
@@ -463,3 +488,4 @@ Welcome aboard!
 | 3.1 | 2026-07-09 | Marked DNS cutover, migration-history repair, and DB-level `@uci.edu` enforcement complete; recorded live-production status and Lovable-as-fallback. | Claude |
 | **3.2** | **2026-07-09** | **Product-spec reset for normal development.** Replaced the migration-era Known Issues table with a **Known Product Gaps & Inconsistent Behavior** section (confirmed current gaps grouped by product area, cross-referenced to `plan.md` workstreams). Corrected stale claims: DB-level UCI enforcement is done (not "open"); clarified `rsvps` status vocabulary (pending/confirmed/cancelled); noted messages badge/live-delivery gap; flagged capacity-not-server-enforced, `/privacy` processors, and the club-application-notification gap inline in the relevant journey/feature. Fixed an RSVP metrics query using a non-existent `approved` status. | Claude |
 | **3.3** | **2026-07-13** | **Backlog-complete reconciliation.** Marked every ranked workstream closed: WS1–WS5 (notifications/realtime/follow-semantics/RSVP-integrity/public-discovery), WS6 (scheduler + launch-ops), WS7 (test/lint/type), WS8 (UX & data hygiene), and the auth-orphan cleanup (production-verified: zero orphans, 13 validated `auth.users` FKs, `messages` intentionally FK-free, `valid_user_roles = 3`). Recorded the operational ownership decisions — official support contact `zothub.uci@gmail.com`, `/admin` waitlist owner Dhruv (twice daily during beta), backup policy (weekly + pre-migration, owner Dhruv) — and checked the corresponding Launch Readiness criteria. Captured a **user support experience** as a pre-launch Planned Product Area (to be scoped into a workstream after the current roadmap). | Claude |
+| **3.4** | **2026-07-13** | **Pre-Launch Experience Roadmap added.** After a UX/design code exploration confirmed the remaining pre-launch weaknesses are experiential/visual (not correctness), added a three-phase **Pre-Launch Experience Roadmap** (WS10 design-direction mockup + spec → WS11 design-system + UX refresh in vertical slices → WS12 new-feature build-out with a launch-blocking/post-launch-tagged catalog). Graduated the "user support experience" Planned Product Area into WS12 as launch-blocking; folded the former post-launch near-term features into the WS12 catalog; added an "Experience & launch-readiness" group to Known Product Gaps (onboarding dead-ends, review-action safety, shallow search, no in-product support, design-system debt / forced-dark theme). Engineering detail: `plan.md` WS10–WS12. | Claude |
