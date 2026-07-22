@@ -1,7 +1,7 @@
 # ZotHub Product Requirements Document
 
-**Version:** 3.2
-**Last Updated:** 2026-07-09
+**Version:** 3.3
+**Last Updated:** 2026-07-13
 **Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed** and the project is in **normal product-development mode** (a short stability-monitoring window is running before Lovable decommission) — see `plan.md` for the active development plan.
 **Author:** Claude, reconciled against the live codebase
 
@@ -24,7 +24,7 @@ ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovabl
 - **Access model:** Gated beta — new users go through a waitlist (signup → email OTP verification → admin approval) rather than fully open signup. See "Access Model" below.
 - **Expected initial scale:** 10-30 clubs, 200-500 students in the first 30 days (medium launch; informs the performance posture — query limits + basic pagination, not full virtualization).
 - **Launch domain:** `zothub.app` — **live on Vercel.** DNS cutover complete; `zothub.app` and `www.zothub.app` verified serving on Vercel with valid TLS. Resend DNS records were preserved through the cutover.
-- **Support model:** Founder-led support via a designated support/admin email, plus the in-app `/admin` approval queue as an ongoing operational responsibility, not just a one-time launch task.
+- **Support model:** Founder-led support via the official support email **`zothub.uci@gmail.com`**, plus the in-app `/admin` approval queue as an ongoing operational responsibility (owner: Dhruv, reviewed twice daily during beta), not just a one-time launch task. Operational ownership detail lives in `plan.md`'s Operational responsibilities section.
 
 ### Success criteria
 **Primary metric:** Number of opportunities posted (supply-side health).
@@ -143,10 +143,10 @@ These are **confirmed** current gaps between the product spec above and what shi
 
 **Operational / trust**
 - ~~**Nightly `archive_past_events()` job scheduling is unverified**~~ — ✅ **Done (WS6, 2026-07-13):** migration `20260713000100` schedules the nightly archive via `cron.schedule`, was pushed to production, and the `cron.job` query confirmed both `archive-past-events-nightly` and `send-reminders-hourly` active. *(plan.md WS6.)*
-- **Launch-ops ownership** — a support contact/mailbox, a committed `/admin` waitlist-queue owner, and a routine DB backup cadence still need to be established (outside code; also a Lovable-decommission prerequisite). Now tracked with `REQUIRED` placeholders in `plan.md`'s **Launch-ops checklist**. *(plan.md WS6.)*
+- ~~**Launch-ops ownership**~~ — ✅ **Decided (WS6, 2026-07-13):** support contact = **`zothub.uci@gmail.com`**; `/admin` waitlist-queue owner = **Dhruv** (twice daily during beta); DB backup policy = weekly manual export + a backup before every schema migration (owner Dhruv). Recorded in `plan.md`'s **Operational responsibilities** section. *(plan.md WS6.)*
 - ~~**`/privacy` doesn't name Supabase or Vercel** as data processors~~ — ✅ **Fixed (WS8, 2026-07-14):** the Service Providers line now names Supabase (database/auth/storage), Vercel (hosting), and Resend (email). *(plan.md WS8.)*
 - ~~Assorted **UX/data-hygiene** items~~ — ✅ **Fixed in WS8 (2026-07-14), merged & deployed:** waitlist redirect anti-pattern (now `<Navigate>`), OAuth-pending routing (role-less pending users routed to `/waitlist`), unsubscribe stale-state (auto-opt-out preserves loaded prefs), orphaned team-member rendering (self-healing `ON DELETE SET NULL` FK on `club_team_members.user_id`, migration `20260714000200`), `bookmarks` uniqueness (opportunity/event partial unique indexes, migration `20260714000100`), and admin `reviewed_by` now recorded. Production-verified (maintainer, 2026-07-14): both bookmark unique indexes exist, the `club_team_members.user_id` FK exists with `ON DELETE SET NULL`, and migration history is fully synced. *(plan.md WS8.)*
-- 🟡 **Orphaned auth references** — production carries `user_roles` rows pointing at never-migrated auth UUIDs (8 orphaned vs 3 valid); the most likely cause (strong inference, not a proven restore record) is that the originally-declared `auth.users` FKs were lost when production was built by `pg_restore`. **Fixed in repo (2026-07-13):** a read-only audit (`scripts/audit_auth_orphans.sql`, all 15 user-ID columns, structured for the SQL Editor), a deterministic cleanup migration (`20260714000300` — deletes only inert per-user junk; historical content and any ambiguous row preserved for manual review), and FK restoration (`20260714000400` — adds the 11 managed FKs as validated constraints and **fails loud** rather than leaving an unvalidated one; and **drops** the `messages.sender_id`/`receiver_id` CASCADE FKs — which the production audit confirmed are still present — without recreating them, since CASCADE would destroy a surviving user's conversation history and the NOT NULL columns rule out SET NULL; re-adding message integrity is a separate product decision). Both pristine and production converge on 13 validated auth FKs with `messages` FK-free. Pending: merge and `supabase db push --linked` (the read-only production audit is done — Q4 empty, Q1 confirmed the messages CASCADE FKs). *(plan.md — Auth-orphan cleanup record.)*
+- ~~**Orphaned auth references**~~ — ✅ **Closed (auth-orphan cleanup, 2026-07-13), production-verified.** Production carried `user_roles` rows pointing at never-migrated auth UUIDs (8 orphaned vs 3 valid); the most likely cause (strong inference, not a proven restore record) is that some originally-declared `auth.users` FKs were lost when production was built by `pg_restore`. Migrations `20260714000300` (deterministic cleanup of inert per-user junk; historical content and any ambiguous row preserved for manual review) and `20260714000400` (restore/validate the 11 application auth FKs; **drop** the retained `messages.sender_id`/`receiver_id` CASCADE FKs without recreating them — CASCADE would destroy a surviving user's history, and the NOT NULL columns rule out SET NULL) were pushed to production; migration history is synchronized. Post-push audit (`scripts/audit_auth_orphans.sql`): **zero orphans across all 15 user-ID columns**, `valid_user_roles = 3`, **13 auth.users FKs all validated**, `messages` intentionally FK-free. *Re-adding `messages` referential integrity is a documented future product decision — see the Post-Launch Roadmap.* *(plan.md — Auth-orphan cleanup record.)*
 
 **Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
 
@@ -248,15 +248,24 @@ No dedicated analytics platform required at this scale — derive metrics from d
 
 - [x] `plan.md` Phase 1 (Full Product Audit) complete, with a full Bug Inventory
 - [x] All Blocker/High-severity items from the Bug Inventory fixed and verified (Phase 2 / 2b / 2c)
-- [x] Known Issues #1 and #2 resolved (#1 fixed; #2 orphan rows cleaned in prod, future-safe guidance documented)
+- [x] Known Issues #1 and #2 resolved (#1 fixed; #2 orphaned auth references fully cleaned and **referential integrity restored in production** — auth-orphan cleanup, 2026-07-13: zero orphans, 13 validated `auth.users` FKs, `messages` intentionally FK-free)
 - [x] `zothub.app` DNS cut over to Vercel and confirmed serving correctly with valid TLS (`zothub.app` + `www.zothub.app`)
 - [x] DB-level `@uci.edu` enforcement trigger in place
 - [x] `/privacy` content verified accurate for the current stack (Vercel, Supabase, Resend)
-- [ ] Admin identified and committed to checking the `/admin` waitlist queue regularly *(operational owner assignment — outside code)*
-- [ ] Support contact live and documented *(depends on `@zothub.app` mailbox now that DNS is live)*
+- [x] Admin identified and committed to checking the `/admin` waitlist queue regularly *(owner: **Dhruv**, twice daily during beta — see `plan.md` Operational responsibilities)*
+- [x] Support contact live and documented *(**`zothub.uci@gmail.com`** — the official production support address; recorded in `plan.md` Operational responsibilities)*
 - [x] `select * from cron.job;` confirms reminder + archive jobs are scheduled and idempotent *(✅ confirmed live in production 2026-07-13: both `send-reminders-hourly` (`0 * * * *`, calls the deployed `send-reminders` Edge Function) and `archive-past-events-nightly` (`0 9 * * *`, migration `20260713000100`) exist and are active)*
+- [x] DB backup/export policy set *(weekly manual Supabase backup/export + a backup before every production schema migration; owner **Dhruv** — see `plan.md` Operational responsibilities. Also a Lovable-decommission prerequisite: box there checks once the first backup is taken and a restore verified.)*
 
 **Post-launch infra cleanup:** Supabase migration-history repair ✅ **done** (future migrations use normal `db push`). Lovable decommission still **open** — a deliberate future manual step gated on the checklist in `plan.md`; Lovable no longer serves production traffic but is kept as the rollback path during the stability-monitoring window.
+
+---
+
+## 🧭 Planned Product Areas (pre-launch — to scope after the current roadmap)
+
+These are product areas we intend to design and build **before public launch**, captured here so they aren't forgotten. They are **not yet active workstreams and not broken into implementation tasks** — each will be properly scoped into a future workstream once the current roadmap is complete.
+
+- **User support experience.** A proper in-product way for users to get help, rather than relying only on the support email (`zothub.uci@gmail.com`). Ideas to explore when this is scoped: a **Help / Support page**, an **FAQ**, a **Contact Support** flow, a **Report an Issue** path, **troubleshooting resources**, and any other appropriate user-help workflows. *No design or implementation has been done or is scheduled — this is a placeholder to ensure a real support experience is scoped and built before launch.*
 
 ---
 
@@ -438,7 +447,7 @@ Welcome aboard!
 
 **9. Children's Privacy** — Intended for college students (18+); no knowing collection from minors.
 
-**10. Contact** — [support contact].
+**10. Contact** — `zothub.uci@gmail.com` (official support address). *Note: the live `/privacy` page's contact line still needs to be updated to this address in a future code change — not done in this documentation pass.*
 
 ---
 
@@ -453,3 +462,4 @@ Welcome aboard!
 | **3.0** | **2026-07-08** | **Post-migration cleanup rewrite.** Migration status condensed to a single infrastructure note (full history moved to `docs/archive/MIGRATION.md`). Added a dedicated Known Issues / QA Gaps section and a Launch Readiness Criteria checklist. Reframed the roadmap around `plan.md`'s new Full Product Audit & Bug Inventory phase rather than deploy-migration tasks. Removed all remaining stale migration-status phrasing. | Claude |
 | 3.1 | 2026-07-09 | Marked DNS cutover, migration-history repair, and DB-level `@uci.edu` enforcement complete; recorded live-production status and Lovable-as-fallback. | Claude |
 | **3.2** | **2026-07-09** | **Product-spec reset for normal development.** Replaced the migration-era Known Issues table with a **Known Product Gaps & Inconsistent Behavior** section (confirmed current gaps grouped by product area, cross-referenced to `plan.md` workstreams). Corrected stale claims: DB-level UCI enforcement is done (not "open"); clarified `rsvps` status vocabulary (pending/confirmed/cancelled); noted messages badge/live-delivery gap; flagged capacity-not-server-enforced, `/privacy` processors, and the club-application-notification gap inline in the relevant journey/feature. Fixed an RSVP metrics query using a non-existent `approved` status. | Claude |
+| **3.3** | **2026-07-13** | **Backlog-complete reconciliation.** Marked every ranked workstream closed: WS1–WS5 (notifications/realtime/follow-semantics/RSVP-integrity/public-discovery), WS6 (scheduler + launch-ops), WS7 (test/lint/type), WS8 (UX & data hygiene), and the auth-orphan cleanup (production-verified: zero orphans, 13 validated `auth.users` FKs, `messages` intentionally FK-free, `valid_user_roles = 3`). Recorded the operational ownership decisions — official support contact `zothub.uci@gmail.com`, `/admin` waitlist owner Dhruv (twice daily during beta), backup policy (weekly + pre-migration, owner Dhruv) — and checked the corresponding Launch Readiness criteria. Captured a **user support experience** as a pre-launch Planned Product Area (to be scoped into a workstream after the current roadmap). | Claude |

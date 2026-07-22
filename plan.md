@@ -21,56 +21,30 @@
 
 ---
 
-## ▶ Start here — recommended next workstream
+## ▶ Start here — status & orientation
 
-> This is the single recommended next coding pass for a fresh session. Pick this unless a higher-severity production incident has appeared since (in which case triage that first and note it here). The full ranked backlog is in **"Backlog — ranked workstreams."**
+> **The ranked backlog is fully cleared (WS1–WS8 + auth-orphan cleanup, all production-verified as of 2026-07-13); there is no outstanding "next coding pass."** A fresh session should: triage any newly-appeared production incident first (add it to the Confirmed bug & risk inventory and handle it in a focused pass); otherwise pick a specific **WS9** deferred feature (see the Backlog) — its trust/correctness gate is met. The completion records below and the full **"Backlog — ranked workstreams"** are the history this state is drawn from.
 
 > **✅ WS1 (Application-pipeline notifications & email correctness) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS2 (Realtime delivery for messages) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS3 (Unify follow/bookmark semantics & new-post notifications) is COMPLETE (2026-07-10).** Completion record below.
 > **✅ WS4 (Event RSVP integrity & email correctness) is COMPLETE (2026-07-11).** Includes a club-terminology (Follow/Following/Unfollow) product-language cleanup. Completion record below.
 > **✅ WS5 (Discovery access-model consistency — PUBLIC DISCOVERY) is COMPLETE (2026-07-12).** Completion record below.
-> **🟡 WS6 (Scheduler & launch-ops hardening) — code COMPLETE, merged & deployed, production cron verified (2026-07-13); the workstream stays OPEN only on human-owned launch-ops ownership items** (support mailbox, `/admin` waitlist owner, backup/export cadence — see the WS6 status block below and the Launch-ops checklist).
+> **✅ WS6 (Scheduler & launch-ops hardening) is COMPLETE (2026-07-13).** Nightly archive scheduled + production-verified, `send-reminders-hourly` confirmed, toast-pluralization fix shipped, and the operational ownership items (support contact, `/admin` waitlist owner, backup cadence) are now decided and recorded in the Operational responsibilities section. Completion record below.
 > **✅ WS7 (Test / lint / type hardening) is COMPLETE (2026-07-13).** Completion record below.
 > **✅ WS8 (UX polish & data hygiene) is COMPLETE (2026-07-14).** Completion record below.
-> **🟡 Auth-orphan cleanup — code COMPLETE in repo (2026-07-13); production audit done, pending `db push`.** Migrations `20260714000300` (deterministic row cleanup) + `20260714000400` (restore/add the 11 managed auth.users FKs, **drop the retained `messages` CASCADE FKs**, fail loud on orphaned profiles). The production audit (Q4 empty; Q1 confirmed the two `messages` CASCADE FKs are present) is done; both pristine and production converge on **13 validated auth FKs with `messages` FK-free**. Completion record below. The remaining backlog is **WS9 (future features)** — do not start net-new features while any launch-readiness item is open; the immediate remaining work is WS6's human-owned launch-ops ownership items plus this pass's `db push`.
-
-### Workstream 6 — Scheduler & launch-ops hardening *(code complete, merged & deployed; only launch-ops ownership items remain)*
-
-**In one line:** `archive_past_events()` is defined but has no committed `cron.schedule`; confirm the hourly reminder cron and schedule the nightly archive, plus the outside-code launch-ops items.
-
-> **WS6 status (2026-07-13): the in-repo code is DONE, merged, and deployed; production cron is verified. The workstream stays OPEN only on human-owned launch-ops ownership items (support mailbox, `/admin` waitlist owner, backup/export cadence).**
+> **✅ Auth-orphan cleanup — COMPLETE & production-verified (2026-07-13).** Migrations `20260714000300` (deterministic row cleanup) + `20260714000400` (restore/add the 11 managed auth.users FKs, drop the retained `messages` CASCADE FKs, fail loud on orphaned profiles) were pushed to production, migration history is synchronized, and the post-push audit confirmed zero orphans, `valid_user_roles = 3`, and **13 validated auth FKs with `messages` intentionally FK-free**. Completion record below.
 >
-> **Shipped this pass:**
-> - **Migration `20260713000100_ws6_schedule_archive_past_events.sql`** — schedules `cron.schedule('archive-past-events-nightly', '0 9 * * *', 'SELECT public.archive_past_events();')` (09:00 UTC = 01:00 PST / 02:00 PDT; the exact hour is not load-bearing since the function archives events already >1h past). Idempotent (unschedule-if-exists then schedule; re-running never duplicates the job). It touches **only** its own job name — any other cron job (notably the manually created `send-reminders-hourly`) is left alone. It **fails loudly** (RAISE EXCEPTION) if `pg_cron` is somehow absent rather than silently skipping. Archival semantics (`archive_past_events()` body) are **unchanged**; the function was reviewed and no correctness bug blocks scheduling (it flips `is_active=false` for active events >1h past `event_date`; verified it archives a past event and leaves a future one untouched).
-> - **Toast pluralization fix** — `useBookmarks` built "Please log in to bookmark opportunitys" via naive `` `${type}s` ``; a proper plural map (`TYPE_PLURALS`) now yields "opportunities"/"events"/"clubs". All other bookmark/follow toasts were audited: the success toast uses the singular ("Opportunity bookmarked") and the club branch uses the WS4 Follow/Following wording — none were affected. (Inventory entry below.)
-> - **Launch-ops checklist** recorded in-repo (section below) with `OWNER REQUIRED` / `MAILBOX REQUIRED` / `CADENCE REQUIRED` placeholders — no names/policies invented.
->
-> **Verified (local PG16.13 harness, real pg_cron 1.6.2 via `shared_preload_libraries`, `pg_net` stubbed — it's only `CREATE EXTENSION`'d, never invoked, and isn't packaged for stock Ubuntu):** all 40 migrations apply cleanly in order (pg_cron pre-enabled in the harness prep, mirroring production where the dashboard enabled it before migration `20260121010216`'s `IF NOT EXISTS` ran); re-applying the WS6 migration twice leaves exactly **one** `archive-past-events-nightly` row and a simulated pre-existing `send-reminders-hourly` job **byte-identical**; a real pg_cron background-worker run of the exact committed command string succeeded (`job_run_details` status `succeeded`) and archived a 2-days-past event while leaving a future event active. `tsc -p tsconfig.app.json --noEmit` + `npm run build` clean; lint on the touched TS file: 0 errors (pre-existing exhaustive-deps warning only). *Harness caveat:* the local worker needed `cron.use_background_workers = on` (the default localhost-connection mode can't reach a socket-only harness cluster); production Supabase runs pg_cron in its normal configuration, so this is a harness detail, not a product one.
->
-> **Deployed & verified (maintainer, 2026-07-13):**
-> - ✅ `npx supabase db push --linked` applied `20260713000100_ws6_schedule_archive_past_events.sql` to production, and the frontend shipped via the normal Vercel flow (the `useBookmarks` toast fix is live). No Edge Function redeploy was needed.
-> - ✅ Production cron confirmed via the read-only `cron.job` query: **both** `archive-past-events-nightly` (`0 9 * * *` → `SELECT public.archive_past_events();`) **and** `send-reminders-hourly` (`0 * * * *`, command calls the deployed `send-reminders` Edge Function) exist and are `active = true`.
->
-> **Remaining to close WS6 (human-only, no code):** fill in the three `REQUIRED` placeholders in the Launch-ops checklist — support mailbox, `/admin` waitlist-queue owner, backup/export cadence — and check off its items.
+> **All engineering workstreams (WS1–WS8 + auth-orphan cleanup) are complete.** The only remaining coding backlog is **WS9 (deferred post-launch features)** — its trust/correctness gate (WS1–WS4) is satisfied, so WS9 is unblocked whenever the team chooses to start it. There is **no outstanding engineering pass**; new sessions should pick a specific WS9 feature or a newly-found defect rather than "the next workstream."
 
-**Why this is next**
-- With the trust/correctness workstreams (WS1–WS5) done, the remaining Medium item is operational: the nightly auto-archive isn't scheduled in the repo, so `is_active` staleness can skew club dashboards/analytics (user-facing impact is limited because the Events list already filters by date).
+#### ✅ WS6 completion record (Scheduler & launch-ops hardening, 2026-07-13)
 
-**Scope (do)**
-1. Schedule the nightly `archive_past_events()` via `cron.schedule` in a migration (confirm `pg_cron` availability / the established scheduling pattern first — note `send-reminders-hourly` was scheduled manually out-of-repo).
-2. Confirm `send-reminders-hourly` exists (`select * from cron.job;`) and document it in-repo. *(✅ done — confirmed live 2026-07-13; see the status block above.)*
-3. Record the outside-code launch-ops items (support contact/mailbox, `/admin` waitlist-queue owner, routine DB backup/export cadence — also a Lovable-decommission prerequisite).
+**Engineering — shipped, deployed, and production-verified:**
+- **Migration `20260713000100_ws6_schedule_archive_past_events.sql`** — schedules `cron.schedule('archive-past-events-nightly', '0 9 * * *', 'SELECT public.archive_past_events();')` (09:00 UTC; the exact hour is not load-bearing since the function archives events already >1h past). Idempotent (unschedule-if-exists then schedule), touches only its own job name (`send-reminders-hourly` left alone), fails loudly if `pg_cron` is absent, and does not change `archive_past_events()` semantics. Pushed to production; the read-only `cron.job` query confirmed **both** `archive-past-events-nightly` (`0 9 * * *`) and the out-of-repo `send-reminders-hourly` (`0 * * * *`, calls the deployed `send-reminders` Edge Function) exist and are `active = true`.
+- **Toast pluralization fix** — `useBookmarks` now uses a `TYPE_PLURALS` map ("opportunities"/"events"/"clubs") instead of naive `` `${type}s` `` ("opportunitys"); other bookmark/follow toasts audited and unaffected. Shipped via the normal Vercel flow.
+- **Verified** on the local PG16.13 harness (real pg_cron 1.6.2): all migrations apply cleanly; re-applying the WS6 migration is idempotent; a real pg_cron background-worker run of the committed command archived a past event and left a future one active. `tsc`/`build` clean; lint 0 errors on the touched file.
 
-**Boundaries (do NOT, this pass)**
-- Don't start net-new features (WS9) or the test/lint hardening (WS7) unless directly required.
-
-**Evidence to inspect before coding**
-- `archive_past_events()` (migration `20251223162738`), any `cron.*` usage in migrations, `pg_cron`/`pg_net` availability, and `supabase/functions/send-reminders`.
-
-**Done / verification looks like**
-- The nightly archive is scheduled (or the scheduling mechanism + exact manual step is documented if `cron.schedule` can't be committed); harness applies cleanly. `tsc`/`build` clean.
-- **Deployment note:** likely a DB migration (`supabase db push`) and/or a documented manual `cron.schedule` step; no edge/Vercel unless touched.
+**Operational ownership — decided and recorded (2026-07-13):** the three outside-code items are now assigned (support contact, `/admin` waitlist-queue owner, backup cadence). They live in the **Operational responsibilities** section below and are reflected in `prd.md`'s Launch Readiness Criteria. WS6 is therefore fully closed.
 
 ---
 
@@ -88,9 +62,9 @@
 
 ---
 
-#### 🟡 Auth-orphan cleanup record (2026-07-13) — in repo; pending production audit + push
+#### ✅ Auth-orphan cleanup record (2026-07-13) — COMPLETE & production-verified
 
-*(Revised 2026-07-13 after review: messages FKs dropped in favor of preservation; FK migration now fails loud instead of leaving NOT VALID constraints; migrations renamed to the actual project date; root cause stated as inference.)*
+*(Revised 2026-07-13 after review: messages FKs dropped in favor of preservation; FK migration fails loud instead of leaving NOT VALID constraints; existing FKs verified by referenced column + ON DELETE action; migrations use the next monotonic versions after WS8; root cause stated as inference.)*
 
 **Production facts (maintainer-confirmed):** `public.user_roles` has **8 rows** whose `user_id` no longer exists in `auth.users`, and **3 valid rows**.
 
@@ -129,10 +103,12 @@
 - *Pristine path:* all **44** migrations apply cleanly in sorted order (the cleanup migrations run after the WS8 migrations — no dependency inversion). This models a database that **kept its messages CASCADE FKs** (like production): before the cleanup pass, `messages` has both `messages_sender_id_fkey` and `messages_receiver_id_fkey` (CASCADE); `20260714000400` **drops both** (NOTICE emitted) and adds the 6 never-had managed FKs, ending at **13 auth FKs / 13 validated, `messages` carrying no auth FK, `sender_id`/`receiver_id` still `NOT NULL`**; idempotent re-run stays 13 with messages FK-free; audit runs clean and read-only.
 - *Production-drift simulation:* applied the 42 pre-existing migrations, **dropped the 7 original auth FKs** (messages then already FK-free), seeded the known facts (8 orphaned + 3 valid `user_roles`) plus one orphan of every class **and** the preservation cases (orphaned club+student profiles anchoring an opportunity + 2 applications; one-party-dead messages both directions; dead reviewer on a valid waitlist row; dead viewer + anonymous page_views). Audit reported **exactly** the seeded matrix (incl. trigger-generated orphan notifications, caught generically). Cleanup: all delete-class orphans removed; `user_roles` = 3; every valid sibling survived; `reviewed_by` nulled with row kept; both-dead message deleted; **both one-sided messages, both orphaned profiles, and both applications preserved**; idempotent. FK migration: the messages-drop is a no-op (already gone); **with orphaned profiles present it failed loud and rolled back (still 2 FKs, nothing partially added)**; after simulating the manual-review resolution it succeeded at **13 FKs / 13 validated with `messages` carrying no auth FK** (columns still `NOT NULL`); CASCADE + SET NULL exercised live on account deletion; future-write enforcement proven (a dead-ref insert is rejected 23503); an existing FK with the **wrong ON DELETE** correctly **raised**; idempotent re-run. `tsc`/`build` clean; lint 0 errors (31 pre-existing warnings); Playwright smoke 11/11 (no frontend changes this pass).
 
-**Production-only steps (in order — nothing was run against production from this branch; this environment has no Supabase access):**
-1. **Run `scripts/audit_auth_orphans.sql`** (read-only, Q1–Q5 one at a time). Expect: Q1 shows the WS4/WS8 FKs **plus the two legacy `messages` CASCADE FKs** (which `20260714000400` will drop); Q2 shows `user_roles = 8` and 0 elsewhere; Q5 valid = 3; **Q4 empty**. Review Q3 so every deleted/nulled row is a known quantity. **If Q4 returns any profile row: STOP and resolve it deliberately** — otherwise the FK migration will (by design) fail on push. *(Q4 returned zero rows and Q1 confirmed the two `messages` CASCADE FKs are present in production — 2026-07-13.)*
-2. After merge: `npx supabase db push --linked` (applies `20260714000300` + `20260714000400` only). No Edge Function redeploy; no frontend change ships in this pass.
-3. Post-push confirmation (read-only): re-run the audit — Q2 all zeros, Q5 = 3, Q1 lists **13 FKs, all `convalidated = t`** (messages intentionally absent). If the push failed, its error names the offending table; resolve those rows (Q4) and re-push.
+**Deployed & production-verified (2026-07-13):**
+1. **Pre-push audit** — `scripts/audit_auth_orphans.sql` (read-only) was run against production: Q4 (manual-review) returned **zero rows**, Q1 confirmed the two legacy `messages` CASCADE FKs were present, Q2 showed `user_roles = 8` orphaned / rest 0, and Q5 showed `valid_user_roles = 3`.
+2. **Push** — `npx supabase db push --linked` applied `20260714000300` + `20260714000400` to production (migration history synchronized; no Edge Function redeploy, no frontend change in this pass).
+3. **Post-push confirmation** — re-running the audit confirmed the intended end state: **zero orphans across all 15 user-ID columns**, `valid_user_roles = 3`, and **13 auth.users FKs, all validated (`convalidated = t`)**, with `messages` intentionally carrying **no** auth FK (`sender_id`/`receiver_id` still `NOT NULL`). The workstream is closed.
+
+**Documented follow-up (separate product decision, not this pass):** re-adding referential integrity for `messages` — via nullable `sender_id`/`receiver_id` + `ON DELETE SET NULL`, or a "deleted user" tombstone — so account deletion neither orphans nor cascades away a surviving party's history. Captured here so it isn't lost; no work is scheduled.
 
 ---
 
@@ -309,12 +285,12 @@ Group related issues into **workstreams**, not a flat bug list. A good workstrea
 
 ## Development stages (current)
 
-Normal product-development cadence now that migration/cutover is closed. Roughly sequential, but the monitoring window runs continuously alongside everything else.
+**As of 2026-07-13 the ranked bug/correctness backlog (WS1–WS8 + auth-orphan cleanup) is fully cleared and production-verified.** The project is past the "drive down the backlog" phase; what remains is standing operational monitoring, the launch-readiness ownership items (now decided — see **Operational responsibilities**), and optional deferred features (WS9). Stages below are retained as the cadence model.
 
-1. **Stability monitoring window (now → ~1 week).** Watch the freshly-cut-over production for regressions before doing anything irreversible (especially Lovable decommission). Each day, spot-check: auth (signup → OTP → waitlist → approval → dashboard), storage (resume upload + club view), email deliverability (Resend), DNS/TLS on `zothub.app` + `www.zothub.app`, and the Supabase logs for errors. No production auth/storage/email/DNS incident for several consecutive days is the gate for Stage 4 (Lovable decommission). Keep the Lovable fallback untouched during this window.
-2. **Remaining Medium/Low bug backlog.** Work the open items in the order given in **"Backlog — ranked workstreams"** below. These are the real remaining defects; drive them down before adding polish or features.
-3. **Product polish / launch-readiness.** UX/consistency passes, privacy-policy accuracy, empty/loading/error-state polish, accessibility, lint/test cleanup, admin/analytics polish. Informed by real usage from the monitoring window.
-4. **Optional post-launch feature development.** Only after production has proven stable and the backlog is in good shape. Candidate features live in `prd.md`'s Post-Launch Roadmap (email digest, self-service account deletion, richer analytics, relaxing the gated-beta access model, etc.). Do not start net-new features while Stage 2 bugs remain.
+1. **Stability monitoring (ongoing).** Keep watching production for regressions before anything irreversible (especially Lovable decommission). Spot-check: auth (signup → OTP → waitlist → approval → dashboard), storage (resume upload + club view), email deliverability (Resend), DNS/TLS on `zothub.app` + `www.zothub.app`, and the Supabase logs. A clean run of several consecutive days remains the gate for Lovable decommission. Keep the Lovable fallback untouched.
+2. **Medium/Low bug backlog — ✅ cleared.** All ranked workstreams (WS1–WS8) and the auth-orphan cleanup are done; see **"Backlog — ranked workstreams."** Address any newly-found defect by adding it to the Confirmed bug & risk inventory and handling it in a focused pass.
+3. **Product polish / launch-readiness — largely done.** Privacy-policy accuracy, lint/test cleanup, UX/data-hygiene, and the scheduler are complete; the remaining launch-readiness items are operational ownership (now recorded) and the pre-launch **user support experience** (captured as a Planned Product Area in `prd.md`, to be scoped after the current roadmap). Continue opportunistic empty/loading/error-state and accessibility polish informed by real usage.
+4. **Optional post-launch feature development (WS9 — unblocked).** The trust/correctness gate is satisfied, so features may start whenever the team chooses. Candidates live in `prd.md`'s Post-Launch Roadmap (email digest, self-service account deletion, richer analytics, relaxing the gated-beta access model, etc.).
 
 ---
 
@@ -337,8 +313,8 @@ All five items shipped (migration `20260711000100` + `send-email` + client): (a)
 **WS5 — Discovery access-model consistency (anonymous browsing)** — **✅ DONE (2026-07-12)**
 Product decision: **public discovery.** Migration `20260712000100` makes `opportunities`/`events` SELECT `TO public USING (is_active = true)` (anon can browse active rows) and applies **least-privilege per-column anon grants** on all three discovery tables — excluding `club_profiles.email`, the `views` counters, internal timestamps, and the auth-only `application_questions`/`rsvp_questions` — so even a direct `select("*")` by anon fails. Three detail-page queries were adjusted so anon never requests an ungranted column. Verified anon reads only active discovery rows (allowlisted columns only, no email/private tables/writes) and authenticated/club-owner flows unchanged. Completion record in "▶ Start here". *([Discovery/RLS] Logged-out visitors… — fixed.)*
 
-**WS6 — Scheduler & launch-ops hardening** — **[Medium/operational] — 🟡 code complete, merged & deployed, production cron verified (2026-07-13); OPEN only on launch-ops ownership items**
-Migration `20260713000100` schedules `archive-past-events-nightly` (`0 9 * * *` UTC → `SELECT public.archive_past_events();`), idempotently and without touching any other cron job; the `useBookmarks` "opportunitys" toast-pluralization bug was fixed in the same pass; the **Launch-ops checklist** (above the Lovable checklist) records the outside-code items with `REQUIRED` placeholders. The migration was pushed to production and the frontend deployed, and the read-only `cron.job` query confirmed **both** `archive-past-events-nightly` and `send-reminders-hourly` exist and are `active` in production. **Still open (human-only, no code):** fill in the support-mailbox / admin-owner / backup-cadence placeholders in the Launch-ops checklist. Status record in "▶ Start here". *([Cron] `archive_past_events()`…)*
+**WS6 — Scheduler & launch-ops hardening** — **✅ DONE (2026-07-13)**
+Migration `20260713000100` schedules `archive-past-events-nightly` (`0 9 * * *` UTC → `SELECT public.archive_past_events();`), idempotently and without touching any other cron job; the `useBookmarks` "opportunitys" toast-pluralization bug was fixed in the same pass. Both were pushed/deployed, and the read-only `cron.job` query confirmed `archive-past-events-nightly` and `send-reminders-hourly` are `active` in production. The three operational ownership items (support contact, `/admin` waitlist owner, backup cadence) are now decided and recorded in the **Operational responsibilities** section. Completion record in "▶ Start here". *([Cron] `archive_past_events()`… — fixed.)*
 
 **WS7 — Test / lint / type hardening** — **✅ DONE (2026-07-13)**
 The Playwright config is repaired (standard `@playwright/test` `defineConfig` — the unavailable `lovable-agent-playwright-config` import is gone) with a 9-test, backend-independent smoke suite (`e2e/smoke.spec.ts`, `npm run test:e2e`) covering the public discovery shells, auth entry points, 404, and the protected-route redirect, each test failing on any uncaught page error. All 26 ESLint errors cleared (0 errors / 31 pre-existing warnings remain: exhaustive-deps + fast-refresh, intentionally untouched); React Router v7 future flags opted in (console warnings gone). No new dependencies; no behavior changes (the two edge-function edits are lint-only and payload-identical). Completion record in "▶ Start here". *([Tooling] ESLint… — fixed; [Console] React Router… — fixed.)*
@@ -346,19 +322,21 @@ The Playwright config is repaired (standard `@playwright/test` `defineConfig` �
 **WS8 — UX polish & data hygiene** — **✅ DONE (2026-07-14)**
 All eight items shipped: `Waitlist`/`WaitlistRejected` now redirect via `<Navigate>` (no render-time `navigate()`); `Login` routes role-less pending/rejected OAuth users to `/waitlist`/`/waitlist-rejected` via `useWaitlist`; unsubscribe auto-opt-out builds from the freshly loaded prefs row (no more re-enabling others); `club_team_members` got a self-healing `ON DELETE SET NULL` FK on `user_id` (migration `20260714000200`, pre-nulls any dead reference) — the existing UI already hides the Message button for null `user_id`; `/privacy` names Supabase/Vercel/Resend; `approveUser`/`rejectUser` record `reviewed_by`; opportunity/event bookmark partial unique indexes added (migration `20260714000100`, `useBookmarks` already idempotent on `23505`); and the documented dead/duplicated code removed (`AuthContext.signUp`, `ClubProfileSetup`'s local `CATEGORY_OPTIONS`→`CLUB_CATEGORIES`, bespoke header→`<Logo>`). Completion record in "▶ Start here". *(individual inventory entries marked fixed below.)*
 
-**WS9 — Future features (only after WS1–WS4 land and stability holds)** — **[deferred]**
-From `prd.md`'s roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Do not start net-new features while the trust/correctness workstreams (WS1–WS4) have open items.
+**WS9 — Future features (deferred; trust/correctness gate now satisfied)** — **[deferred, unblocked]**
+WS1–WS8 and the auth-orphan cleanup are all complete, so the "no net-new features while WS1–WS4 have open items" gate is met — WS9 is unblocked whenever the team chooses to start it. From `prd.md`'s Post-Launch Roadmap: weekly email digest, self-service account deletion, enhanced analytics, and relaxing the gated beta to open `@uci.edu` signup (keeping OTP + the DB domain trigger as gates). Each is its own future workstream; none is in progress.
+
+> **Also captured (not yet a workstream): a pre-launch user support experience** (Help/Support page, FAQ, Contact Support, Report an Issue, troubleshooting — see `prd.md`'s **Planned Product Areas**). It is intentionally *not* broken into a WS item yet; it will be scoped into a workstream once the current roadmap is finished.
 
 ---
 
-## Launch-ops checklist (WS6 — human-only items)
+## Operational responsibilities (WS6 — standing, non-engineering)
 
-> Outside-code operational items from WS6. Placeholders (`OWNER REQUIRED`, `MAILBOX REQUIRED`, `CADENCE REQUIRED`) must be filled in by the maintainer — do **not** invent names, addresses, or policies. The backup item is also a prerequisite of the Lovable decommission checklist below.
+> These are ongoing operational commitments (the outside-code half of WS6), now **decided and recorded** rather than placeholders. They are people/process decisions, not engineering tasks — record changes here as the team/policies evolve. The backup item is also a prerequisite of the Lovable decommission checklist below.
 
-- [ ] **Support contact:** `MAILBOX REQUIRED` — stand up the support mailbox (the PRD assumes an `@zothub.app` address now that DNS is live), document it here and on the `/privacy` contact line, and confirm someone reads it.
-- [ ] **`/admin` waitlist-queue owner:** `OWNER REQUIRED` — name the person committed to checking the `/admin` approval queue regularly (an unapproved user is fully blocked, so a stale queue directly blocks growth).
-- [ ] **DB backup/export cadence:** `CADENCE REQUIRED` — establish a routine Supabase snapshot / `pg_dump` cadence, record it here, and verify one backup restores.
-- [x] **Cron scheduled & verified live** — ✅ `20260713000100` was pushed to production and the frontend deployed; the read-only query below confirmed (maintainer, 2026-07-13) that **both** jobs exist and are `active = true`: `archive-past-events-nightly` (`0 9 * * *` → `SELECT public.archive_past_events();`) and `send-reminders-hourly` (`0 * * * *`, command calls the deployed `send-reminders` Edge Function; scheduled out-of-repo — deliberately not owned by a migration). Re-run this query anytime to re-confirm:
+- [x] **Support contact:** **`zothub.uci@gmail.com`** — the official production support address. *Places that should reference it:* the `/privacy` contact line (`Privacy.tsx`) and the future in-product support center. *(Not wired into website code in this pass — documentation only.)*
+- [x] **`/admin` waitlist-queue owner:** **Dhruv** — reviews the `/admin` approval queue **twice daily during beta** (an unapproved user is fully blocked, so a stale queue directly blocks growth). Revisit the cadence as volume grows or the gated beta relaxes to open `@uci.edu` signup.
+- [x] **DB backup/export policy:** **Owner: Dhruv.** **Weekly manual Supabase backup/export**, **plus an additional backup immediately before every production schema migration.** Deliberately lightweight for an early-stage product; revisit toward automated/scheduled snapshots as usage grows. (Also satisfies the Lovable-decommission "current backup/export exists" prerequisite once the first backup is taken and a restore verified.)
+- [x] **Cron scheduled & verified live** — ✅ `20260713000100` was pushed to production and the frontend deployed; the read-only query below confirmed (2026-07-13) that **both** jobs exist and are `active = true`: `archive-past-events-nightly` (`0 9 * * *` → `SELECT public.archive_past_events();`) and `send-reminders-hourly` (`0 * * * *`, command calls the deployed `send-reminders` Edge Function; scheduled out-of-repo — deliberately not owned by a migration). Re-run this query anytime to re-confirm:
   ```sql
   -- Both jobs exist, active, with the expected schedules:
   --    send-reminders-hourly        '0 * * * *'
@@ -384,7 +362,7 @@ From `prd.md`'s roadmap: weekly email digest, self-service account deletion, enh
 
 - [ ] `zothub.app` (and `www.zothub.app`) has been **stable on Vercel for several consecutive days** (the Stage 1 monitoring window).
 - [ ] **No production auth / storage / email / DNS issues** have appeared during that window.
-- [ ] A **current database backup/export exists** (Supabase snapshot or `pg_dump`) and has been verified restorable.
+- [ ] A **current database backup/export exists** (Supabase snapshot or `pg_dump`) and has been verified restorable. *(Cadence now set — see the backup policy in **Operational responsibilities**: weekly + before every schema migration, owner Dhruv. This box is checked once the first backup is taken and a restore verified.)*
 - [ ] **Vercel environment variables verified** (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) point at the owned Supabase project.
 - [ ] **Supabase Edge Function secrets verified** (`RESEND_API_KEY` set; `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_ANON_KEY` injected as expected).
 - [ ] **Resend domain still verified** for `zothub.app`, DNS records intact, deliverability confirmed.
@@ -825,7 +803,7 @@ Found during live testing of the deployed Blocker/High pass. #1–#6 fixed this 
 - **Facts (maintainer-confirmed against production, 2026-07-14):** `public.user_roles` has **8 rows** whose `user_id` is absent from `auth.users` and **3 valid rows**. Migration `20251223013805` declares `user_roles.user_id REFERENCES auth.users(id) ON DELETE CASCADE`, so those orphans can only exist because the FK is missing in production.
 - **Root cause (strong inference from schema, not a directly-verified restore record):** the most consistent explanation is that production was built by `pg_restore` from the Lovable dump with `auth.users` intentionally not migrated, so most of the 7 declared FKs to `auth.users` (`user_roles`, `student_profiles`, `club_profiles`, `bookmarks`, `notifications`, and `messages`×2) could not validate against the fresh `auth.users` and were dropped/skipped. The production audit (Q1) shows the loss was **partial**: the `messages` FKs (`sender_id`/`receiver_id`, CASCADE) were **retained**, while the others were lost. Six further user-ID columns (`notification_preferences`, `waitlist.user_id`, `waitlist.reviewed_by`, `page_views.user_id`, `club_followers`, `reminder_logs`) never had FKs at all. Only the post-repair FKs (`rsvps.status_updated_by` WS4, `club_team_members.user_id` WS8) are enforced in production.
 - **Fix:** the Auth-orphan cleanup pass — read-only audit `scripts/audit_auth_orphans.sql`, deterministic cleanup `20260714000300`, FK restoration `20260714000400` (adds the 11 managed FKs as validated constraints; **drops the retained `messages` CASCADE FKs** without recreating them — CASCADE would erase a surviving user's history — leaving re-adding message integrity to a separate product decision; **fails loud** rather than leaving an unvalidated constraint if an orphaned profile remains). Full classification + verification in the cleanup record in "▶ Start here".
-- **Status:** **Fixed in repo (2026-07-14); pending the read-only production audit, merge, and `db push`.**
+- **Status:** ✅ **Fixed & production-verified (2026-07-13).** Migrations `20260714000300`/`20260714000400` were pushed to production and the post-push audit confirmed zero orphans, `valid_user_roles = 3`, and 13 validated auth.users FKs (`messages` intentionally FK-free). See the Auth-orphan cleanup record in "▶ Start here".
 
 ---
 
