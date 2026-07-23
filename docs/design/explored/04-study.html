@@ -1,0 +1,247 @@
+<title>ZotHub &#8212; Direction 4: The Study</title>
+
+<style>
+  :root {
+    --ground: #F6F3EC;
+    --card: #FCFAF5;
+    --ink: #26221A;
+    --ink-2: #5B564A;
+    --ink-3: #8A8375;
+    --line: #E2DDD1;
+    --accent: #55673F;
+    --accent-ink: #FFFFFF;
+    --wash: #EAEDE2;
+    --ok: #55673F;
+    --warn: #8A5A17;
+    --bad: #983A2B;
+    --serif: "Charter", "Iowan Old Style", Georgia, serif;
+    --sans: "Seravek", "Gill Sans", "Segoe UI", -apple-system, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --ground: #191711; --card: #211E17;
+    --ink: #EBE7DC; --ink-2: #ADA695; --ink-3: #7C7666;
+    --line: #37332A; --accent: #A3B586; --accent-ink: #171A10; --wash: #262B1E;
+    --ok: #A3B586; --warn: #D3A55C; --bad: #DB8A76;
+  }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--line); }
+  .thesis { font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; font-family: var(--sans); }
+  .note h1 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin: 6px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 26px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+
+  .frame { background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
+
+  .bar { display: flex; align-items: baseline; gap: 22px; padding: 20px 30px; border-bottom: 1px solid var(--line); }
+  .mark { font-family: var(--serif); font-size: 20px; font-weight: 600; }
+  .mark i { font-style: italic; color: var(--accent); }
+  .bar nav { display: flex; gap: 20px; margin-left: auto; }
+  .bar nav a { font-size: 14px; color: var(--ink-2); text-decoration: none; }
+  .bar nav a[aria-current] { color: var(--ink); border-bottom: 1.5px solid var(--accent); padding-bottom: 2px; }
+  .bar nav a:hover { color: var(--ink); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn { font: inherit; font-size: 14.5px; cursor: pointer; min-height: 42px; padding: 9px 18px; border-radius: 4px; border: 1px solid var(--ink-3); background: transparent; color: var(--ink); }
+  .btn:hover { border-color: var(--ink); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.07); }
+  .btn-sm { min-height: 36px; padding: 6px 13px; font-size: 13.5px; }
+  .quiet { border-color: transparent; color: var(--ink-2); }
+  .quiet:hover { color: var(--ink); border-color: transparent; }
+
+  /* landing = a considered essay opening */
+  .hero { padding: 66px 30px 56px; }
+  .hero-k { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 22px; }
+  .hero h2 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 4.6vw, 46px); line-height: 1.16; letter-spacing: -0.01em; margin: 0 0 18px; max-width: 24ch; text-wrap: balance; }
+  .hero .lede { font-size: 18px; color: var(--ink-2); max-width: 52ch; margin: 0 0 30px; }
+  .hero .lede em { font-family: var(--serif); }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .counts { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-3); }
+  .counts b { color: var(--ink); font-weight: 600; }
+
+  /* listings read like a table of contents */
+  .toc { padding: 10px 30px 30px; }
+  .toc-h { font-family: var(--serif); font-size: 20px; font-weight: 500; margin: 18px 0 6px; }
+  .entry { display: flex; align-items: baseline; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+  .entry:last-child { border-bottom: 0; }
+  .entry .t { font-family: var(--serif); font-size: 18.5px; }
+  .entry .t a { color: inherit; text-decoration: none; }
+  .entry .t a:hover { color: var(--accent); }
+  .entry .who { font-size: 14px; color: var(--ink-2); }
+  .dots { flex: 1; border-bottom: 1px dotted var(--line); transform: translateY(-4px); min-width: 30px; }
+  .entry .when { font-size: 13.5px; color: var(--ink-3); white-space: nowrap; }
+  .entry .kind { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+
+  /* review = a reading desk */
+  .deskbar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 18px 30px; border-bottom: 1px solid var(--line); }
+  .deskbar h3 { font-family: var(--serif); font-size: 19px; font-weight: 500; margin: 0; }
+  .deskbar .n { font-size: 13.5px; color: var(--ink-3); }
+  .deskbar .grow { flex: 1; }
+  .gentle { padding: 14px 30px; border-bottom: 1px solid var(--line); background: var(--wash); font-size: 14px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .gentle p { margin: 0; }
+  .gentle .grow { flex: 1; }
+
+  .folio { padding: 6px 30px 28px; }
+  .paper { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+  @media (min-width: 800px) { .paper { grid-template-columns: 1fr 190px auto; align-items: baseline; gap: 18px; } }
+  .paper:last-child { border-bottom: 0; }
+  .paper .name { font-family: var(--serif); font-size: 18px; }
+  .paper .sub { font-size: 13.5px; color: var(--ink-2); }
+  .paper .st { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .st-new { color: var(--accent); } .st-seen { color: var(--warn); } .st-in { color: var(--ok); } .st-out { color: var(--bad); }
+  .paper .acts { display: flex; gap: 8px; }
+
+  .empty { padding: 46px 30px 50px; max-width: 56ch; }
+  .empty h4 { font-family: var(--serif); font-size: 22px; font-weight: 500; margin: 0 0 10px; }
+  .empty p { margin: 0 0 20px; color: var(--ink-2); font-size: 15px; }
+  .empty-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 54px; border-top: 1px solid var(--line); padding: 20px 0 48px; font-size: 13px; color: var(--ink-3); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <div class="thesis">Direction 4 &#183; The Study</div>
+    <h1>Calm, warm, considered &#8212; the product as a well-kept reading room.</h1>
+    <p>Philosophy borrowed from Anthropic: understatement as confidence. Almost no chrome; typography and rhythm do everything. Moss green, not terracotta &#8212; warmth without the clich&#233;. Shown light-first because the warmth is the point. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>light</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Log in</a></nav>
+    </div>
+    <div class="hero">
+      <div class="hero-k">UC Irvine &#183; Autumn quarter</div>
+      <h2>Find the thing you&#8217;ll still be doing in June.</h2>
+      <p class="lede">Clubs post the roles they actually need filled. You apply in minutes, and you <em>always hear back</em> &#8212; that part we insist on.</p>
+      <div class="cta">
+        <button class="btn btn-primary">See what&#8217;s open</button>
+        <button class="btn quiet">I run a club &#8594;</button>
+      </div>
+      <div class="counts"><b>34</b> clubs &nbsp;&#183;&nbsp; <b>61</b> open roles &nbsp;&#183;&nbsp; <b>12</b> events this week</div>
+    </div>
+    <div class="toc">
+      <div class="toc-h">Closing soon</div>
+      <div class="entry"><span class="kind">Leadership</span><span class="t"><a href="#">VP of Design</a></span><span class="who">Design at UCI</span><span class="dots"></span><span class="when">2 days &#183; 18 applied</span></div>
+      <div class="entry"><span class="kind">Project</span><span class="t"><a href="#">Embedded Systems Lead</a></span><span class="who">Anteater Robotics</span><span class="dots"></span><span class="when">4 days &#183; 7 applied</span></div>
+      <div class="entry"><span class="kind">Event</span><span class="t"><a href="#">Fall Kickoff Social</a></span><span class="who">Circle K International</span><span class="dots"></span><span class="when">Fri 6pm &#183; 54 of 80</span></div>
+      <div class="entry"><span class="kind">Committee</span><span class="t"><a href="#">Fall Case Team Analyst</a></span><span class="who">Zot Consulting Group</span><span class="dots"></span><span class="when">6 days &#183; 41 applied</span></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+    </div>
+    <div class="gentle">
+      <p><strong>12 people have waited 9 days.</strong> Closing this posting undecided will decline them automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Read them now</button>
+    </div>
+    <div class="deskbar">
+      <h3>VP of Design</h3><span class="n">18 applications &#183; 6 decided</span>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Accept marked</button><button class="btn btn-sm">Decline marked</button><button class="btn btn-sm quiet">Export</button>
+    </div>
+    <div class="folio">
+      <div class="paper">
+        <div><div class="name">Priya Raman</div><div class="sub">Junior &#183; Informatics &#183; portfolio attached</div></div>
+        <span class="st st-new">Unread</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+      <div class="paper">
+        <div><div class="name">Marcus Vela</div><div class="sub">Sophomore &#183; Studio Art &#183; r&#233;sum&#233; attached</div></div>
+        <span class="st st-seen">Read, undecided</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+      <div class="paper">
+        <div><div class="name">Amara Osei</div><div class="sub">Senior &#183; Computer Science &#183; portfolio attached</div></div>
+        <span class="st st-in">Accepted</span>
+        <div class="acts"><button class="btn btn-sm quiet">Undo</button></div>
+      </div>
+      <div class="paper">
+        <div><div class="name">Ben Okafor</div><div class="sub">Freshman &#183; Undeclared</div></div>
+        <span class="st st-out">Declined</span>
+        <div class="acts"><button class="btn btn-sm quiet">Undo</button></div>
+      </div>
+      <div class="paper">
+        <div><div class="name">Sofia Lindqvist</div><div class="sub">Junior &#183; Business Admin &#183; applied externally</div></div>
+        <span class="st st-seen">Read, undecided</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <h4>Nothing in design is open this week.</h4>
+      <p>Three clubs usually recruit for design each quarter. We can write to you the day one of them posts.</p>
+      <div class="empty-acts">
+        <button class="btn btn-primary">Tell me when</button>
+        <button class="btn">See those clubs</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 4 of 10 &#183; The Study. Serif is system Charter/Georgia standing in for the real face. Dark exists (toggle) but light is this direction&#8217;s native register.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

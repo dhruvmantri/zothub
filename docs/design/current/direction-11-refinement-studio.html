@@ -1,0 +1,374 @@
+<title>ZotHub &#8212; Direction 11 Refinement Studio</title>
+
+<style>
+  :root{
+    /* ---- neutral spine (unchanged across accent systems) ---- */
+    --bg:#FFFFFF; --bg-2:#F7F9F9; --bg-3:#EFF3F3;
+    --ink:#071417; --ink-2:#3F4E52;
+    --ink-3:#616E72;              /* WAS #7C8A8E @3.57:1 — failed AA on content */
+    --line:#E4E8E9; --line-2:#CDD5D7;
+    --panel:#0B1316; --panel-2:#131D21; --panel-3:#1B272B;
+    --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#233034;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+
+    /* ---- type ---- */
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+    /* ---- rhythm: 4pt base, named so spacing stops being ad hoc ---- */
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px;
+    --r1:6px; --r2:10px; --r3:14px; --r4:20px; --rp:999px;
+
+    /* ---- elevation: 3 steps, tinted with the ink hue rather than pure black ---- */
+    --e1:0 1px 2px rgba(7,20,23,.05);
+    --e2:0 2px 8px rgba(7,20,23,.07), 0 1px 2px rgba(7,20,23,.04);
+    --e3:0 12px 32px rgba(7,20,23,.10), 0 2px 6px rgba(7,20,23,.05);
+
+    /* ---- accent system A: Crimson (default) ---- */
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+  }
+  :root[data-accent="ember"]  { --accent:#B23214; --accent-text:#9A2A10; --accent-ink:#FFF; --accent-wash:#FCECE6; --accent-line:#F3C9B8; }
+  :root[data-accent="brass"]  { --accent:#8A6410; --accent-text:#78560C; --accent-ink:#FFF; --accent-wash:#FAF2DF; --accent-line:#E8D6A6; }
+  :root[data-accent="violet"] { --accent:#4F23C4; --accent-text:#4520AE; --accent-ink:#FFF; --accent-wash:#EDE9FC; --accent-line:#CFC2F5; }
+  :root[data-accent="jade"]   { --accent:#0F766E; --accent-text:#0C635C; --accent-ink:#FFF; --accent-wash:#E3F3F1; --accent-line:#AEDBD6; }
+
+  :root[data-theme="dark"]{
+    --bg:#080F11; --bg-2:#0D1618; --bg-3:#131F22;
+    --ink:#EEF3F4; --ink-2:#A7B6BA; --ink-3:#839297;
+    --line:#1D282B; --line-2:#2E3D41;
+    --panel:#111B1F; --panel-2:#17242A; --panel-3:#1E2E34;
+    --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#27343A;
+    --ok:#4FCB92; --ok-wash:#0F2A20; --warn:#DCA85A; --warn-wash:#2A2211; --bad:#E98A7C; --bad-wash:#2C1714;
+    --e1:0 1px 2px rgba(0,0,0,.4); --e2:0 2px 10px rgba(0,0,0,.45); --e3:0 14px 36px rgba(0,0,0,.55);
+    --accent:#FF4C86; --accent-text:#FF87AE; --accent-ink:#1B0410; --accent-wash:#2A101C; --accent-line:#4A1C31;
+  }
+  :root[data-theme="dark"][data-accent="ember"]  { --accent:#FF7A52; --accent-text:#FF9E7E; --accent-ink:#2A0C02; --accent-wash:#2B150D; --accent-line:#4B2717; }
+  :root[data-theme="dark"][data-accent="brass"]  { --accent:#DFAE4A; --accent-text:#EDC77C; --accent-ink:#241A02; --accent-wash:#282010; --accent-line:#463819; }
+  :root[data-theme="dark"][data-accent="violet"] { --accent:#9B7BFF; --accent-text:#B9A2FF; --accent-ink:#150A33; --accent-wash:#1D1740; --accent-line:#332A63; }
+  :root[data-theme="dark"][data-accent="jade"]   { --accent:#3FD0C3; --accent-text:#78E0D6; --accent-ink:#032723; --accent-wash:#0D2926; --accent-line:#1B4741; }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+
+  /* ================= studio chrome ================= */
+  .studio{position:sticky;top:0;z-index:500;background:var(--bg);border-bottom:1px solid var(--line);padding:var(--s3) 0}
+  .studio-in{max-width:1120px;margin:0 auto;padding:0 var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .swatches{display:flex;gap:var(--s2);flex-wrap:wrap}
+  .sw{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12.5px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:5px 12px 5px 6px;cursor:pointer;min-height:34px}
+  .sw i{width:16px;height:16px;border-radius:50%;display:block}
+  .sw[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:650;box-shadow:var(--e1)}
+  .grow{flex:1}
+  a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  h2.sec{font-size:13px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:var(--s8) 0 var(--s4);padding-bottom:var(--s2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+  .why{font-family:var(--sans);font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-3);font-weight:400;max-width:52ch}
+
+  /* ================= components ================= */
+  .btn{font:inherit;font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background .15s,border-color .15s,box-shadow .15s}
+  .btn:hover{background:var(--bg-2)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-ink:hover{background:var(--ink);filter:brightness(1.6);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--bg-2);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp)}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;font-weight:600}
+  .field .hint{font-size:12.5px;color:var(--ink-3)}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)}
+  .inp::placeholder{color:var(--ink-3)}
+  textarea.inp{min-height:96px;resize:vertical;line-height:1.55}
+  .field.err .inp{border-color:var(--bad)}
+  .errmsg{font-size:12.5px;color:var(--bad);display:flex;align-items:center;gap:6px}
+  .errmsg::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+
+  .card{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1)}
+  .demo{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center;padding:var(--s5);border:1px solid var(--line);border-radius:var(--r3);background:var(--bg-2)}
+  .demo.col{flex-direction:column;align-items:stretch}
+  .stack{display:flex;flex-direction:column;gap:var(--s4)}
+  .cols2{display:grid;grid-template-columns:1fr;gap:var(--s4)}
+  @media(min-width:820px){.cols2{grid-template-columns:1fr 1fr}}
+
+  /* ================= type specimen ================= */
+  .spec{display:grid;grid-template-columns:82px 1fr;gap:var(--s3) var(--s5);align-items:baseline}
+  .spec .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .d1{font-size:clamp(38px,5.6vw,58px);font-weight:500;letter-spacing:-.042em;line-height:.99}
+  .d2{font-size:32px;font-weight:500;letter-spacing:-.032em;line-height:1.08}
+  .d3{font-size:22px;font-weight:600;letter-spacing:-.022em;line-height:1.2}
+  .t1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .bd{font-size:16px;line-height:1.55;color:var(--ink-2)}
+  .sm{font-size:13.5px;color:var(--ink-3)}
+  .lb{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .acc-i{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--accent)}
+
+  /* ================= discover row, refined ================= */
+  .clubgrp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1)}
+  .clubgrp+.clubgrp{margin-top:var(--s3)}
+  .clubbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pulse::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s3) var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jrow:hover{background:var(--bg-2)}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+
+  /* ================= mobile stress frame ================= */
+  .phone{width:375px;max-width:100%;border:1px solid var(--line-2);border-radius:var(--r4);overflow:hidden;background:var(--bg);box-shadow:var(--e3)}
+  .ph-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .ph-mark{font-size:16px;font-weight:700;letter-spacing:-.045em}
+  .ph-mark b{color:var(--accent)}
+  .ph-hero{padding:22px 14px 18px}
+  .ph-hero h3{margin:0 0 8px;font-size:29px;font-weight:500;letter-spacing:-.038em;line-height:1.02}
+  .ph-hero p{margin:0;font-size:14.5px;color:var(--ink-2)}
+  .ph-row{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+  .ph-row .t{font-size:15px;font-weight:650;letter-spacing:-.01em}
+  .ph-row .m{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .ph-actions{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .ph-tabs{display:flex;border-top:1px solid var(--line);background:var(--bg-2)}
+  .ph-tabs a{flex:1;text-align:center;padding:11px 4px;font-size:11px;font-weight:600;color:var(--ink-3);text-decoration:none;letter-spacing:.02em}
+  .ph-tabs a[aria-current]{color:var(--accent-text);box-shadow:inset 0 2px 0 var(--accent)}
+
+  .verdict{border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px;margin-top:var(--s4)}
+  .verdict b{color:var(--accent-text)}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sans);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.8;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Direction 11 &#183; Refinement</span>
+    <span class="lab" style="color:var(--ink-2)">Accent system</span>
+    <span class="swatches">
+      <button class="sw" data-acc="crimson" aria-pressed="true"><i style="background:#D81E5B"></i>Crimson</button>
+      <button class="sw" data-acc="ember" aria-pressed="false"><i style="background:#B23214"></i>Ember</button>
+      <button class="sw" data-acc="brass" aria-pressed="false"><i style="background:#8A6410"></i>Brass</button>
+      <button class="sw" data-acc="violet" aria-pressed="false"><i style="background:#4F23C4"></i>Violet</button>
+      <button class="sw" data-acc="jade" aria-pressed="false"><i style="background:#0F766E"></i>Jade</button>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== 1. THE SIGNATURE ===================== -->
+  <h2 class="sec"><span>01 &#183; The signature</span><span class="why">The italic-accent line was Wellfound&#8217;s move. Setting it in a <em>contrasting serif italic</em> instead of the same sans makes it ours &#8212; and the type does the work, so it survives an accent change.</span></h2>
+
+  <div class="stack">
+    <div class="demo col">
+      <span class="lb">Before &#8212; same sans, italicised (borrowed)</span>
+      <div class="d1" style="max-width:17ch">Where good clubs <em style="font-style:italic;color:var(--accent);font-weight:400">meet good people.</em></div>
+    </div>
+    <div class="demo col">
+      <span class="lb">After &#8212; serif italic against the grotesque (ownable)</span>
+      <div class="d1" style="max-width:17ch">Where good clubs <span class="acc-i">meet good people.</span></div>
+    </div>
+  </div>
+  <div class="verdict"><b>Why it&#8217;s better:</b> the contrast is now structural (two type families) rather than cosmetic (one family, slanted). It reads more considered, it survives a palette swap, and nobody else on campus is doing it.</div>
+
+  <!-- ===================== 2. ACCENT SYSTEMS ===================== -->
+  <h2 class="sec"><span>02 &#183; Accent systems</span><span class="why">All five clear 4.5:1 against white as text, which by symmetry means white on them clears too. Switch them above &#8212; every surface below re-tints live.</span></h2>
+
+  <div class="cols2">
+    <div class="demo col">
+      <span class="lb">Character</span>
+      <div class="stack" style="gap:var(--s2)">
+        <div class="sm"><b style="color:var(--ink)">Crimson</b> &#8212; energetic, startup-adjacent. Closest to Wellfound; least ownable.</div>
+        <div class="sm"><b style="color:var(--ink)">Ember</b> &#8212; burnt vermillion. Warmer, more editorial, reads print rather than SaaS.</div>
+        <div class="sm"><b style="color:var(--ink)">Brass</b> &#8212; restrained ochre. The most premium and the quietest; ages slowest.</div>
+        <div class="sm"><b style="color:var(--ink)">Violet</b> &#8212; electric. Most modern, strongest at 8.9:1, most &#8220;tech&#8221;.</div>
+        <div class="sm"><b style="color:var(--ink)">Jade</b> &#8212; deep teal. Calm and credible, but competes with the green success state.</div>
+      </div>
+    </div>
+    <div class="demo col">
+      <span class="lb">The accent in situ</span>
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center">
+        <button class="btn btn-acc btn-sm">Apply</button>
+        <button class="btn btn-ink btn-sm">Accept</button>
+        <button class="btn btn-sm">Save</button>
+        <span class="tag">Closing soon</span>
+        <span class="badge b-new">New</span>
+        <span class="badge b-ok">Accepted</span>
+      </div>
+      <div class="d3" style="margin-top:var(--s3)">Find the thing <span class="acc-i">you&#8217;ll stick with.</span></div>
+      <p class="bd" style="margin:0">Body copy sits in <b>ink-2</b>, and the meta line sits in <b>ink-3</b> &#8212; now 5.27:1 instead of the 3.57:1 it was, because that line carries real content.</p>
+    </div>
+  </div>
+
+  <!-- ===================== 3. TYPE SCALE ===================== -->
+  <h2 class="sec"><span>03 &#183; Type scale</span><span class="why">Six steps, each with a job. Display holds weight 500 and negative tracking; UI text steps up in weight rather than size, so density stays controllable.</span></h2>
+  <div class="demo col">
+    <div class="spec">
+      <span class="k">Display</span><span class="d1">Good clubs start here</span>
+      <span class="k">Section</span><span class="d2">Recruit without the spreadsheet</span>
+      <span class="k">Card title</span><span class="d3">Embedded Systems Lead</span>
+      <span class="k">UI title</span><span class="t1">VP of Design</span>
+      <span class="k">Body</span><span class="bd">Post a role free, or link the Google Form you already use.</span>
+      <span class="k">Meta</span><span class="sm">Leadership &#183; closes in 2 days &#183; 18 applied</span>
+      <span class="k">Label</span><span class="lb">For students</span>
+    </div>
+  </div>
+
+  <!-- ===================== 4. SURFACES + ELEVATION ===================== -->
+  <h2 class="sec"><span>04 &#183; Surfaces, borders, elevation</span><span class="why">The hairline was 1.23:1 &#8212; invisible, yet it was the only thing grouping roles under a club. Grouping now rides on a <em>surface</em>, with the line as reinforcement.</span></h2>
+
+  <div class="clubgrp">
+    <div class="clubbar">
+      <span class="clogo" style="background:#C2410C">D</span>
+      <span class="cn">Design at UCI</span>
+      <span class="pulse">Actively recruiting</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag-n tag">Arts &amp; Culture</span><span class="tag">Replies fast</span></span>
+    </div>
+    <div class="jrow">
+      <div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div>
+      <div class="jr"><span class="tag">Closing soon</span><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+    <div class="jrow">
+      <div><div class="jt">Print &amp; Zine Committee</div><div class="jm">Committee &#183; rolling &#183; 4 applied</div></div>
+      <div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+  </div>
+
+  <div class="demo" style="margin-top:var(--s4)">
+    <div class="card" style="padding:var(--s4);flex:1;min-width:180px;box-shadow:var(--e1)"><span class="lb">Elevation 1</span><div class="sm" style="margin-top:6px">Resting cards, rows</div></div>
+    <div class="card" style="padding:var(--s4);flex:1;min-width:180px;box-shadow:var(--e2)"><span class="lb">Elevation 2</span><div class="sm" style="margin-top:6px">Hover, active buttons</div></div>
+    <div class="card" style="padding:var(--s4);flex:1;min-width:180px;box-shadow:var(--e3)"><span class="lb">Elevation 3</span><div class="sm" style="margin-top:6px">Modals, popovers</div></div>
+  </div>
+
+  <!-- ===================== 5. STRESS TEST A: DENSE FORM ===================== -->
+  <h2 class="sec"><span>05 &#183; Stress test A &#8212; dense form</span><span class="why">The surface most likely to break this language: many inputs, labels, hints, an error, and a repeater. If weight-500 display and generous padding survive here, they survive anywhere.</span></h2>
+
+  <div class="card" style="padding:var(--s5)">
+    <div class="d2" style="margin:0 0 var(--s2)">Post a role</div>
+    <p class="bd" style="margin:0 0 var(--s5);max-width:56ch">Students see this on Discover the moment you publish. You can link an existing form instead of building one here.</p>
+
+    <div class="stack">
+      <div class="cols2">
+        <div class="field"><label for="f1">Role title</label><input class="inp" id="f1" value="VP of Design" /></div>
+        <div class="field"><label for="f2">Type</label><select class="inp" id="f2"><option>Leadership</option><option>Project</option><option>Committee</option><option>Volunteer</option><option>Internship</option><option>Other</option></select></div>
+      </div>
+      <div class="field"><label for="f3">What they&#8217;ll actually do</label><textarea class="inp" id="f3">Lead the visual identity for everything we ship &#8212; event artwork, the quarterly zine, and the site. You&#8217;ll run a team of four and sit on the officer board.</textarea><span class="hint">Plain language beats a job spec. Two or three sentences is enough.</span></div>
+      <div class="cols2">
+        <div class="field"><label for="f4">Applications close</label><input class="inp" id="f4" type="date" value="2026-09-25" /></div>
+        <div class="field err"><label for="f5">Weekly commitment</label><input class="inp" id="f5" value="a lot" /><span class="errmsg">Enter a number of hours, e.g. &#8220;4&#8211;6&#8221;.</span></div>
+      </div>
+
+      <div class="field">
+        <label>Application questions</label>
+        <span class="hint">Or <a href="#" style="color:var(--accent-text)">link a Google Form</a> and skip this entirely.</span>
+        <div class="stack" style="gap:var(--s2);margin-top:var(--s2)">
+          <div class="demo" style="padding:var(--s3);background:var(--bg);gap:var(--s2)">
+            <span class="lb" style="min-width:14px">01</span>
+            <input class="inp" style="flex:1;min-width:180px" value="Why do you want this role?" />
+            <select class="inp" style="width:auto;min-width:120px"><option>Long text</option><option>Short text</option><option>Choice</option></select>
+            <button class="btn btn-sm btn-ghost" aria-label="Remove question 1">Remove</button>
+          </div>
+          <div class="demo" style="padding:var(--s3);background:var(--bg);gap:var(--s2)">
+            <span class="lb" style="min-width:14px">02</span>
+            <input class="inp" style="flex:1;min-width:180px" value="Tell us about something you&#8217;ve made." />
+            <select class="inp" style="width:auto;min-width:120px"><option>Long text</option><option>Short text</option><option>Choice</option></select>
+            <button class="btn btn-sm btn-ghost" aria-label="Remove question 2">Remove</button>
+          </div>
+          <button class="btn btn-sm" style="align-self:flex-start">Add question</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap;padding-top:var(--s3);border-top:1px solid var(--line)">
+        <button class="btn btn-acc">Publish role</button>
+        <button class="btn">Save draft</button>
+        <button class="btn btn-ghost">Preview as a student</button>
+      </div>
+    </div>
+  </div>
+  <div class="verdict"><b>What the stress test exposed:</b> display weight 500 is too light for form section headings &#8212; they need <b>600</b> to hold against input borders. Inputs also need a <b>10px</b> radius, not the card&#8217;s 14px, or they read as cards. Both are now in the tokens above.</div>
+
+  <!-- ===================== 6. STRESS TEST B: 375px ===================== -->
+  <h2 class="sec"><span>06 &#183; Stress test B &#8212; 375px</span><span class="why">Fair week is a phone event. The two-sided split stacks, the row&#8217;s button pair goes vertical, and the hero drops from 58px to 29px &#8212; the tracking has to loosen or it collapses.</span></h2>
+
+  <div style="display:flex;gap:var(--s5);flex-wrap:wrap;align-items:flex-start">
+    <div class="phone">
+      <div class="ph-bar"><span class="ph-mark">zothub<b>:</b></span><span class="grow"></span><button class="btn btn-sm btn-ink">Sign up</button></div>
+      <div class="ph-hero">
+        <h3>Where good clubs <span class="acc-i">meet good people.</span></h3>
+        <p>Every open role at UCI, and a real answer either way.</p>
+      </div>
+      <div class="ph-row">
+        <span class="clogo" style="background:#C2410C">D</span>
+        <div><div class="t">VP of Design</div><div class="m">Design at UCI &#183; 2 days left</div></div>
+        <span class="ph-actions"><button class="btn btn-sm btn-ink">Apply</button><span class="tag" style="font-size:9.5px">Closing</span></span>
+      </div>
+      <div class="ph-row">
+        <span class="clogo" style="background:#1D6FA3">AR</span>
+        <div><div class="t">Embedded Systems Lead</div><div class="m">Anteater Robotics &#183; 4 days</div></div>
+        <span class="ph-actions"><button class="btn btn-sm btn-ink">Apply</button></span>
+      </div>
+      <div class="ph-row">
+        <span class="clogo" style="background:#2C6E49">CK</span>
+        <div><div class="t">Fall Kickoff Social</div><div class="m">Circle K &#183; Fri 6pm &#183; 54/80</div></div>
+        <span class="ph-actions"><button class="btn btn-sm">RSVP</button></span>
+      </div>
+      <div class="ph-tabs"><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></div>
+    </div>
+
+    <div class="stack" style="flex:1;min-width:260px">
+      <div class="demo col"><span class="lb">What broke, and the rule that fixes it</span>
+        <div class="sm"><b style="color:var(--ink)">Tracking must scale with size.</b> &#8722;0.042em is right at 58px and unreadable at 29px. Rule: &#8722;0.042em above 44px, &#8722;0.038em at 28&#8211;44px, &#8722;0.02em below 28px.</div>
+        <div class="sm"><b style="color:var(--ink)">Button pairs stack, they don&#8217;t shrink.</b> Save + Apply side by side breaks the 44px target at 375px. Primary stays, secondary moves into an overflow.</div>
+        <div class="sm"><b style="color:var(--ink)">The serif italic holds.</b> It stays legible at 29px, which is the real test of the new signature.</div>
+        <div class="sm"><b style="color:var(--ink)">Tab bar uses the accent as an inset rule</b>, not a fill &#8212; a filled tab at this size swallows the label.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec"><span>07 &#183; Still open</span><span class="why">What I have not solved, stated plainly.</span></h2>
+  <div class="demo col">
+    <div class="sm"><b style="color:var(--ink)">The wordmark.</b> &#8220;zothub<span style="color:var(--accent)">:</span>&#8221; borrows Wellfound&#8217;s colon device. It needs replacing with something of our own before this is ownable.</div>
+    <div class="sm"><b style="color:var(--ink)">Jade vs. the success state.</b> If you pick Jade, the accent and &#8220;Accepted&#8221; are the same family and status legibility suffers. It would need a different success hue.</div>
+    <div class="sm"><b style="color:var(--ink)">The serif is a system stand-in.</b> Iowan/Charter/Georgia is standing in for a real italic face; the final pick happens at font selection.</div>
+  </div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var sws=[].slice.call(document.querySelectorAll('[data-acc]'));
+  sws.forEach(function(b){
+    b.addEventListener('click',function(){
+      sws.forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+      if(b.dataset.acc==='crimson') document.documentElement.removeAttribute('data-accent');
+      else document.documentElement.setAttribute('data-accent',b.dataset.acc);
+    });
+  });
+})();
+</script>

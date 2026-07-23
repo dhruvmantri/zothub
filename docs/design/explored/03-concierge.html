@@ -1,0 +1,445 @@
+<title>ZotHub &#8212; Direction 3: The Concierge</title>
+
+<style>
+  :root {
+    --ground: #F7F8F6;
+    --surface: #FFFFFF;
+    --surface-2: #EEF1EE;
+    --line: #DDE2DD;
+    --ink: #1B221E;
+    --ink-2: #515A54;
+    --ink-3: #7B857E;
+    --accent: #276749;
+    --accent-ink: #FFFFFF;
+    --wash: #E6F0EA;
+    --wash-line: #C4DACE;
+    --ok: #276749;
+    --warn: #8A5A00;
+    --bad: #9C2C22;
+    --warn-wash: #FAF1E2;
+
+    --sans: "Avenir Next", Avenir, "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+
+    --r-card: 18px;
+    --r-ctl: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #10130F; --surface: #191D18; --surface-2: #222720;
+      --line: #2E342C; --ink: #E9EEE9; --ink-2: #A7B0A8; --ink-3: #78827A;
+      --accent: #6FC79A; --accent-ink: #0B1710; --wash: #16261D; --wash-line: #2A4436;
+      --ok: #6FC79A; --warn: #DCA85A; --bad: #E9877B; --warn-wash: #262013;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #10130F; --surface: #191D18; --surface-2: #222720;
+    --line: #2E342C; --ink: #E9EEE9; --ink-2: #A7B0A8; --ink-3: #78827A;
+    --accent: #6FC79A; --accent-ink: #0B1710; --wash: #16261D; --wash-line: #2A4436;
+    --ok: #6FC79A; --warn: #DCA85A; --bad: #E9877B; --warn-wash: #262013;
+  }
+  :root[data-theme="light"] {
+    --ground: #F7F8F6; --surface: #FFFFFF; --surface-2: #EEF1EE;
+    --line: #DDE2DD; --ink: #1B221E; --ink-2: #515A54; --ink-3: #7B857E;
+    --accent: #276749; --accent-ink: #FFFFFF; --wash: #E6F0EA; --wash-line: #C4DACE;
+    --ok: #276749; --warn: #8A5A00; --bad: #9C2C22; --warn-wash: #FAF1E2;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  .note { border-bottom: 1px solid var(--line); padding: 24px 0; }
+  .note-inner { display: flex; flex-direction: column; gap: 6px; }
+  .note h1 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: -0.015em; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .thesis { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .divider {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+    padding: 48px 0 12px; margin-bottom: 24px; border-bottom: 1px solid var(--line);
+  }
+
+  .frame {
+    border: 1px solid var(--line); border-radius: var(--r-card);
+    background: var(--surface); overflow: hidden;
+  }
+
+  .bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 24px; border-bottom: 1px solid var(--line);
+  }
+  .mark { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+  .mark i { font-style: normal; color: var(--accent); }
+  .bar nav { display: flex; gap: 6px; margin-left: 6px; }
+  .bar nav a {
+    font-size: 14px; color: var(--ink-2); text-decoration: none;
+    padding: 7px 13px; border-radius: var(--r-ctl); min-height: 36px; display: inline-flex; align-items: center;
+  }
+  .bar nav a[aria-current] { background: var(--wash); color: var(--accent); font-weight: 600; }
+  .bar nav a:hover { color: var(--ink); }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn {
+    font: inherit; font-size: 15px; font-weight: 550; cursor: pointer;
+    min-height: 44px; padding: 10px 20px; border-radius: var(--r-ctl);
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    line-height: 1.3;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--ink-2); }
+  .btn-quiet:hover { background: var(--surface-2); color: var(--ink); }
+  .btn-sm { min-height: 38px; padding: 8px 14px; font-size: 14px; }
+
+  /* ---------- guided landing ---------- */
+  .ask { padding: 64px 24px 60px; }
+  .ask-inner { max-width: 640px; }
+  .step {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13px; color: var(--ink-3); margin-bottom: 20px;
+  }
+  .step b {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 650;
+  }
+  .step-line { width: 34px; height: 1px; background: var(--line); }
+  .step-dim { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line); }
+
+  h2.ask-h {
+    font-size: clamp(30px, 4.6vw, 44px); font-weight: 600; letter-spacing: -0.03em;
+    line-height: 1.12; margin: 0 0 14px; text-wrap: balance;
+  }
+  .ask p.sub { font-size: 17px; color: var(--ink-2); margin: 0 0 30px; max-width: 46ch; }
+
+  .choices { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+  .choice {
+    font: inherit; font-size: 15px; cursor: pointer;
+    min-height: 46px; padding: 10px 18px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  .choice:hover { border-color: var(--accent); color: var(--accent); }
+  .choice[aria-pressed="true"] {
+    background: var(--wash); border-color: var(--wash-line); color: var(--accent); font-weight: 600;
+  }
+  .skip { display: flex; align-items: center; gap: 14px; }
+  .tally { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
+  .tally b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- result cards ---------- */
+  .results { padding: 8px 24px 28px; display: grid; gap: 12px; }
+  .rescard {
+    display: grid; grid-template-columns: 1fr; gap: 12px;
+    border: 1px solid var(--line); border-radius: var(--r-card);
+    padding: 18px 20px; background: var(--surface);
+  }
+  @media (min-width: 780px) { .rescard { grid-template-columns: 1fr auto; align-items: center; } }
+  .rescard:hover { border-color: var(--wash-line); background: var(--wash); }
+  .rescard h3 { font-size: 18px; font-weight: 600; margin: 0 0 3px; letter-spacing: -0.01em; }
+  .rescard h3 a { color: inherit; text-decoration: none; }
+  .rescard .by { font-size: 14.5px; color: var(--ink-2); }
+  .rescard .why {
+    margin-top: 8px; font-size: 14px; color: var(--accent);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .rescard .why::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .rescard .side { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .soft { font-size: 13.5px; color: var(--ink-3); }
+
+  /* ---------- one-at-a-time review ---------- */
+  .focus { padding: 26px 24px 30px; }
+  .focus-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .focus-head h3 { font-size: 15px; font-weight: 600; margin: 0; color: var(--ink-2); }
+  .progress {
+    flex: 1; min-width: 140px; height: 5px; border-radius: 999px;
+    background: var(--surface-2); overflow: hidden;
+  }
+  .progress span { display: block; height: 100%; width: 33%; background: var(--accent); border-radius: 999px; }
+
+  .card-person {
+    border: 1px solid var(--line); border-radius: var(--r-card);
+    padding: 26px; background: var(--surface); max-width: 640px;
+  }
+  .person-top { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+  .ava {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--wash); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; font-weight: 650;
+  }
+  .person-top h4 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.015em; }
+  .person-top .meta { font-size: 14.5px; color: var(--ink-2); }
+  .qa { border-top: 1px solid var(--line); padding-top: 16px; margin-bottom: 8px; }
+  .qa dt { font-size: 13px; color: var(--ink-3); margin-bottom: 4px; }
+  .qa dd { margin: 0 0 16px; font-size: 15.5px; line-height: 1.6; max-width: 62ch; }
+  .decide { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--line); }
+
+  .heads-up {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding: 16px 24px; background: var(--warn-wash); border-bottom: 1px solid var(--line);
+  }
+  .heads-up p { margin: 0; font-size: 14.5px; }
+
+  /* ---------- empty ---------- */
+  .empty { padding: 44px 24px 48px; max-width: 54ch; }
+  .empty h4 { font-size: 22px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .empty p { margin: 0 0 20px; color: var(--ink-2); font-size: 15.5px; }
+  .empty-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .cols { display: grid; grid-template-columns: 1fr; gap: 22px; }
+  @media (min-width: 980px) { .cols { grid-template-columns: 1fr 1fr; } }
+  .caption { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+
+  footer.foot {
+    margin-top: 56px; border-top: 1px solid var(--line); padding: 22px 0 48px;
+    font-size: 13px; color: var(--ink-3);
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap note-inner">
+    <div class="thesis">Direction 3 &#183; The Concierge</div>
+    <h1>&#8220;You don&#8217;t know what you want &#8212; let me help.&#8221;</h1>
+    <p>The product asks before it lists. One decision per screen, generous targets, nothing to parse. Its weakness is honest and visible below: deciding one applicant at a time is kinder but slower than a table. Content is illustrative, not real UCI data.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ LANDING ============ -->
+  <div class="divider"><span>A &#183; Landing</span><span>the product asks first</span></div>
+
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-quiet">Log in</button>
+      <button class="btn btn-sm btn-primary">Get started</button>
+    </div>
+
+    <div class="ask">
+      <div class="ask-inner">
+        <div class="step">
+          <b>1</b><span>What you&#8217;re into</span>
+          <span class="step-line"></span><span class="step-dim"></span><span>How much time</span>
+        </div>
+        <h2 class="ask-h">What do you want to spend your time on?</h2>
+        <p class="sub">Pick a couple. We&#8217;ll show you what&#8217;s open right now &#8212; you can change this whenever.</p>
+
+        <div class="choices">
+          <button class="choice" aria-pressed="true">Design</button>
+          <button class="choice" aria-pressed="true">Building things</button>
+          <button class="choice">Consulting</button>
+          <button class="choice">Research</button>
+          <button class="choice">Volunteering</button>
+          <button class="choice">Performing</button>
+          <button class="choice">Sports</button>
+          <button class="choice">Culture</button>
+        </div>
+
+        <div class="skip">
+          <button class="btn btn-primary">Show me what&#8217;s open</button>
+          <button class="btn btn-quiet">Skip &#8212; just let me browse</button>
+        </div>
+
+        <div class="tally"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="divider"><span>A2 &#183; What it shows you next</span><span>reasoned, not ranked</span></div>
+
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-quiet">Change interests</button>
+    </div>
+
+    <div class="results">
+      <article class="rescard">
+        <div>
+          <h3><a href="#">VP of Design</a></h3>
+          <div class="by">Design at UCI &#183; Leadership</div>
+          <div class="why">Matches design &#183; closes in 2 days</div>
+        </div>
+        <div class="side"><span class="soft">18 applied</span><button class="btn btn-sm btn-primary">Apply</button></div>
+      </article>
+
+      <article class="rescard">
+        <div>
+          <h3><a href="#">Embedded Systems Lead</a></h3>
+          <div class="by">Anteater Robotics &#183; Project</div>
+          <div class="why">Matches building things &#183; small team</div>
+        </div>
+        <div class="side"><span class="soft">7 applied</span><button class="btn btn-sm btn-primary">Apply</button></div>
+      </article>
+
+      <article class="rescard">
+        <div>
+          <h3><a href="#">Fall Kickoff Social</a></h3>
+          <div class="by">Circle K International &#183; Event</div>
+          <div class="why">Good first thing to turn up to &#183; no application</div>
+        </div>
+        <div class="side"><span class="soft">54 of 80 going</span><button class="btn btn-sm">RSVP</button></div>
+      </article>
+
+      <article class="rescard">
+        <div>
+          <h3><a href="#">Fall Case Team Analyst</a></h3>
+          <div class="by">Zot Consulting Group &#183; Committee</div>
+          <div class="why">Applies through the club&#8217;s own form</div>
+        </div>
+        <div class="side"><span class="soft">41 applied</span><button class="btn btn-sm">Apply externally</button></div>
+      </article>
+    </div>
+  </div>
+
+  <!-- ============ REVIEW ============ -->
+  <div class="divider"><span>B &#183; Responses &#8212; review queue</span><span>the dense test</span></div>
+
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-quiet">See all 18 as a list</button>
+    </div>
+
+    <div class="heads-up">
+      <p><strong>12 people have been waiting 9 days.</strong> If you close this posting undecided, they&#8217;ll be declined automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Decide now</button>
+    </div>
+
+    <div class="focus">
+      <div class="focus-head">
+        <h3>VP of Design</h3>
+        <span class="soft">6 of 18 decided</span>
+        <div class="progress"><span></span></div>
+      </div>
+
+      <div class="card-person">
+        <div class="person-top">
+          <div class="ava">PR</div>
+          <div>
+            <h4>Priya Raman</h4>
+            <div class="meta">Junior &#183; Informatics &#183; Portfolio attached</div>
+          </div>
+        </div>
+
+        <dl class="qa">
+          <dt>Why do you want this role?</dt>
+          <dd>I&#8217;ve run the visual identity for two student publications and want to work somewhere the design actually ships rather than sitting in a deck.</dd>
+          <dt>Tell us about something you&#8217;ve made.</dt>
+          <dd>A 40-page print zine for the Humanities department &#8212; I did layout, typesetting, and press check.</dd>
+        </dl>
+
+        <div class="decide">
+          <button class="btn btn-primary">Accept</button>
+          <button class="btn">Decline</button>
+          <button class="btn btn-quiet">Mark reviewed, decide later</button>
+          <span class="grow"></span>
+          <button class="btn btn-quiet">Next &#8594;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EMPTY ============ -->
+  <div class="divider"><span>C &#183; Nothing here yet</span><span>empty states</span></div>
+
+  <div class="cols">
+    <div>
+      <p class="caption">Discover &#183; no match</p>
+      <div class="frame">
+        <div class="empty">
+          <h4>Nothing open in design right now.</h4>
+          <p>Three clubs post design roles most quarters. Want us to tell you the moment one does?</p>
+          <div class="empty-acts">
+            <button class="btn btn-sm btn-primary">Notify me</button>
+            <button class="btn btn-sm">Show me those clubs</button>
+            <button class="btn btn-sm btn-quiet">Widen my interests</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="caption">Responses &#183; nothing to review</p>
+      <div class="frame">
+        <div class="empty">
+          <h4>No applicants yet.</h4>
+          <p>You posted this 3 hours ago and 14 people have opened it. That&#8217;s usually a sharing problem, not a posting problem.</p>
+          <div class="empty-acts">
+            <button class="btn btn-sm btn-primary">Share the link</button>
+            <button class="btn btn-sm">Post to your followers</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    Direction 3 of 10 &#183; The Concierge. Humanist sans only &#8212; no second face, which is part of the point. The Artifact sandbox blocks font CDNs, so system Avenir/Segoe stands in. Both themes designed; use the theme toggle.
+  </footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

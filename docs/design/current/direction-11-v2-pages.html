@@ -1,0 +1,369 @@
+<title>ZotHub &#8212; Direction 11 v2, in practice</title>
+
+<style>
+  :root{
+    --bg:#FFFFFF; --bg-2:#F7F9F9; --bg-3:#EFF3F3;
+    --ink:#071417; --ink-2:#3F4E52; --ink-3:#616E72;
+    --line:#E4E8E9; --line-2:#CDD5D7;
+    --panel:#0B1316; --panel-2:#131D21; --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#233034;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+    /* secondary — off by default; see the switcher */
+    --sec:#1E4DD8; --sec-text:#1A41B8; --sec-wash:#E9EEFC; --sec-ink:#FFFFFF;
+
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--rp:999px;
+    --e1:0 1px 2px rgba(7,20,23,.05);
+    --e2:0 2px 8px rgba(7,20,23,.07),0 1px 2px rgba(7,20,23,.04);
+    --e3:0 12px 32px rgba(7,20,23,.10),0 2px 6px rgba(7,20,23,.05);
+  }
+  :root[data-sec="teal"]{--sec:#0F766E;--sec-text:#0C635C;--sec-wash:#E3F3F1}
+  :root[data-sec="ink"]{--sec:#3F4E52;--sec-text:#2C383B;--sec-wash:#EFF3F3}
+  :root[data-theme="dark"]{
+    --bg:#080F11;--bg-2:#0D1618;--bg-3:#131F22;
+    --ink:#EEF3F4;--ink-2:#A7B6BA;--ink-3:#839297;--line:#1D282B;--line-2:#2E3D41;
+    --panel:#111B1F;--panel-2:#17242A;--panel-ink:#F2F6F7;--panel-ink-2:#93A3A7;--panel-line:#27343A;
+    --ok:#4FCB92;--ok-wash:#0F2A20;--warn:#DCA85A;--warn-wash:#2A2211;--bad:#E98A7C;--bad-wash:#2C1714;
+    --accent:#FF4C86;--accent-text:#FF87AE;--accent-ink:#1B0410;--accent-wash:#2A101C;--accent-line:#4A1C31;
+    --sec:#7CA0FF;--sec-text:#A2BCFF;--sec-wash:#141E3C;--sec-ink:#0A1230;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);
+  }
+  :root[data-theme="dark"][data-sec="teal"]{--sec:#3FD0C3;--sec-text:#78E0D6;--sec-wash:#0D2926}
+  :root[data-theme="dark"][data-sec="ink"]{--sec:#A7B6BA;--sec-text:#C4CFD2;--sec-wash:#18242A}
+
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* ---------------- studio bar ---------------- */
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 13px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+
+  /* ---------------- primitives ---------------- */
+  .btn{font:inherit;font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background .15s,box-shadow .15s,border-color .15s}
+  .btn:hover{background:var(--bg-3)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-ink:hover{background:var(--ink);filter:brightness(1.6);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .tag-s{background:var(--sec-wash);color:var(--sec-text)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp)}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .card{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1)}
+
+  /* ---------------- page frame ---------------- */
+  .page{display:none;margin-top:var(--s5)}
+  .page[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2)}
+  .topbar{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) var(--s5);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .mark{font-size:19px;font-weight:700;letter-spacing:-.045em}
+  .mark b{color:var(--accent)}
+  .topbar nav{display:flex;gap:var(--s5)}
+  .topbar nav a{font-size:14px;color:var(--ink-2);text-decoration:none;font-weight:450}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:600}
+
+  /* ---------------- hero + signature variants ---------------- */
+  .hero{background:linear-gradient(180deg,var(--accent-wash) 0%,var(--bg) 62%);padding:var(--s8) var(--s5) var(--s7);text-align:center}
+  .hero h1{font-size:clamp(36px,5.6vw,58px);font-weight:500;letter-spacing:-.042em;line-height:1.0;margin:0 auto var(--s4);max-width:17ch}
+  .hero p{color:var(--ink-2);font-size:17px;max-width:46ch;margin:0 auto var(--s5)}
+  .hero .cta{display:flex;gap:var(--s3);justify-content:center;flex-wrap:wrap}
+  .sig{display:inline}
+  /* A · weight drop */
+  [data-sig="weight"] .sig{font-weight:300;color:var(--accent)}
+  /* B · rule beneath */
+  [data-sig="rule"] .sig{font-weight:500;color:var(--ink);background-image:linear-gradient(var(--accent),var(--accent));background-repeat:no-repeat;background-size:100% 5px;background-position:0 92%;padding-bottom:2px}
+  /* C · colour only */
+  [data-sig="colour"] .sig{font-weight:500;color:var(--accent)}
+
+  .counts{margin-top:var(--s5);font-size:13.5px;color:var(--ink-3)}
+  .counts b{color:var(--ink);font-weight:650}
+
+  /* two-sided */
+  .sides{display:grid;grid-template-columns:1fr;gap:var(--s4);padding:0 var(--s5) var(--s6)}
+  @media(min-width:880px){.sides{grid-template-columns:1fr 1fr}}
+  .side{border-radius:var(--r3);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s3)}
+  .side-dark{background:var(--panel);color:var(--panel-ink);box-shadow:var(--e2)}
+  .side-light{background:var(--accent-wash);border:1px solid var(--accent-line)}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent-text)}
+  .side-dark .eyebrow{color:var(--accent)}
+  .side h3{margin:0;font-size:27px;font-weight:500;letter-spacing:-.032em;line-height:1.1}
+  .side p{margin:0;font-size:14.5px}
+  .side-dark p{color:var(--panel-ink-2)}
+  .side-light p{color:var(--ink-2)}
+  .peek{margin-top:var(--s2);border-radius:var(--r2);overflow:hidden}
+  .side-dark .peek{background:var(--panel-2);border:1px solid var(--panel-line)}
+  .side-light .peek{background:var(--bg);border:1px solid var(--line)}
+  .peek-h{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;padding:9px 13px;color:var(--ink-3)}
+  .side-dark .peek-h{color:var(--panel-ink-2);border-bottom:1px solid var(--panel-line)}
+  .side-light .peek-h{border-bottom:1px solid var(--line)}
+  .peek-r{display:flex;align-items:center;gap:10px;padding:10px 13px;font-size:13px}
+  .side-dark .peek-r+.peek-r{border-top:1px solid var(--panel-line)}
+  .side-light .peek-r+.peek-r{border-top:1px solid var(--line)}
+  .av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff}
+  .mini{font-size:11.5px;color:var(--ink-3)}
+  .side-dark .mini{color:var(--panel-ink-2)}
+
+  .props{display:grid;grid-template-columns:1fr;gap:0 var(--s7);padding:0 var(--s5) var(--s6)}
+  @media(min-width:820px){.props{grid-template-columns:1fr 1fr}}
+  .prop{display:grid;grid-template-columns:28px 1fr;gap:var(--s3);padding:var(--s5) 0;border-bottom:1px solid var(--line)}
+  .prop .n{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:600;padding-top:3px}
+  .prop h4{margin:0 0 5px;font-size:17.5px;font-weight:600;letter-spacing:-.02em}
+  .prop p{margin:0;font-size:14.5px;color:var(--ink-2)}
+
+  /* ---------------- discover ---------------- */
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-size:32px;font-weight:500;letter-spacing:-.034em}
+  .soft{font-size:13.5px;color:var(--ink-3)}
+  .toolrow{display:flex;gap:var(--s2);padding:0 var(--s5) var(--s4);flex-wrap:wrap;align-items:center}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:44px}
+  .inp:focus{border-color:var(--accent)}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+
+  .grp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1);margin:0 var(--s5) var(--s3)}
+  .grpbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pulse::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jrow:hover{background:var(--bg-2)}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+
+  /* ---------------- review ---------------- */
+  .rhead{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s5) var(--s5) 0}
+  .rhead h2{margin:0;font-size:28px;font-weight:500;letter-spacing:-.032em}
+  .heads{margin:var(--s4) var(--s5) 0;border-radius:var(--r2);background:var(--warn-wash);padding:var(--s3) var(--s4);display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;font-size:14px}
+  .heads p{margin:0}
+  .q{display:grid;grid-template-columns:1fr;gap:var(--s3);align-items:center;padding:var(--s3) var(--s5)}
+  @media(min-width:860px){.q{grid-template-columns:1.25fr 150px 82px 112px auto}}
+  .q+.q{border-top:1px solid var(--line)}
+  .q:hover{background:var(--bg-2)}
+  .qn{font-weight:650;font-size:15px}
+  .qs{font-size:13px;color:var(--ink-3)}
+  .qc{font-size:13.5px;color:var(--ink-2)}
+  .qd{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .qa{display:flex;gap:var(--s2);justify-content:flex-end}
+
+  .note{margin:var(--s5) 0 0;border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px}
+  .note b{color:var(--accent-text)}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sans);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.8;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">D11 v2</span>
+    <span class="seg" role="group" aria-label="Page">
+      <button data-page="landing" aria-pressed="true">Landing</button>
+      <button data-page="discover" aria-pressed="false">Discover</button>
+      <button data-page="review" aria-pressed="false">Review</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Signature</span>
+    <span class="seg" role="group" aria-label="Signature treatment">
+      <button data-sig="weight" aria-pressed="true">Weight</button>
+      <button data-sig="rule" aria-pressed="false">Rule</button>
+      <button data-sig="colour" aria-pressed="false">Colour</button>
+    </span>
+    <span class="lab">Secondary</span>
+    <span class="seg" role="group" aria-label="Secondary colour">
+      <button data-sec="none" aria-pressed="true">None</button>
+      <button data-sec="blue" aria-pressed="false">Blue</button>
+      <button data-sec="teal" aria-pressed="false">Teal</button>
+      <button data-sec="ink" aria-pressed="false">Ink</button>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ==================== LANDING ==================== -->
+  <div class="page" data-page="landing" data-active>
+    <div class="frame">
+      <div class="topbar">
+        <span class="mark">zothub<b>:</b></span>
+        <nav><a href="#">For clubs</a><a href="#">For students</a><a href="#">Discover</a></nav>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-ghost">Log in</button>
+        <button class="btn btn-sm btn-ink">Sign up</button>
+      </div>
+
+      <div class="hero">
+        <h1>Where good clubs <span class="sig">meet good people.</span></h1>
+        <p>Every open role at UCI, and a real answer either way.</p>
+        <div class="cta">
+          <button class="btn btn-acc">Browse open roles</button>
+          <button class="btn">I run a club</button>
+        </div>
+        <div class="counts"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+      </div>
+
+      <div class="sides">
+        <section class="side side-dark">
+          <span class="eyebrow">For clubs</span>
+          <h3>Recruit without the spreadsheet.</h3>
+          <p>Post a role free, or link the Google Form you already use. Review, decide, and nobody gets left on read.</p>
+          <div><button class="btn btn-sm btn-acc">Start recruiting</button></div>
+          <div class="peek">
+            <div class="peek-h">VP of Design &#183; 18 applicants</div>
+            <div class="peek-r"><span class="av" style="background:#7A4BE0">PR</span><span><b>Priya Raman</b><div class="mini">Junior &#183; Informatics</div></span><span style="margin-left:auto"><span class="badge b-new">New</span></span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">MV</span><span><b>Marcus Vela</b><div class="mini">Sophomore &#183; Studio Art</div></span><span style="margin-left:auto"><span class="badge b-warn">Reviewed</span></span></div>
+            <div class="peek-r"><span class="av" style="background:#10794D">AO</span><span><b>Amara Osei</b><div class="mini">Senior &#183; Computer Science</div></span><span style="margin-left:auto"><span class="badge b-ok">Accepted</span></span></div>
+          </div>
+        </section>
+
+        <section class="side side-light">
+          <span class="eyebrow">For students</span>
+          <h3>Find the thing you&#8217;ll stick with.</h3>
+          <p>Apply to 34 UCI clubs in one place, track every application, and always hear back &#8212; even when it&#8217;s a no.</p>
+          <div><button class="btn btn-sm btn-acc">Browse open roles</button></div>
+          <div class="peek">
+            <div class="peek-h">Your applications</div>
+            <div class="peek-r"><span class="av" style="background:#C2410C">D</span><span><b>VP of Design</b><div class="mini">Design at UCI</div></span><span style="margin-left:auto"><span class="badge b-warn">In review</span></span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">AR</span><span><b>Embedded Systems Lead</b><div class="mini">Anteater Robotics</div></span><span style="margin-left:auto"><span class="badge b-ok">Accepted</span></span></div>
+            <div class="peek-r"><span class="av" style="background:#7A3E9D">ZC</span><span><b>Fall Case Team Analyst</b><div class="mini">Zot Consulting &#183; external</div></span><span style="margin-left:auto"><span class="badge">Applied</span></span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="props">
+        <div class="prop"><span class="n">01</span><div><h4>Real roles, not a directory listing.</h4><p>Officer boards, project teams, committees &#8212; the things clubs actually need filled this quarter.</p></div></div>
+        <div class="prop"><span class="n">02</span><div><h4>Bring the form you already have.</h4><p>Link an existing Google Form in one step, or build the application here. Your choice, not ours.</p></div></div>
+        <div class="prop"><span class="n">03</span><div><h4>Nobody gets ghosted.</h4><p>Close a posting and undecided applicants are declined automatically &#8212; after we tell you exactly who.</p></div></div>
+        <div class="prop"><span class="n">04</span><div><h4>Talk to the people actually deciding.</h4><p>Message the officers running recruitment, not a form inbox nobody reads.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DISCOVER ==================== -->
+  <div class="page" data-page="discover">
+    <div class="frame">
+      <div class="topbar">
+        <span class="mark">zothub<b>:</b></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+        <span class="grow"></span>
+        <span class="soft">34 clubs &#183; 61 open roles</span>
+      </div>
+
+      <div class="pagehead"><h2>Discover</h2><span class="soft">8 open right now</span></div>
+      <div class="toolrow">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Search roles, events, clubs&#8230;" aria-label="Search" />
+        <button class="chip" aria-pressed="true">All</button>
+        <button class="chip" aria-pressed="false">Roles</button>
+        <button class="chip" aria-pressed="false">Events</button>
+        <button class="chip" aria-pressed="false">Following</button>
+      </div>
+
+      <div class="grp">
+        <div class="grpbar">
+          <span class="clogo" style="background:#C2410C">D</span><span class="cn">Design at UCI</span>
+          <span class="pulse">Actively recruiting</span>
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag tag-s">Replies fast</span></span>
+        </div>
+        <div class="jrow"><div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div><div class="jr"><span class="tag">Closing soon</span><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div></div>
+        <div class="jrow"><div><div class="jt">Print &amp; Zine Committee</div><div class="jm">Committee &#183; rolling &#183; 4 applied</div></div><div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div></div>
+      </div>
+
+      <div class="grp">
+        <div class="grpbar">
+          <span class="clogo" style="background:#1D6FA3">AR</span><span class="cn">Anteater Robotics</span>
+          <span class="pulse">Actively recruiting</span>
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-n">Engineering</span><span class="tag tag-n">62 members</span></span>
+        </div>
+        <div class="jrow"><div><div class="jt">Embedded Systems Lead</div><div class="jm">Project &#183; closes in 4 days &#183; 7 applied</div></div><div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div></div>
+        <div class="jrow"><div><div class="jt">Shop Day &amp; Open Build</div><div class="jm">Event &#183; Tue 29 Sep, 7:00 PM &#183; 18 of 30 going</div></div><div class="jr"><span class="tag tag-s">Event</span><button class="btn btn-sm btn-ink">RSVP</button></div></div>
+      </div>
+
+      <div class="grp" style="margin-bottom:var(--s6)">
+        <div class="grpbar">
+          <span class="clogo" style="background:#7A3E9D">ZC</span><span class="cn">Zot Consulting Group</span>
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-n">Business</span><span class="tag tag-n">Applies externally</span></span>
+        </div>
+        <div class="jrow"><div><div class="jt">Fall Case Team Analyst</div><div class="jm">Committee &#183; closes in 6 days &#183; 41 applied</div></div><div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm">Apply externally</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== REVIEW ==================== -->
+  <div class="page" data-page="review">
+    <div class="frame">
+      <div class="topbar">
+        <span class="mark">zothub<b>:</b></span>
+        <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      </div>
+      <div class="rhead">
+        <h2>VP of Design</h2>
+        <span class="soft">18 applicants &#183; 6 decided &#183; closes in 2 days</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm">Export</button>
+        <button class="btn btn-sm">Close posting</button>
+      </div>
+      <div class="heads">
+        <p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically.</p>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-acc">Review them</button>
+      </div>
+      <div style="padding:var(--s4) 0 var(--s6)">
+        <div class="q"><div><div class="qn">Priya Raman</div><div class="qs">Portfolio attached</div></div><span class="qc">Junior &#183; Informatics</span><span class="qd">Sep 18</span><span class="badge b-new">New</span><div class="qa"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+        <div class="q"><div><div class="qn">Marcus Vela</div><div class="qs">R&#233;sum&#233; attached</div></div><span class="qc">Sophomore &#183; Studio Art</span><span class="qd">Sep 18</span><span class="badge b-warn">Reviewed</span><div class="qa"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+        <div class="q"><div><div class="qn">Amara Osei</div><div class="qs">Portfolio attached</div></div><span class="qc">Senior &#183; Computer Science</span><span class="qd">Sep 17</span><span class="badge b-ok">Accepted</span><div class="qa"><button class="btn btn-sm btn-ghost">Undo</button></div></div>
+        <div class="q"><div><div class="qn">Ben Okafor</div><div class="qs">No attachment</div></div><span class="qc">Freshman &#183; Undeclared</span><span class="qd">Sep 17</span><span class="badge b-bad">Declined</span><div class="qa"><button class="btn btn-sm btn-ghost">Undo</button></div></div>
+        <div class="q"><div><div class="qn">Sofia Lindqvist</div><div class="qs">Applied externally</div></div><span class="qc">Junior &#183; Business Admin</span><span class="qd">Sep 16</span><span class="badge b-warn">Reviewed</span><div class="qa"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>What to look for:</b> flip <em>Signature</em> on the Landing page &#8212; that&#8217;s the one decision that changes the brand. Then flip <em>Secondary</em> and watch Discover: it only appears on &#8220;Event&#8221; and &#8220;Replies fast&#8221; tags, which is the honest test of whether a second colour earns its place or just adds noise.</div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  function group(sel,fn){var b=$$(sel);b.forEach(function(x){x.addEventListener('click',function(){b.forEach(function(y){y.setAttribute('aria-pressed',String(y===x));});fn(x);});});}
+  group('[data-page]',function(x){$$('.page').forEach(function(p){p.toggleAttribute('data-active',p.dataset.page===x.dataset.page);});window.scrollTo({top:0,behavior:'instant'});});
+  group('[data-sig]',function(x){document.documentElement.setAttribute('data-sig',x.dataset.sig);});
+  group('[data-sec]',function(x){ if(x.dataset.sec==='none'||x.dataset.sec==='blue'){ if(x.dataset.sec==='blue') document.documentElement.removeAttribute('data-sec'); else document.documentElement.setAttribute('data-sec','off'); } else document.documentElement.setAttribute('data-sec',x.dataset.sec); document.documentElement.setAttribute('data-secmode',x.dataset.sec); });
+  document.documentElement.setAttribute('data-sig','weight');
+  document.documentElement.setAttribute('data-secmode','none');
+})();
+</script>
+
+<style>
+  /* secondary "None" collapses the second colour back onto the neutral ramp,
+     so you can see whether it was actually earning anything */
+  :root[data-secmode="none"] .tag-s{background:var(--bg-3);color:var(--ink-3)}
+</style>

@@ -1,0 +1,477 @@
+<title>ZotHub Prototype 1 &#8212; The Instrument</title>
+
+<style>
+  :root {
+    --ground:#FBFBFC; --surface:#FFF; --surface-2:#F4F5F7; --line:#E3E5E9; --line-strong:#CDD1D8;
+    --ink:#14161A; --ink-2:#4A5058; --ink-3:#7A828C;
+    --accent:#0E6E7E; --accent-ink:#FFF; --accent-wash:#E6F1F3;
+    --ok:#146C43; --warn:#8A5300; --bad:#A4231B;
+    --ok-wash:#E6F2EC; --warn-wash:#FAF0E1; --bad-wash:#F8EBEA;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --r:4px;
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1013; --surface:#16191D; --surface-2:#1D2126; --line:#272C33; --line-strong:#363D46;
+    --ink:#EDEFF2; --ink-2:#A8B0BA; --ink-3:#737C87;
+    --accent:#4FB6C7; --accent-ink:#0A1416; --accent-wash:#14262A;
+    --ok:#5FD39B; --warn:#E0AC5B; --bad:#F08279;
+    --ok-wash:#12251C; --warn-wash:#26200F; --bad-wash:#2A1715;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .shell{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+
+  /* right padding keeps the role switcher clear of the fixed theme toggle */
+  .protobar{display:flex;align-items:center;gap:14px;padding:16px 132px 16px 0;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+  @media(max-width:640px){.protobar{padding-right:0;padding-top:60px}}
+  .protobar .t{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .roleswitch{display:inline-flex;border:1px solid var(--line-strong);border-radius:3px;overflow:hidden}
+  .roleswitch button{font:inherit;font-size:12.5px;font-weight:550;border:0;background:var(--surface);color:var(--ink-2);padding:6px 13px;cursor:pointer}
+  .roleswitch button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+
+  .app{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-top:20px;overflow:hidden}
+  .top{display:flex;align-items:center;gap:18px;padding:0 14px;height:48px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .logo{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:-.02em}
+  .logo span{color:var(--accent)}
+  .nav{display:flex;gap:2px}
+  .nav a{font-size:13px;color:var(--ink-2);text-decoration:none;padding:5px 9px;border-radius:3px;cursor:pointer}
+  .nav a[aria-current]{background:var(--surface-2);color:var(--ink);font-weight:550}
+  .nav a:hover{color:var(--ink)}
+  .grow{flex:1}
+  .kbd{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:3px;padding:2px 5px}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .btn{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:3px;padding:6px 11px;cursor:pointer;line-height:1.2;min-height:32px}
+  .btn:hover{background:var(--surface-2)}
+  .btn-p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-p:hover{filter:brightness(1.08);background:var(--accent)}
+  .btn-sm{padding:4px 8px;font-size:12px;min-height:28px}
+
+  .screen{display:none}
+  .screen[data-active]{display:block}
+
+  .head{padding:16px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .head h2{margin:0;font-size:19px;font-weight:650;letter-spacing:-.02em}
+  .sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+  .filters{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}
+  .chip{font:inherit;font-size:12.5px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);border-radius:3px;padding:5px 11px;cursor:pointer;min-height:30px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent);color:var(--accent);font-weight:600}
+  .search{flex:1;min-width:160px;font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:3px;background:var(--surface);color:var(--ink);min-height:30px}
+
+  .rowlist{}
+  .row{display:grid;grid-template-columns:1fr;gap:4px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  @media(min-width:760px){.row{grid-template-columns:1fr 120px 92px 92px auto;align-items:center;gap:12px}}
+  .row:hover{background:var(--surface-2)}
+  .row .ttl{font-weight:560;font-size:14.5px}
+  .row .club{color:var(--ink-3);font-size:12.5px}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:2px;border:1px solid var(--line-strong);color:var(--ink-2);white-space:nowrap}
+  .tag-role{border-color:var(--accent);color:var(--accent)}
+  .empty-msg{padding:40px 16px;color:var(--ink-2);font-size:13.5px}
+  .empty-msg b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px;font-weight:600}
+
+  /* detail */
+  .detail{padding:18px 16px 22px}
+  .detail .back{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);background:none;border:0;cursor:pointer;padding:0 0 12px}
+  .detail .back:hover{color:var(--ink)}
+  .detail h3{margin:0 0 4px;font-size:24px;font-weight:650;letter-spacing:-.03em}
+  .detail .by{color:var(--ink-2);font-size:14px;margin-bottom:14px}
+  .facts{display:flex;gap:22px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px}
+  .fact .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .fact .v{font-size:14px;font-weight:550;font-variant-numeric:tabular-nums}
+  .detail p.desc{color:var(--ink-2);font-size:14.5px;max-width:70ch}
+  .applybar{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+  .applied{display:none;align-items:center;gap:8px;font-size:13.5px;color:var(--ok);font-weight:550}
+  .applied::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  /* responses */
+  .banner{display:flex;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--warn-wash);flex-wrap:wrap}
+  .banner p{margin:0;font-size:13px}
+  .tablewrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:680px}
+  th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:500;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  tbody tr:hover{background:var(--surface-2)}
+  .nm{font-weight:560}
+  .dim{color:var(--ink-3);font-size:12.5px}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-2)}
+  .acts{display:flex;gap:5px;justify-content:flex-end}
+  input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:560;padding:2px 7px;border-radius:2px;white-space:nowrap}
+  .pill::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+  .p-new{background:var(--accent-wash);color:var(--accent)}
+  .p-seen{background:var(--warn-wash);color:var(--warn)}
+  .p-in{background:var(--ok-wash);color:var(--ok)}
+  .p-out{background:var(--bad-wash);color:var(--bad)}
+
+  /* messages */
+  .msg{display:grid;grid-template-columns:1fr;min-height:420px}
+  @media(min-width:760px){.msg{grid-template-columns:250px 1fr}}
+  .convos{border-right:1px solid var(--line)}
+  .convo{display:flex;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+  .convo:hover{background:var(--surface-2)}
+  .convo[aria-current]{background:var(--accent-wash)}
+  .ava{width:28px;height:28px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+  .convo .who{font-weight:560;font-size:13.5px}
+  .convo .prev{color:var(--ink-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+  .unread{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:6px}
+  .thread{display:flex;flex-direction:column}
+  .thead{padding:11px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px;display:flex;align-items:center;gap:9px}
+  .bubbles{flex:1;padding:16px 14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:330px}
+  .b{max-width:78%;padding:9px 12px;border-radius:var(--r);font-size:13.5px;line-height:1.45}
+  .b.them{background:var(--surface-2);align-self:flex-start}
+  .b.me{background:var(--accent);color:var(--accent-ink);align-self:flex-end}
+  .b .t{display:block;font-family:var(--mono);font-size:10px;opacity:.6;margin-top:4px}
+  .composer{display:flex;gap:8px;padding:11px 14px;border-top:1px solid var(--line)}
+  .composer input{flex:1;font:inherit;font-size:13.5px;padding:7px 11px;border:1px solid var(--line-strong);border-radius:3px;background:var(--surface);color:var(--ink);min-height:34px}
+
+  .themetoggle{position:fixed;top:14px;right:14px;z-index:9999;font-family:var(--sans);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:999px;cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.78}
+  .themetoggle:hover{opacity:1}
+  .themetoggle:focus-visible{outline:2px solid currentColor;outline-offset:3px;opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="shell">
+  <div class="protobar">
+    <span class="t">Prototype &#183; Direction 1 &#183; The Instrument</span>
+    <span class="grow"></span>
+    <span class="t">Viewing as</span>
+    <span class="roleswitch">
+      <button data-role="student" aria-pressed="true">Student</button>
+      <button data-role="club" aria-pressed="false">Club officer</button>
+    </span>
+  </div>
+
+  <div class="app">
+    <div class="top">
+      <span class="logo">Zot<span>Hub</span></span>
+      <nav class="nav" data-nav="student">
+        <a data-goto="discover" aria-current="page">Discover</a>
+        <a data-goto="clubs">Clubs</a>
+        <a data-goto="activity">Activity</a>
+        <a data-goto="messages">Messages</a>
+      </nav>
+      <nav class="nav" data-nav="club" hidden>
+        <a data-goto="postings">Postings</a>
+        <a data-goto="responses" aria-current="page">Responses</a>
+        <a data-goto="messages">Messages</a>
+        <a data-goto="myclub">My Club</a>
+      </nav>
+      <span class="grow"></span>
+      <span class="kbd">&#8984;K</span>
+    </div>
+
+    <!-- ============ DISCOVER ============ -->
+    <section class="screen" data-screen="discover" data-active>
+      <div class="head"><h2>Discover</h2><span class="sub" id="disc-count">8 open</span></div>
+      <div class="filters">
+        <input class="search" id="q" type="search" placeholder="Search roles, events, clubs&#8230;" aria-label="Search" />
+        <button class="chip" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="role" aria-pressed="false">Roles</button>
+        <button class="chip" data-filter="event" aria-pressed="false">Events</button>
+        <button class="chip" data-filter="following" aria-pressed="false">Following</button>
+      </div>
+      <div class="rowlist" id="disclist">
+        <div class="row" data-kind="role" data-follow="1" data-open="vp-design"><div><div class="ttl">VP of Design</div><div class="club">Design at UCI</div></div><span class="tag tag-role">Leadership</span><span class="meta">2 days</span><span class="meta">18 applied</span><span><button class="btn btn-sm btn-p">Apply</button></span></div>
+        <div class="row" data-kind="role" data-follow="1" data-open="embedded"><div><div class="ttl">Embedded Systems Lead</div><div class="club">Anteater Robotics</div></div><span class="tag tag-role">Project</span><span class="meta">4 days</span><span class="meta">7 applied</span><span><button class="btn btn-sm btn-p">Apply</button></span></div>
+        <div class="row" data-kind="event" data-follow="1" data-open="kickoff"><div><div class="ttl">Fall Kickoff Social</div><div class="club">Circle K International</div></div><span class="tag">Event</span><span class="meta">Fri 6pm</span><span class="meta">54 / 80</span><span><button class="btn btn-sm">RSVP</button></span></div>
+        <div class="row" data-kind="role" data-follow="0" data-open="case"><div><div class="ttl">Fall Case Team Analyst</div><div class="club">Zot Consulting Group</div></div><span class="tag tag-role">Committee</span><span class="meta">6 days</span><span class="meta">41 applied</span><span><button class="btn btn-sm">Apply externally</button></span></div>
+        <div class="row" data-kind="role" data-follow="0" data-open="mentor"><div><div class="ttl">Peer Mentor, First-Year Track</div><div class="club">ICS Student Council</div></div><span class="tag tag-role">Volunteer</span><span class="meta">Rolling</span><span class="meta">9 applied</span><span><button class="btn btn-sm btn-p">Apply</button></span></div>
+        <div class="row" data-kind="event" data-follow="1" data-open="shopday"><div><div class="ttl">Shop Day &amp; Open Build</div><div class="club">Anteater Robotics</div></div><span class="tag">Event</span><span class="meta">Tue 7pm</span><span class="meta">18 / 30</span><span><button class="btn btn-sm">RSVP</button></span></div>
+        <div class="row" data-kind="role" data-follow="1" data-open="zine"><div><div class="ttl">Print &amp; Zine Committee</div><div class="club">Design at UCI</div></div><span class="tag tag-role">Committee</span><span class="meta">Rolling</span><span class="meta">4 applied</span><span><button class="btn btn-sm btn-p">Apply</button></span></div>
+        <div class="row" data-kind="event" data-follow="0" data-open="resume"><div><div class="ttl">R&#233;sum&#233; Workshop</div><div class="club">ICS Student Council</div></div><span class="tag">Event</span><span class="meta">Tue 5pm</span><span class="meta">22 / 40</span><span><button class="btn btn-sm">RSVP</button></span></div>
+      </div>
+      <div class="empty-msg" id="disc-empty" hidden><b>Nothing matches that.</b>Try clearing a filter, or tell a club to post.<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" data-clear>Clear filters</button><button class="btn btn-sm">Tell a club to post</button></div></div>
+    </section>
+
+    <!-- ============ DETAIL ============ -->
+    <section class="screen" data-screen="detail">
+      <div class="detail">
+        <button class="back" data-goto="discover">&#8592; Back to Discover</button>
+        <h3 id="d-title">VP of Design</h3>
+        <div class="by" id="d-club">Design at UCI &#183; Leadership</div>
+        <div class="facts">
+          <div class="fact"><div class="k">Closes</div><div class="v" id="d-closes">Fri 25 Sep</div></div>
+          <div class="fact"><div class="k">Applicants</div><div class="v" id="d-apps">18</div></div>
+          <div class="fact"><div class="k">Commitment</div><div class="v">4&#8211;6 hrs / week</div></div>
+          <div class="fact"><div class="k">Decision by</div><div class="v">2 Oct</div></div>
+        </div>
+        <p class="desc">Lead the visual identity for everything Design at UCI ships &#8212; event artwork, the quarterly zine, and the site. You&#8217;ll run a team of four and sit on the officer board. We care more about what you&#8217;ve made than where you&#8217;ve been.</p>
+        <div class="applybar">
+          <button class="btn btn-p" id="applybtn">Apply</button>
+          <button class="btn">Save</button>
+          <button class="btn" data-goto="messages">Message the club</button>
+          <span class="applied" id="appliedmsg">Applied &#183; they&#8217;ll respond by 2 Oct</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CLUBS ============ -->
+    <section class="screen" data-screen="clubs">
+      <div class="head"><h2>Clubs</h2><span class="sub">5 &#183; 34 on ZotHub</span></div>
+      <div class="rowlist">
+        <div class="row"><div><div class="ttl">Design at UCI</div><div class="club">Arts &amp; Culture &#183; 48 members</div></div><span class="tag">Following</span><span class="meta">2 open</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Unfollow</button></span></div>
+        <div class="row"><div><div class="ttl">Anteater Robotics</div><div class="club">Engineering &#183; 62 members</div></div><span class="tag">Following</span><span class="meta">1 open</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Unfollow</button></span></div>
+        <div class="row"><div><div class="ttl">Circle K International</div><div class="club">Community Service &#183; 90 members</div></div><span class="tag">Following</span><span class="meta">0 open</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Unfollow</button></span></div>
+        <div class="row"><div><div class="ttl">Zot Consulting Group</div><div class="club">Business &#183; 35 members</div></div><span class="tag">Unclaimed</span><span class="meta">1 open</span><span class="meta">&#8212;</span><span><button class="btn btn-sm btn-p">Follow</button></span></div>
+        <div class="row"><div><div class="ttl">ICS Student Council</div><div class="club">Technology &#183; 120 members</div></div><span class="tag">&#8212;</span><span class="meta">1 open</span><span class="meta">&#8212;</span><span><button class="btn btn-sm btn-p">Follow</button></span></div>
+      </div>
+    </section>
+
+    <!-- ============ ACTIVITY ============ -->
+    <section class="screen" data-screen="activity">
+      <div class="head"><h2>Activity</h2><span class="sub">3 applications &#183; 2 RSVPs</span></div>
+      <div class="rowlist">
+        <div class="row"><div><div class="ttl">VP of Design</div><div class="club">Design at UCI</div></div><span class="pill p-seen">In review</span><span class="meta">Applied Sep 18</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Withdraw</button></span></div>
+        <div class="row"><div><div class="ttl">Embedded Systems Lead</div><div class="club">Anteater Robotics</div></div><span class="pill p-in">Accepted</span><span class="meta">Applied Sep 12</span><span class="meta">&#8212;</span><span><button class="btn btn-sm btn-p">Message</button></span></div>
+        <div class="row"><div><div class="ttl">Fall Case Team Analyst</div><div class="club">Zot Consulting Group</div></div><span class="pill p-seen">Applied externally</span><span class="meta">Applied Sep 16</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Open form</button></span></div>
+        <div class="row"><div><div class="ttl">Fall Kickoff Social</div><div class="club">Circle K International</div></div><span class="pill p-in">Going</span><span class="meta">Fri 26 Sep</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Add to calendar</button></span></div>
+      </div>
+    </section>
+
+    <!-- ============ POSTINGS (club) ============ -->
+    <section class="screen" data-screen="postings">
+      <div class="head"><h2>Postings</h2><span class="sub">2 live &#183; 1 draft</span><span class="grow"></span><button class="btn btn-p btn-sm">New posting</button></div>
+      <div class="rowlist">
+        <div class="row" data-goto="responses"><div><div class="ttl">VP of Design</div><div class="club">Leadership &#183; published Sep 12</div></div><span class="pill p-new">Live</span><span class="meta">closes 2d</span><span class="meta">18 applied</span><span><button class="btn btn-sm">Review</button></span></div>
+        <div class="row"><div><div class="ttl">Print &amp; Zine Committee</div><div class="club">Committee &#183; published Sep 15</div></div><span class="pill p-new">Live</span><span class="meta">rolling</span><span class="meta">4 applied</span><span><button class="btn btn-sm">Review</button></span></div>
+        <div class="row"><div><div class="ttl">Social Media Lead</div><div class="club">Not published</div></div><span class="pill p-seen">Draft</span><span class="meta">&#8212;</span><span class="meta">&#8212;</span><span><button class="btn btn-sm">Edit</button></span></div>
+      </div>
+    </section>
+
+    <!-- ============ RESPONSES (club) ============ -->
+    <section class="screen" data-screen="responses">
+      <div class="head"><h2>VP of Design</h2><span class="sub" id="r-count">18 applicants &#183; 6 decided</span><span class="grow"></span><button class="btn btn-sm">Export CSV</button><button class="btn btn-sm">Close posting</button></div>
+      <div class="banner" id="ghostbanner">
+        <p><strong id="waitcount">12 people</strong> have been waiting 9 days. Closing this posting undecided declines them automatically.</p>
+        <span class="grow"></span>
+        <button class="btn btn-sm">Review them</button>
+      </div>
+      <div class="filters">
+        <span class="sub" id="selcount">0 selected</span>
+        <button class="chip" data-bulk="accepted">Accept selected</button>
+        <button class="chip" data-bulk="rejected">Decline selected</button>
+        <span class="grow"></span>
+        <button class="chip" data-rfilter="all" aria-pressed="true">All</button>
+        <button class="chip" data-rfilter="pending" aria-pressed="false">Undecided</button>
+        <button class="chip" data-rfilter="decided" aria-pressed="false">Decided</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th style="width:34px"></th><th>Applicant</th><th>Year / Major</th><th>Applied</th><th>Status</th><th style="text-align:right">Decision</th></tr></thead>
+          <tbody id="apps">
+            <tr data-status="new"><td><input type="checkbox" aria-label="Select Priya Raman"></td><td><div class="nm">Priya Raman</div><div class="dim">Portfolio attached</div></td><td class="dim">Junior &#183; Informatics</td><td class="num">Sep 18</td><td class="st"></td><td class="dec"></td></tr>
+            <tr data-status="seen"><td><input type="checkbox" aria-label="Select Marcus Vela"></td><td><div class="nm">Marcus Vela</div><div class="dim">R&#233;sum&#233; attached</div></td><td class="dim">Sophomore &#183; Studio Art</td><td class="num">Sep 18</td><td class="st"></td><td class="dec"></td></tr>
+            <tr data-status="new"><td><input type="checkbox" aria-label="Select Amara Osei"></td><td><div class="nm">Amara Osei</div><div class="dim">Portfolio attached</div></td><td class="dim">Senior &#183; Computer Science</td><td class="num">Sep 17</td><td class="st"></td><td class="dec"></td></tr>
+            <tr data-status="new"><td><input type="checkbox" aria-label="Select Ben Okafor"></td><td><div class="nm">Ben Okafor</div><div class="dim">No attachment</div></td><td class="dim">Freshman &#183; Undeclared</td><td class="num">Sep 17</td><td class="st"></td><td class="dec"></td></tr>
+            <tr data-status="seen"><td><input type="checkbox" aria-label="Select Sofia Lindqvist"></td><td><div class="nm">Sofia Lindqvist</div><div class="dim">Applied externally</div></td><td class="dim">Junior &#183; Business Admin</td><td class="num">Sep 16</td><td class="st"></td><td class="dec"></td></tr>
+            <tr data-status="new"><td><input type="checkbox" aria-label="Select Jae-Won Park"></td><td><div class="nm">Jae-Won Park</div><div class="dim">Portfolio attached</div></td><td class="dim">Junior &#183; Art History</td><td class="num">Sep 15</td><td class="st"></td><td class="dec"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ MY CLUB ============ -->
+    <section class="screen" data-screen="myclub">
+      <div class="head"><h2>Design at UCI</h2><span class="sub">Arts &amp; Culture &#183; 48 members</span></div>
+      <div class="detail">
+        <div class="facts">
+          <div class="fact"><div class="k">Profile views</div><div class="v">412</div></div>
+          <div class="fact"><div class="k">Followers</div><div class="v">86</div></div>
+          <div class="fact"><div class="k">Applications</div><div class="v">22</div></div>
+          <div class="fact"><div class="k">Decision rate</div><div class="v">73%</div></div>
+        </div>
+        <p class="desc">We design everything the club ships &#8212; event artwork, the quarterly zine, and the site. Open studio Thursdays in Anteater Learning Pavilion.</p>
+        <div class="applybar"><button class="btn">Edit profile</button><button class="btn">Manage team</button><button class="btn">Analytics</button></div>
+      </div>
+    </section>
+
+    <!-- ============ MESSAGES ============ -->
+    <section class="screen" data-screen="messages">
+      <div class="msg">
+        <div class="convos" id="convos">
+          <div class="convo" data-thread="design" aria-current="true"><span class="ava" style="background:#C2410C">D</span><div><div class="who">Design at UCI</div><div class="prev">Great &#8212; can you make Thursday?</div></div><span class="unread"></span></div>
+          <div class="convo" data-thread="robotics"><span class="ava" style="background:#1D6FA3">AR</span><div><div class="who">Anteater Robotics</div><div class="prev">Welcome aboard! First build is&#8230;</div></div></div>
+          <div class="convo" data-thread="circlek"><span class="ava" style="background:#2C6E49">CK</span><div><div class="who">Circle K International</div><div class="prev">Thanks for RSVPing to Kickoff.</div></div></div>
+        </div>
+        <div class="thread">
+          <div class="thead"><span class="ava" id="t-ava" style="background:#C2410C">D</span><span id="t-name">Design at UCI</span><span class="grow"></span><span class="sub" id="t-ctx">Re: VP of Design</span></div>
+          <div class="bubbles" id="bubbles"></div>
+          <form class="composer" id="composer">
+            <input id="msgin" placeholder="Write a message&#8230;" aria-label="Message" autocomplete="off" />
+            <button class="btn btn-p" type="submit">Send</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+
+(function(){
+  var $=function(s,c){return (c||document).querySelector(s)},$$=function(s,c){return [].slice.call((c||document).querySelectorAll(s))};
+
+  /* ---------- screen routing ---------- */
+  function go(name){
+    $$('.screen').forEach(function(s){ s.toggleAttribute('data-active', s.dataset.screen===name); });
+    $$('.nav a').forEach(function(a){ if(a.dataset.goto===name) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+    window.scrollTo({top:0,behavior:'instant'});
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('[data-goto]'); if(!t) return;
+    if(e.target.closest('.row [class*=btn]') && t.classList.contains('row')) return;
+    e.preventDefault(); go(t.dataset.goto);
+  });
+
+  /* ---------- role switch ---------- */
+  $$('[data-role]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var r=b.dataset.role;
+      $$('[data-role]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+      $('[data-nav="student"]').hidden = r!=='student';
+      $('[data-nav="club"]').hidden = r!=='club';
+      go(r==='student'?'discover':'responses');
+    });
+  });
+
+  /* ---------- discover filters ---------- */
+  var kind='all', q='';
+  function applyFilter(){
+    var rows=$$('#disclist .row'), shown=0;
+    rows.forEach(function(r){
+      var okKind = kind==='all' || (kind==='following' ? r.dataset.follow==='1' : r.dataset.kind===kind);
+      var okQ = !q || r.textContent.toLowerCase().indexOf(q)>-1;
+      var vis = okKind && okQ; r.hidden=!vis; if(vis) shown++;
+    });
+    $('#disc-count').textContent = shown+' shown';
+    $('#disc-empty').hidden = shown>0;
+  }
+  $$('[data-filter]').forEach(function(c){
+    c.addEventListener('click',function(){
+      kind=c.dataset.filter;
+      $$('[data-filter]').forEach(function(x){x.setAttribute('aria-pressed',String(x===c));});
+      applyFilter();
+    });
+  });
+  $('#q').addEventListener('input',function(e){ q=e.target.value.toLowerCase().trim(); applyFilter(); });
+  $('[data-clear]').addEventListener('click',function(){ q=''; $('#q').value=''; kind='all';
+    $$('[data-filter]').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.filter==='all'));}); applyFilter(); });
+
+  /* ---------- detail ---------- */
+  var DETAIL={
+    'vp-design':['VP of Design','Design at UCI &#183; Leadership','Fri 25 Sep','18'],
+    'embedded':['Embedded Systems Lead','Anteater Robotics &#183; Project','Sun 27 Sep','7'],
+    'kickoff':['Fall Kickoff Social','Circle K International &#183; Event','Fri 26 Sep, 6pm','54 of 80'],
+    'case':['Fall Case Team Analyst','Zot Consulting Group &#183; Committee','Mon 29 Sep','41'],
+    'mentor':['Peer Mentor, First-Year Track','ICS Student Council &#183; Volunteer','Rolling','9'],
+    'shopday':['Shop Day &amp; Open Build','Anteater Robotics &#183; Event','Tue 29 Sep, 7pm','18 of 30'],
+    'zine':['Print &amp; Zine Committee','Design at UCI &#183; Committee','Rolling','4'],
+    'resume':['R&#233;sum&#233; Workshop','ICS Student Council &#183; Event','Tue 30 Sep, 5pm','22 of 40']
+  };
+  $$('#disclist .row').forEach(function(r){
+    r.addEventListener('click',function(e){
+      if(e.target.closest('button')) return;
+      var d=DETAIL[r.dataset.open]; if(!d) return;
+      $('#d-title').innerHTML=d[0]; $('#d-club').innerHTML=d[1]; $('#d-closes').textContent=d[2]; $('#d-apps').textContent=d[3];
+      $('#applybtn').textContent='Apply'; $('#applybtn').disabled=false; $('#appliedmsg').style.display='none';
+      go('detail');
+    });
+  });
+  $('#applybtn').addEventListener('click',function(){
+    this.textContent='Applied'; this.disabled=true; $('#appliedmsg').style.display='inline-flex';
+  });
+
+  /* ---------- responses: real state ---------- */
+  var LBL={new:['New','p-new'],seen:['Reviewed','p-seen'],accepted:['Accepted','p-in'],rejected:['Declined','p-out']};
+  function paint(tr){
+    var s=tr.dataset.status, l=LBL[s];
+    $('.st',tr).innerHTML='<span class="pill '+l[1]+'">'+l[0]+'</span>';
+    $('.dec',tr).innerHTML = (s==='accepted'||s==='rejected')
+      ? '<div class="acts"><button class="btn btn-sm" data-act="undo">Undo</button></div>'
+      : '<div class="acts"><button class="btn btn-sm" data-act="rejected">Decline</button><button class="btn btn-sm btn-p" data-act="accepted">Accept</button></div>';
+  }
+  function tally(){
+    var rows=$$('#apps tr'), decided=rows.filter(function(r){return r.dataset.status==='accepted'||r.dataset.status==='rejected';}).length;
+    var waiting=rows.length-decided;
+    $('#r-count').textContent='18 applicants &#183; '+(decided+4)+' decided';
+    $('#r-count').innerHTML='18 applicants &#183; '+(decided+4)+' decided';
+    $('#waitcount').textContent=(waiting+6)+' people';
+    $('#ghostbanner').hidden = waiting===0;
+    var sel=$$('#apps input:checked').length;
+    $('#selcount').textContent=sel+' selected';
+  }
+  $$('#apps tr').forEach(paint);
+  tally();
+  $('#apps').addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]'); if(!b) return;
+    var tr=b.closest('tr'); tr.dataset.status = b.dataset.act==='undo' ? 'seen' : b.dataset.act;
+    paint(tr); tally(); rfilter();
+  });
+  $('#apps').addEventListener('change',tally);
+  $$('[data-bulk]').forEach(function(b){
+    b.addEventListener('click',function(){
+      $$('#apps input:checked').forEach(function(cb){
+        var tr=cb.closest('tr'); tr.dataset.status=b.dataset.bulk; cb.checked=false; paint(tr);
+      });
+      tally(); rfilter();
+    });
+  });
+  var rf='all';
+  function rfilter(){
+    $$('#apps tr').forEach(function(tr){
+      var d=tr.dataset.status==='accepted'||tr.dataset.status==='rejected';
+      tr.hidden = rf==='pending' ? d : (rf==='decided' ? !d : false);
+    });
+  }
+  $$('[data-rfilter]').forEach(function(c){
+    c.addEventListener('click',function(){ rf=c.dataset.rfilter;
+      $$('[data-rfilter]').forEach(function(x){x.setAttribute('aria-pressed',String(x===c));}); rfilter(); });
+  });
+
+  /* ---------- messaging ---------- */
+  var THREADS={
+    design:{name:'Design at UCI',ava:'D',color:'#C2410C',ctx:'Re: VP of Design',msgs:[
+      ['them','Hi Priya &#8212; we loved the zine work in your portfolio.','Sep 19, 4:12 PM'],
+      ['them','Are you free Thursday at 5 to meet the board?','Sep 19, 4:12 PM'],
+      ['me','Thursday works. Should I bring anything?','Sep 19, 6:40 PM'],
+      ['them','Great &#8212; can you make Thursday? Just bring the zine if you still have a copy.','Sep 20, 9:02 AM']]},
+    robotics:{name:'Anteater Robotics',ava:'AR',color:'#1D6FA3',ctx:'Re: Embedded Systems Lead',msgs:[
+      ['them','Welcome aboard! First build night is Tuesday 7pm, Engineering Gateway 2140.','Sep 14, 11:20 AM'],
+      ['me','See you there.','Sep 14, 12:05 PM']]},
+    circlek:{name:'Circle K International',ava:'CK',color:'#2C6E49',ctx:'Re: Fall Kickoff Social',msgs:[
+      ['them','Thanks for RSVPing to Kickoff. Doors at 6, food until 7.','Sep 16, 3:00 PM']]}
+  };
+  function loadThread(id){
+    var t=THREADS[id]; if(!t) return;
+    $('#t-name').textContent=t.name; $('#t-ava').textContent=t.ava; $('#t-ava').style.background=t.color; $('#t-ctx').textContent=t.ctx;
+    $('#bubbles').innerHTML = t.msgs.map(function(m){
+      return '<div class="b '+(m[0]==='me'?'me':'them')+'">'+m[1]+'<span class="t">'+m[2]+'</span></div>';
+    }).join('');
+    $('#bubbles').scrollTop=$('#bubbles').scrollHeight;
+    $$('.convo').forEach(function(c){ if(c.dataset.thread===id) c.setAttribute('aria-current','true'); else c.removeAttribute('aria-current'); });
+    var active=$('.convo[data-thread="'+id+'"] .unread'); if(active) active.remove();
+  }
+  $$('.convo').forEach(function(c){ c.addEventListener('click',function(){ loadThread(c.dataset.thread); }); });
+  loadThread('design');
+  $('#composer').addEventListener('submit',function(e){
+    e.preventDefault(); var v=$('#msgin').value.trim(); if(!v) return;
+    var now=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    var d=document.createElement('div'); d.className='b me'; d.textContent=v;
+    var s=document.createElement('span'); s.className='t'; s.textContent=now; d.appendChild(s);
+    $('#bubbles').appendChild(d); $('#msgin').value=''; $('#bubbles').scrollTop=$('#bubbles').scrollHeight;
+  });
+})();
+</script>

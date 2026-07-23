@@ -1,0 +1,332 @@
+<title>ZotHub &#8212; Direction 8: The Departures Board</title>
+
+<style>
+  :root {
+    --board: #101726;
+    --panel: #16203324;
+    --panel-solid: #182238;
+    --panel-2: #1E2A44;
+    --ink: #EDF1F8;
+    --ink-2: #A7B2C7;
+    --ink-3: #6E7A93;
+    --line: #2A3752;
+    --amber: #FFC53D;
+    --amber-ink: #221A02;
+    --green: #4ADE80;
+    --green-ink: #04180B;
+    --cyan: #53CBE8;
+    --cyan-ink: #06171D;
+    --red: #FF7A6B;
+    /* Route colours double as badge fills AND as text. Fills keep dark ink on a
+       bright ground in both themes; the *-text aliases carry the AA-safe value. */
+    --amber-text: var(--amber);
+    --green-text: var(--green);
+    --cyan-text: var(--cyan);
+    --red-text: var(--red);
+    --alert-bg: #2A1E10;
+    --alert-ink: #FFD98A;
+    --sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  /* Daylight board: the same signage system printed rather than illuminated.
+     Route fills stay vivid so the colour coding survives; every colour used as
+     TEXT drops to an AA-safe value, because #FFC53D on white is ~1.6:1. */
+  :root[data-theme="light"] {
+    --board: #F4F6FA;
+    --panel-solid: #FFFFFF;
+    --panel-2: #EAEFF6;
+    --ink: #101726;
+    --ink-2: #44526C;
+    --ink-3: #6B7890;
+    --line: #D6DEEA;
+    --amber-text: #8A5A00;
+    --green-text: #15803D;
+    --cyan-text: #0E7490;
+    --red-text: #B32B1D;
+    --alert-bg: #FFF4E0;
+    --alert-ink: #6B4A05;
+  }
+  body { background: var(--board); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--line); }
+  .thesis { display: inline-block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--amber-text); }
+  .note h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; margin: 8px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 68ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink-3); display: flex; justify-content: space-between; }
+
+  .frame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel-solid); }
+
+  .bar { display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .mark { font-size: 17px; font-weight: 800; letter-spacing: 0.01em; }
+  .mark i { font-style: normal; color: var(--amber-text); }
+  .bar nav { display: flex; gap: 4px; }
+  .bar nav a { font-size: 13px; font-weight: 600; letter-spacing: 0.03em; color: var(--ink-2); text-decoration: none; padding: 7px 12px; border-radius: 6px; }
+  .bar nav a[aria-current] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 -2px 0 var(--amber-text); }
+  .bar nav a:hover { color: var(--ink); }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .btn { font: inherit; font-size: 13.5px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; min-height: 42px; padding: 9px 17px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
+  .btn:hover { border-color: var(--ink-3); }
+  .btn-go { background: var(--amber); border-color: var(--amber); color: var(--amber-ink); }
+  .btn-go:hover { filter: brightness(1.07); }
+  .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 12.5px; }
+
+  /* line badges — route markers */
+  .route { display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 4px; padding: 3px 8px; white-space: nowrap; }
+  .r-role { background: var(--amber); color: var(--amber-ink); }
+  .r-event { background: var(--green); color: var(--green-ink); }
+  .r-club { background: var(--cyan); color: var(--cyan-ink); }
+
+  /* hero = the big board */
+  .hero { padding: 46px 24px 28px; }
+  .hero .station { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 14px; }
+  .hero h2 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 12px; max-width: 22ch; }
+  .hero h2 em { font-style: normal; color: var(--amber-text); }
+  .hero p { color: var(--ink-2); font-size: 16px; max-width: 50ch; margin: 0 0 22px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 26px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+
+  /* departures table */
+  .board-head { display: grid; grid-template-columns: 86px 1fr 110px 90px; gap: 12px; padding: 10px 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-2); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .dep { display: grid; grid-template-columns: 86px 1fr 110px 90px; gap: 12px; align-items: center; padding: 13px 20px; border-bottom: 1px solid var(--line); }
+  .dep:last-child { border-bottom: 0; }
+  .dep:hover { background: var(--panel-2); }
+  .dep .dest { font-weight: 700; font-size: 15.5px; }
+  .dep .dest a { color: inherit; text-decoration: none; }
+  .dep .dest a:hover { color: var(--amber-text); }
+  .dep .via { font-size: 12.5px; color: var(--ink-3); font-weight: 400; }
+  .dep .time { font-family: var(--mono); font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .dep .time small { display: block; color: var(--ink-3); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .dep .load { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .soon { color: var(--amber-text); }
+
+  @media (max-width: 700px) {
+    .board-head { display: none; }
+    .dep { grid-template-columns: 76px 1fr; grid-template-rows: auto auto; }
+    .dep .time { grid-column: 2; }
+  }
+
+  /* review = platform control */
+  .alertbar { padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--alert-bg); color: var(--alert-ink); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13.5px; }
+  .alertbar p { margin: 0; }
+  .subhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .subhead h3 { margin: 0; font-size: 17px; font-weight: 800; }
+  .soft { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+  .plat-head { display: grid; grid-template-columns: 1fr 150px 110px 96px auto; gap: 12px; padding: 9px 20px; border-bottom: 1px solid var(--line); background: var(--panel-2); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .pax { display: grid; grid-template-columns: 1fr 150px 110px 96px auto; gap: 12px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  .pax:last-child { border-bottom: 0; }
+  .pax:hover { background: var(--panel-2); }
+  .pax .nm { font-weight: 700; font-size: 14.5px; }
+  .pax .sub { font-size: 12px; color: var(--ink-3); }
+  .pax .col { font-size: 13px; color: var(--ink-2); }
+  .pax .when { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .sig { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sig::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+  .sg-new { color: var(--cyan-text); } .sg-seen { color: var(--amber-text); } .sg-in { color: var(--green-text); } .sg-out { color: var(--red-text); }
+  .pacts { display: flex; gap: 6px; justify-content: flex-end; }
+  @media (max-width: 760px) {
+    .plat-head { display: none; }
+    .pax { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
+  }
+
+  .empty { padding: 44px 24px 48px; max-width: 58ch; }
+  .empty .sign { display: inline-block; border-left: 4px solid var(--amber-text); padding: 4px 0 4px 14px; margin-bottom: 14px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+  .empty h4 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
+  .empty p { margin: 0 0 20px; color: var(--ink-2); }
+  .empty-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 54px; border-top: 1px solid var(--line); padding: 20px 0 48px; font-size: 13px; color: var(--ink-3); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <span class="thesis">Direction 8 &#183; The Departures Board</span>
+    <h1>Wayfinding, not browsing &#8212; deadlines are departures.</h1>
+    <p>Unconventional on purpose: the metaphor of transit signage, where colour codes the line, the board tells you what leaves next, and you always know how to get where you&#8217;re going. Amber = roles, green = events, cyan = clubs. Dark is its native register &#8212; a board is dark because the information is the light. The light theme prints the same signage system instead of illuminating it: route fills stay vivid, every colour used as text drops to an AA-safe value. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>dark, on purpose</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Departures</a><a href="#">Clubs</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Log in</button>
+      <button class="btn btn-sm btn-go">Get started</button>
+    </div>
+
+    <div class="hero">
+      <div class="station">UC IRVINE &#183; ALL LINES &#183; FALL QUARTER</div>
+      <h2>Don&#8217;t miss your <em>window</em>.</h2>
+      <p>Every club role and event on campus, ordered by what closes next. Apply before departure. Always hear back.</p>
+      <div class="cta">
+        <button class="btn btn-go">See what leaves soon</button>
+        <button class="btn">I run a club</button>
+      </div>
+      <div class="legend">
+        <span class="route r-role">Roles</span>
+        <span class="route r-event">Events</span>
+        <span class="route r-club">Clubs</span>
+        <span style="margin-left:6px">34 clubs &#183; 61 open roles &#183; 12 events this week</span>
+      </div>
+    </div>
+
+    <div class="board-head"><span>Line</span><span>Destination</span><span>Departs</span><span>Load</span></div>
+    <div class="dep">
+      <span class="route r-role">Role</span>
+      <div class="dest"><a href="#">VP of Design</a><div class="via">Design at UCI &#183; Leadership</div></div>
+      <div class="time soon">2 days<small>closes Sep 25</small></div>
+      <div class="load">18 aboard</div>
+    </div>
+    <div class="dep">
+      <span class="route r-role">Role</span>
+      <div class="dest"><a href="#">Embedded Systems Lead</a><div class="via">Anteater Robotics &#183; Project</div></div>
+      <div class="time">4 days<small>closes Sep 27</small></div>
+      <div class="load">7 aboard</div>
+    </div>
+    <div class="dep">
+      <span class="route r-event">Event</span>
+      <div class="dest"><a href="#">Fall Kickoff Social</a><div class="via">Circle K International &#183; Cross-Cultural Center</div></div>
+      <div class="time">Fri 18:00<small>Sep 26</small></div>
+      <div class="load">54 / 80</div>
+    </div>
+    <div class="dep">
+      <span class="route r-role">Role</span>
+      <div class="dest"><a href="#">Fall Case Team Analyst</a><div class="via">Zot Consulting Group &#183; applies externally</div></div>
+      <div class="time">6 days<small>closes Sep 29</small></div>
+      <div class="load">41 aboard</div>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      <span class="grow"></span>
+      <span class="soft">J/K move &#183; A accept &#183; D decline</span>
+    </div>
+
+    <div class="alertbar">
+      <p><strong>12 passengers waiting 9 days.</strong> Closing this posting undecided declines them automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Review now</button>
+    </div>
+
+    <div class="subhead">
+      <h3>VP of Design</h3><span class="soft">18 APPLICANTS &#183; 6 DECIDED</span>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Accept</button>
+      <button class="btn btn-sm">Decline</button>
+      <button class="btn btn-sm">Export</button>
+    </div>
+
+    <div class="plat-head"><span>Applicant</span><span>Year / Major</span><span>Boarded</span><span>Signal</span><span style="text-align:right">Decide</span></div>
+    <div class="pax">
+      <div><div class="nm">Priya Raman</div><div class="sub">Portfolio attached</div></div>
+      <span class="col">Junior &#183; Informatics</span>
+      <span class="when">Sep 18</span>
+      <span class="sig sg-new">New</span>
+      <div class="pacts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-go">Accept</button></div>
+    </div>
+    <div class="pax">
+      <div><div class="nm">Marcus Vela</div><div class="sub">R&#233;sum&#233; attached</div></div>
+      <span class="col">Sophomore &#183; Studio Art</span>
+      <span class="when">Sep 18</span>
+      <span class="sig sg-seen">Held</span>
+      <div class="pacts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-go">Accept</button></div>
+    </div>
+    <div class="pax">
+      <div><div class="nm">Amara Osei</div><div class="sub">Portfolio attached</div></div>
+      <span class="col">Senior &#183; Computer Science</span>
+      <span class="when">Sep 17</span>
+      <span class="sig sg-in">Boarded</span>
+      <div class="pacts"><button class="btn btn-sm">Undo</button></div>
+    </div>
+    <div class="pax">
+      <div><div class="nm">Ben Okafor</div><div class="sub">No attachment</div></div>
+      <span class="col">Freshman &#183; Undeclared</span>
+      <span class="when">Sep 17</span>
+      <span class="sig sg-out">Declined</span>
+      <div class="pacts"><button class="btn btn-sm">Undo</button></div>
+    </div>
+    <div class="pax">
+      <div><div class="nm">Sofia Lindqvist</div><div class="sub">Applied externally</div></div>
+      <span class="col">Junior &#183; Business Admin</span>
+      <span class="when">Sep 16</span>
+      <span class="sig sg-seen">Held</span>
+      <div class="pacts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-go">Accept</button></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <span class="sign">No service on this line</span>
+      <h4>No design roles departing this week.</h4>
+      <p>Three clubs usually run this line every quarter. We&#8217;ll post the platform change the moment one does.</p>
+      <div class="empty-acts">
+        <button class="btn btn-go">Alert me</button>
+        <button class="btn">See those clubs</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 8 of 10 &#183; The Departures Board. Signage face is system Helvetica standing in for a real wayfinding grotesk. Both themes designed; use the switch.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

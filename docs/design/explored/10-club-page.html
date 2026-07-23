@@ -1,0 +1,355 @@
+<title>ZotHub &#8212; Direction 10: The Club Page</title>
+
+<style>
+  :root {
+    --white: #fff;
+    --g10: #f7f8f9; --g20: #ebeced; --g30: #dee0e2; --g40: #d2d4d7;
+    --g50: #b3b5b7; --g60: #939597; --g70: #737577; --g80: #535557; --g90: #333537; --g100: #212325;
+    --black: #131517;
+    --faint: rgba(147,149,151,.067);
+    --pale: rgba(147,149,151,.133);
+    --darker-pale: rgba(147,149,151,.267);
+    --accent: #E24C33;
+    --accent-ink: #fff;
+    --ok: #15803D; --warn: #92610B; --bad: #C0392E;
+    --sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --r: 8px; --r-lg: 12px;
+  }
+  :root[data-theme="dark"] {
+    --white: #16181A; --g10: #1B1D1F; --g20: #232527; --g30: #2C2E30;
+    --g50: #6A6C6E; --g60: #8A8C8E; --g70: #A2A4A6; --g80: #C2C4C6; --g100: #EDEFF1;
+    --black: #F2F4F6;
+    --faint: rgba(147,149,151,.09); --pale: rgba(147,149,151,.16); --darker-pale: rgba(147,149,151,.3);
+    --accent: #FF7A5E; --accent-ink: #26100A;
+    --ok: #5BC98A; --warn: #DBA75C; --bad: #E98A7C;
+  }
+
+  body { background: var(--white); color: var(--black); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--pale); }
+  .thesis { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+  .note h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin: 7px 0 4px; }
+  .note p { margin: 0; color: var(--g70); font-size: 14px; max-width: 70ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 22px; border-bottom: 1px solid var(--pale); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--g60); font-weight: 600; display: flex; justify-content: space-between; }
+
+  .frame { border: 1px solid var(--pale); border-radius: var(--r-lg); overflow: hidden; background: var(--white); }
+
+  .bar { display: flex; align-items: center; gap: 14px; padding: 14px 20px; }
+  .mark { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--g80); }
+  .mark sup { color: var(--accent); font-size: 9px; }
+  .grow { flex: 1; }
+  .bar .lnk { font-size: 13.5px; color: var(--g70); text-decoration: none; }
+  .bar .lnk:hover { color: var(--black); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn { font: inherit; font-size: 13.5px; font-weight: 550; cursor: pointer; min-height: 40px; padding: 8px 15px; border-radius: 999px; border: 0; background: var(--pale); color: var(--black); }
+  .btn:hover { background: var(--darker-pale); }
+  .btn-dark { background: var(--black); color: var(--white); }
+  .btn-dark:hover { filter: brightness(1.25); background: var(--black); }
+  .btn-accent { background: var(--accent); color: var(--accent-ink); }
+  .btn-accent:hover { filter: brightness(1.06); background: var(--accent); }
+  .btn-sm { min-height: 32px; padding: 5px 12px; font-size: 12.5px; }
+
+  /* ============ MARKETING REGISTER: loud ============ */
+  .stage { position: relative; overflow: hidden; padding: 78px 24px 74px; text-align: center; }
+  .flyer { position: absolute; border-radius: 10px; box-shadow: 0 8px 26px rgba(19,21,23,.13); border: 3px solid var(--white); }
+  .f1 { width: 118px; height: 148px; left: 4%; top: 16%; transform: rotate(-7deg); background: linear-gradient(145deg,#F5A623,#E8543F); }
+  .f2 { width: 104px; height: 130px; left: 15%; top: 56%; transform: rotate(5deg); background: linear-gradient(145deg,#2D6CDF,#7A4BE0); }
+  .f3 { width: 126px; height: 92px; left: 1%; bottom: 4%; transform: rotate(3deg); background: linear-gradient(145deg,#128C60,#8CC63E); }
+  .f4 { width: 112px; height: 140px; right: 4%; top: 12%; transform: rotate(6deg); background: linear-gradient(145deg,#E8407A,#F5A623); }
+  .f5 { width: 100px; height: 126px; right: 16%; top: 54%; transform: rotate(-5deg); background: linear-gradient(145deg,#1F9CC4,#2D6CDF); }
+  .f6 { width: 124px; height: 96px; right: 2%; bottom: 6%; transform: rotate(-3deg); background: linear-gradient(145deg,#7A4BE0,#E8407A); }
+  @media (max-width: 900px) { .flyer { display: none; } }
+
+  .stage .inner { position: relative; z-index: 2; max-width: 560px; margin: 0 auto; }
+  .stage h2 { font-size: clamp(38px, 6.6vw, 64px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.04; margin: 0 0 16px; }
+  .stage h2 .grad { background: linear-gradient(92deg, var(--accent) 8%, #F5A623 92%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stage p { color: var(--g70); font-size: 17px; margin: 0 auto 26px; max-width: 40ch; }
+  .stage .cta { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .textlink { font-size: 14px; color: var(--g70); text-decoration: none; }
+  .textlink:hover { color: var(--black); }
+  .counts { margin-top: 26px; font-size: 13px; color: var(--g60); }
+  .counts b { color: var(--black); font-weight: 600; }
+
+  /* ============ APP REGISTER: quiet ============ */
+  /* club page — the club's colour tints the page */
+  .clubpage { --club: #2D6CDF; }
+  .clubwash { background: linear-gradient(180deg, color-mix(in srgb, var(--club) 16%, var(--white)) 0%, var(--white) 62%); padding: 0 0 22px; }
+  .clubhead { padding: 34px 26px 0; display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .clubav { width: 88px; height: 88px; border-radius: 20px; background: linear-gradient(145deg, var(--club), color-mix(in srgb, var(--club) 55%, #fff)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; }
+  .clubmeta { flex: 1; min-width: 220px; }
+  .clubmeta h2 { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; margin: 6px 0 6px; line-height: 1.08; }
+  .clubmeta .sub { font-size: 14px; color: var(--g70); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .chip { font-size: 12.5px; font-weight: 550; padding: 3px 10px; border-radius: 999px; background: var(--pale); color: var(--g80); }
+  .followbtn { background: var(--club); color: #fff; }
+  .followbtn:hover { background: var(--club); filter: brightness(1.08); }
+
+  .sect { padding: 22px 26px 8px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--pale); }
+  .sect h3 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .viewtoggle { display: inline-flex; background: var(--faint); border-radius: 999px; padding: 3px; }
+  .viewtoggle button { font: inherit; font-size: 12.5px; font-weight: 550; border: 0; background: transparent; color: var(--g70); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+  .viewtoggle button[aria-pressed="true"] { background: var(--white); color: var(--black); box-shadow: 0 1px 3px rgba(19,21,23,.1); }
+
+  /* time-first two-column list — Luma's core row */
+  .rows { padding: 8px 26px 28px; display: grid; gap: 4px; }
+  .row { display: grid; grid-template-columns: 68px 1fr auto; gap: 16px; align-items: center; padding: 12px 12px; border-radius: var(--r); text-decoration: none; color: inherit; }
+  .row:hover { background: var(--faint); }
+  .thumb { width: 68px; height: 68px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 20px; }
+  .row .when { font-size: 13px; color: var(--g70); margin-bottom: 2px; }
+  .row .ttl { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+  .row .sub2 { font-size: 13.5px; color: var(--g60); margin-top: 2px; }
+  .row .side { display: flex; align-items: center; gap: 10px; }
+
+  /* review queue — invented in Luma's language */
+  .qbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 26px 0; }
+  .qbar h3 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .soft { font-size: 13.5px; color: var(--g60); }
+  .heads { margin: 16px 26px 0; border-radius: var(--r-lg); background: var(--faint); padding: 13px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .heads p { margin: 0; }
+  .q { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center; padding: 12px; border-radius: var(--r); }
+  @media (min-width: 820px) { .q { grid-template-columns: 1.25fr 148px 84px 104px auto; } }
+  .q:hover { background: var(--faint); }
+  .q .nm { font-weight: 600; font-size: 15px; letter-spacing: -0.005em; }
+  .q .sb { font-size: 13px; color: var(--g60); }
+  .q .col { font-size: 13.5px; color: var(--g70); }
+  .q .dt { font-family: var(--mono); font-size: 12.5px; color: var(--g60); font-variant-numeric: tabular-nums; }
+  .q .acts { display: flex; gap: 7px; justify-content: flex-end; }
+  .st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; padding: 3px 10px; border-radius: 999px; background: var(--pale); width: fit-content; }
+  .st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .s-new { color: var(--accent); } .s-seen { color: var(--warn); } .s-in { color: var(--ok); } .s-out { color: var(--bad); }
+
+  /* empty — deliberately colourless, Luma-style */
+  .empty { padding: 56px 26px 62px; text-align: center; }
+  .glyph { width: 108px; height: 92px; margin: 0 auto 22px; position: relative; }
+  .glyph .sh { position: absolute; inset: 8px 14px 0 0; background: var(--g20); border-radius: 12px; }
+  .glyph .sh2 { position: absolute; left: 14px; right: 0; top: 0; bottom: 8px; background: var(--g10); border: 1px solid var(--g20); border-radius: 12px; }
+  .glyph .zero { position: absolute; right: -6px; top: -8px; width: 40px; height: 40px; border-radius: 50%; background: var(--white); border: 1px solid var(--g20); color: var(--g50); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 600; }
+  .empty h4 { font-size: 21px; font-weight: 600; color: var(--g60); margin: 0 0 6px; letter-spacing: -0.01em; }
+  .empty p { margin: 0 auto 22px; color: var(--g60); font-size: 14.5px; max-width: 38ch; }
+  .empty-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 52px; border-top: 1px solid var(--pale); padding: 20px 0 48px; font-size: 13px; color: var(--g60); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <div class="thesis">Direction 10 &#183; The Club Page</div>
+    <h1>The club colours the page. Two registers: loud outside, quiet inside.</h1>
+    <p>Built after actually reading Luma&#8217;s DOM. Their real system: system fonts, ink #131517 on white, a 10-step cool grey ramp, <em>translucent</em> greys instead of solid borders, 8px radii, and &#8212; the idea worth taking &#8212; each community&#8217;s accent tinting its entire page. Marketing shouts at 64px; the app speaks at 28px. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing &#8212; the loud register</span><span>content is the decoration</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">ZotHub<sup>&#10022;</sup></span>
+      <span class="grow"></span>
+      <a class="lnk" href="#">Discover</a>
+      <button class="btn btn-sm">Sign in</button>
+    </div>
+    <div class="stage">
+      <span class="flyer f1" aria-hidden="true"></span>
+      <span class="flyer f2" aria-hidden="true"></span>
+      <span class="flyer f3" aria-hidden="true"></span>
+      <span class="flyer f4" aria-hidden="true"></span>
+      <span class="flyer f5" aria-hidden="true"></span>
+      <span class="flyer f6" aria-hidden="true"></span>
+      <div class="inner">
+        <h2>Good clubs<br><span class="grad">start here</span></h2>
+        <p>From project teams to officer boards to Friday socials &#8212; every opening at UCI, in one place.</p>
+        <div class="cta">
+          <button class="btn btn-dark">Find your club</button>
+          <a class="textlink" href="#">I run a club &#8594;</a>
+        </div>
+        <div class="counts"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Club page &#8212; the quiet register</span><span>the club tints the page</span></div>
+  <div class="frame clubpage">
+    <div class="clubwash">
+      <div class="bar">
+        <span class="mark">ZotHub<sup>&#10022;</sup></span>
+        <span class="grow"></span>
+        <a class="lnk" href="#">Discover</a>
+        <button class="btn btn-sm">Sign in</button>
+      </div>
+      <div class="clubhead">
+        <div class="clubav">AR</div>
+        <div class="clubmeta">
+          <h2>Anteater Robotics</h2>
+          <div class="sub"><span class="chip">Engineering</span><span>&#183;</span><span>62 members</span><span>&#183;</span><span>Meets Tuesdays, 7pm</span></div>
+        </div>
+        <button class="btn followbtn">Follow</button>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3>Open now</h3>
+      <span class="grow"></span>
+      <div class="viewtoggle"><button aria-pressed="true">List</button><button>Calendar</button></div>
+    </div>
+
+    <div class="rows">
+      <a class="row" href="#">
+        <span class="thumb" style="background:linear-gradient(145deg,#2D6CDF,#7A4BE0)">EL</span>
+        <div>
+          <div class="when">Closes Sunday, 27 September</div>
+          <div class="ttl">Embedded Systems Lead</div>
+          <div class="sub2">Project &#183; 7 applied</div>
+        </div>
+        <span class="side"><button class="btn btn-sm btn-dark">Apply</button></span>
+      </a>
+      <a class="row" href="#">
+        <span class="thumb" style="background:linear-gradient(145deg,#1F9CC4,#128C60)">MW</span>
+        <div>
+          <div class="when">Closes Friday, 2 October</div>
+          <div class="ttl">Machining Workshop Volunteer</div>
+          <div class="sub2">Volunteer &#183; 3 applied &#183; rolling</div>
+        </div>
+        <span class="side"><button class="btn btn-sm btn-dark">Apply</button></span>
+      </a>
+      <a class="row" href="#">
+        <span class="thumb" style="background:linear-gradient(145deg,#F5A623,#E8543F)">SD</span>
+        <div>
+          <div class="when">Tue, 29 Sep, 7:00 PM</div>
+          <div class="ttl">Shop Day &amp; Open Build</div>
+          <div class="sub2">Engineering Gateway 2140 &#183; 18 of 30 going</div>
+        </div>
+        <span class="side"><button class="btn btn-sm">RSVP</button></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">ZotHub<sup>&#10022;</sup></span>
+      <span class="grow"></span>
+      <a class="lnk" href="#">Postings</a><a class="lnk" href="#">Responses</a><a class="lnk" href="#">Messages</a><a class="lnk" href="#">My Club</a>
+    </div>
+
+    <div class="qbar">
+      <h3>Embedded Systems Lead</h3>
+      <span class="soft">18 applicants &#183; 6 decided &#183; closes in 4 days</span>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Accept</button>
+      <button class="btn btn-sm">Decline</button>
+      <button class="btn btn-sm">Export</button>
+    </div>
+
+    <div class="heads">
+      <p><strong>12 people have been waiting 9 days.</strong> When this closes on Sunday they&#8217;ll be declined automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-dark">Review them</button>
+    </div>
+
+    <div class="rows">
+      <div class="q">
+        <div><div class="nm">Priya Raman</div><div class="sb">Portfolio attached</div></div>
+        <span class="col">Junior &#183; Informatics</span>
+        <span class="dt">Sep 18</span>
+        <span class="st s-new">New</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-dark">Accept</button></div>
+      </div>
+      <div class="q">
+        <div><div class="nm">Marcus Vela</div><div class="sb">R&#233;sum&#233; attached</div></div>
+        <span class="col">Sophomore &#183; Studio Art</span>
+        <span class="dt">Sep 18</span>
+        <span class="st s-seen">Reviewed</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-dark">Accept</button></div>
+      </div>
+      <div class="q">
+        <div><div class="nm">Amara Osei</div><div class="sb">Portfolio attached</div></div>
+        <span class="col">Senior &#183; Computer Science</span>
+        <span class="dt">Sep 17</span>
+        <span class="st s-in">Accepted</span>
+        <div class="acts"><button class="btn btn-sm">Undo</button></div>
+      </div>
+      <div class="q">
+        <div><div class="nm">Ben Okafor</div><div class="sb">No attachment</div></div>
+        <span class="col">Freshman &#183; Undeclared</span>
+        <span class="dt">Sep 17</span>
+        <span class="st s-out">Declined</span>
+        <div class="acts"><button class="btn btn-sm">Undo</button></div>
+      </div>
+      <div class="q">
+        <div><div class="nm">Sofia Lindqvist</div><div class="sb">Applied externally</div></div>
+        <span class="col">Junior &#183; Business Admin</span>
+        <span class="dt">Sep 16</span>
+        <span class="st s-seen">Reviewed</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-dark">Accept</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>D &#183; Empty</span><span>colourless on purpose</span></div>
+  <div class="frame">
+    <div class="empty">
+      <div class="glyph" aria-hidden="true"><span class="sh"></span><span class="sh2"></span><span class="zero">0</span></div>
+      <h4>No open roles right now</h4>
+      <p>Follow Anteater Robotics to hear the moment they post one.</p>
+      <div class="empty-acts">
+        <button class="btn btn-dark">Follow</button>
+        <button class="btn">See similar clubs</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 10 of 10 &#183; The Club Page. Faithful on the fundamentals: system font stack (Luma uses no webfont), translucent grey fills, 8px radii, restrained 28px app headings. Light-native; dark via the toggle.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

@@ -1,0 +1,396 @@
+<title>ZotHub &#8212; Direction 11: The Two-Sided Market</title>
+
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --bg-2: #FAF7F8;
+    --wash: linear-gradient(180deg, #FDF2F6 0%, #FFFFFF 68%);
+    --ink: #071417;
+    --ink-2: #4A585C;
+    --ink-3: #7C8A8E;
+    --line: #E4E8E9;
+    --line-2: #CFD6D8;
+    --panel: #0B1316;
+    --panel-2: #131D21;
+    --panel-ink: #F2F6F7;
+    --panel-ink-2: #9AA9AD;
+    --panel-line: #233034;
+    --accent: #D81E5B;
+    --accent-text: #B01048;
+    --accent-ink: #FFFFFF;
+    --accent-wash: #FCE8EF;
+    --ok: #10794D;
+    --ok-dot: #17A366;
+    --warn: #8A5A0B;
+    --bad: #B32B1D;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  :root[data-theme="dark"] {
+    --bg: #080F11;
+    --bg-2: #0D1618;
+    --wash: linear-gradient(180deg, #1A0E15 0%, #080F11 70%);
+    --ink: #EEF3F4;
+    --ink-2: #9FAEB2;
+    --ink-3: #748387;
+    --line: #1D282B;
+    --line-2: #2C3A3E;
+    --panel: #121C20;
+    --panel-2: #18242A;
+    --panel-ink: #F2F6F7;
+    --panel-ink-2: #9AA9AD;
+    --panel-line: #27343A;
+    --accent: #FF4C86;
+    --accent-text: #FF7FA6;
+    --accent-ink: #1B0410;
+    --accent-wash: #2A101C;
+    --ok: #4FCB92; --ok-dot: #34D399; --warn: #DCA85A; --bad: #E98A7C;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--line); }
+  .thesis { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: var(--accent-text); }
+  .note h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.025em; margin: 8px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 70ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 22px; border-bottom: 1px solid var(--line); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; display: flex; justify-content: space-between; gap: 14px; }
+
+  .frame { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg); }
+
+  .bar { display: flex; align-items: center; gap: 24px; padding: 16px 22px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .mark { font-size: 19px; font-weight: 700; letter-spacing: -0.045em; }
+  .mark b { color: var(--accent); font-weight: 700; }
+  .bar nav { display: flex; gap: 20px; }
+  .bar nav a { font-size: 14px; color: var(--ink-2); text-decoration: none; font-weight: 450; }
+  .bar nav a:hover, .bar nav a[aria-current] { color: var(--ink); }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn { font: inherit; font-size: 14px; font-weight: 550; cursor: pointer; min-height: 44px; padding: 10px 20px; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); }
+  .btn:hover { background: var(--bg-2); }
+  .btn-ink { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .btn-ink:hover { background: var(--ink); filter: brightness(1.5); }
+  .btn-accent { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-accent:hover { background: var(--accent); filter: brightness(1.08); }
+  .btn-sm { min-height: 34px; padding: 6px 14px; font-size: 13px; border-width: 1px; }
+
+  /* ---- hero: weight 500, tight tracking, italic accent second line ---- */
+  .hero { background: var(--wash); padding: 68px 24px 54px; text-align: center; }
+  .hero h2 {
+    font-size: clamp(36px, 5.6vw, 58px); font-weight: 500;
+    letter-spacing: -0.042em; line-height: 0.99; margin: 0 auto 18px; max-width: 17ch;
+  }
+  .hero h2 i { font-style: italic; color: var(--accent); font-weight: 400; }
+  .hero p { color: var(--ink-2); font-size: 17px; max-width: 46ch; margin: 0 auto 4px; }
+
+  /* ---- two-sided split: dark card vs light card ---- */
+  .sides { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 8px 22px 30px; }
+  @media (min-width: 880px) { .sides { grid-template-columns: 1fr 1fr; } }
+  .side { border-radius: 16px; padding: 26px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .side-dark { background: var(--panel); color: var(--panel-ink); }
+  .side-light { background: var(--accent-wash); color: var(--ink); border: 1px solid var(--line); }
+  .eyebrow { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+  .side-dark .eyebrow { color: var(--accent-text); }
+  :root[data-theme="dark"] .side-dark .eyebrow { color: var(--accent); }
+  .side h3 { margin: 0; font-size: 27px; font-weight: 500; letter-spacing: -0.032em; line-height: 1.1; }
+  .side h3 i { font-style: italic; color: var(--accent); font-weight: 400; }
+  .side p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+  .side-dark p { color: var(--panel-ink-2); }
+  .side-light p { color: var(--ink-2); }
+  .side .act { margin-top: 4px; }
+
+  /* embedded product preview */
+  .peek { margin-top: 14px; border-radius: 11px; overflow: hidden; }
+  .side-dark .peek { background: var(--panel-2); border: 1px solid var(--panel-line); }
+  .side-light .peek { background: var(--bg); border: 1px solid var(--line); }
+  .peek-h { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; padding: 9px 13px; display: flex; align-items: center; gap: 8px; }
+  .side-dark .peek-h { color: var(--panel-ink-2); border-bottom: 1px solid var(--panel-line); }
+  .side-light .peek-h { color: var(--ink-3); border-bottom: 1px solid var(--line); }
+  .live { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: var(--accent); }
+  .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .peek-r { display: flex; align-items: center; gap: 10px; padding: 10px 13px; font-size: 13px; }
+  .side-dark .peek-r + .peek-r { border-top: 1px solid var(--panel-line); }
+  .side-light .peek-r + .peek-r { border-top: 1px solid var(--line); }
+  .av { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: #fff; }
+  .peek-r .nm { font-weight: 600; }
+  .peek-r .mt { font-size: 11.5px; }
+  .side-dark .peek-r .mt { color: var(--panel-ink-2); }
+  .side-light .peek-r .mt { color: var(--ink-3); }
+  .stat { margin-left: auto; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .st-ok { background: rgba(23,163,102,.16); color: var(--ok-dot); }
+  .st-new { background: var(--accent-wash); color: var(--accent-text); }
+  :root[data-theme="dark"] .st-new { color: var(--accent); }
+  .st-wait { background: rgba(147,149,151,.16); color: var(--ink-3); }
+  .side-dark .st-wait { color: var(--panel-ink-2); }
+
+  /* ---- numbered value props ---- */
+  .props { display: grid; grid-template-columns: 1fr; gap: 0 44px; padding: 12px 22px 34px; }
+  @media (min-width: 820px) { .props { grid-template-columns: 1fr 1fr; } }
+  .prop { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+  .prop .n { font-family: var(--mono); font-size: 12px; color: var(--accent-text); font-weight: 600; padding-top: 3px; }
+  :root[data-theme="dark"] .prop .n { color: var(--accent); }
+  .prop h4 { margin: 0 0 5px; font-size: 17.5px; font-weight: 600; letter-spacing: -0.02em; }
+  .prop p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+
+  /* ---- discover rows: Wellfound's job-row pattern ---- */
+  .clubblock { border: 1px solid var(--line); border-radius: 14px; margin: 0 22px 14px; overflow: hidden; }
+  .clubbar { display: flex; align-items: center; gap: 10px; padding: 13px 16px; background: var(--bg-2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .clubbar .logo { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; }
+  .clubbar .cn { font-weight: 650; font-size: 15px; }
+  .pulse { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ok); font-weight: 550; }
+  .pulse::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok-dot); }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .pill { font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--accent-wash); color: var(--accent-text); white-space: nowrap; }
+  :root[data-theme="dark"] .pill { color: var(--accent); }
+
+  .jrow { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 15px 16px; }
+  @media (min-width: 780px) { .jrow { grid-template-columns: 1fr auto; align-items: center; } }
+  .jrow + .jrow { border-top: 1px solid var(--line); }
+  .jrow:hover { background: var(--bg-2); }
+  .jrow .t { font-size: 16px; font-weight: 650; letter-spacing: -0.012em; }
+  .jrow .t a { color: inherit; text-decoration: none; }
+  .jrow .t a:hover { color: var(--accent-text); }
+  .jrow .m { font-size: 13.5px; color: var(--ink-3); margin-top: 2px; }
+  .jrow .r { display: flex; align-items: center; gap: 9px; }
+  .flag { font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 700; color: var(--accent-text); white-space: nowrap; }
+  :root[data-theme="dark"] .flag { color: var(--accent); }
+
+  /* ---- review ---- */
+  .rbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 22px 0; }
+  .rbar h3 { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -0.032em; }
+  .soft { font-size: 13.5px; color: var(--ink-3); }
+  .heads { margin: 14px 22px 0; border-radius: 11px; background: var(--accent-wash); padding: 13px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .heads p { margin: 0; }
+  .q { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center; padding: 13px 16px; }
+  @media (min-width: 840px) { .q { grid-template-columns: 1.25fr 150px 82px 108px auto; } }
+  .q + .q { border-top: 1px solid var(--line); }
+  .q:hover { background: var(--bg-2); }
+  .q .nm { font-weight: 650; font-size: 15px; }
+  .q .sb { font-size: 13px; color: var(--ink-3); }
+  .q .col { font-size: 13.5px; color: var(--ink-2); }
+  .q .dt { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .q .acts { display: flex; gap: 7px; justify-content: flex-end; }
+  .tagq { font-size: 10px; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 700; padding: 4px 9px; border-radius: 999px; width: fit-content; }
+  .tq-new { background: var(--accent-wash); color: var(--accent-text); }
+  :root[data-theme="dark"] .tq-new { color: var(--accent); }
+  .tq-seen { background: rgba(147,149,151,.15); color: var(--warn); }
+  .tq-in { background: rgba(23,163,102,.15); color: var(--ok); }
+  .tq-out { background: rgba(179,43,29,.12); color: var(--bad); }
+
+  .empty { padding: 52px 24px 56px; text-align: center; }
+  .empty h4 { font-size: 26px; font-weight: 500; letter-spacing: -0.032em; margin: 0 0 10px; }
+  .empty h4 i { font-style: italic; color: var(--accent); font-weight: 400; }
+  .empty p { margin: 0 auto 22px; color: var(--ink-2); font-size: 15px; max-width: 40ch; }
+  .empty-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 52px; border-top: 1px solid var(--line); padding: 20px 0 48px; font-size: 13px; color: var(--ink-3); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <div class="thesis">Direction 11 &#183; The Two-Sided Market</div>
+    <h1>Both sides on one page &#8212; and the product shown, not described.</h1>
+    <p>Wellfound&#8217;s structure rather than its skin: a hero whose second line turns italic in the accent, a FOR CLUBS / FOR STUDENTS split rendered as dark card versus light card, numbered value props on hairlines, and live product previews embedded in the marketing itself. Display type is weight 500 at &#8722;0.04em tracking, never bold. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>the two-sided split</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">zothub<b>:</b></span>
+      <nav><a href="#">For clubs</a><a href="#">For students</a><a href="#">Discover</a></nav>
+      <span class="grow"></span>
+      <a class="bar-lnk" href="#" style="font-size:14px;color:var(--ink-2);text-decoration:none">Log in</a>
+      <button class="btn btn-sm btn-ink">Sign up</button>
+    </div>
+
+    <div class="hero">
+      <h2>Where good clubs <i>meet good people.</i></h2>
+      <p>Every open role at UCI, and a real answer either way.</p>
+    </div>
+
+    <div class="sides">
+      <section class="side side-dark">
+        <span class="eyebrow">For clubs</span>
+        <h3>Recruit without <i>the spreadsheet.</i></h3>
+        <p>Post a role free, or link the Google Form you already use. Review, decide, and nobody gets left on read.</p>
+        <div class="act"><button class="btn btn-sm btn-accent">Start recruiting &#8594;</button></div>
+        <div class="peek">
+          <div class="peek-h">VP of Design &#183; 18 applicants<span class="live">Live</span></div>
+          <div class="peek-r"><span class="av" style="background:#7A4BE0">PR</span><span><span class="nm">Priya Raman</span><br><span class="mt">Junior &#183; Informatics</span></span><span class="stat st-new">New</span></div>
+          <div class="peek-r"><span class="av" style="background:#1D6FA3">MV</span><span><span class="nm">Marcus Vela</span><br><span class="mt">Sophomore &#183; Studio Art</span></span><span class="stat st-wait">Reviewed</span></div>
+          <div class="peek-r"><span class="av" style="background:#10794D">AO</span><span><span class="nm">Amara Osei</span><br><span class="mt">Senior &#183; Computer Science</span></span><span class="stat st-ok">Accepted</span></div>
+        </div>
+      </section>
+
+      <section class="side side-light">
+        <span class="eyebrow">For students</span>
+        <h3>Find the thing <i>you&#8217;ll stick with.</i></h3>
+        <p>Apply to 34 UCI clubs in one place, track every application, and always hear back &#8212; even when it&#8217;s a no.</p>
+        <div class="act"><button class="btn btn-sm btn-accent">Browse open roles &#8594;</button></div>
+        <div class="peek">
+          <div class="peek-h">Your applications</div>
+          <div class="peek-r"><span class="av" style="background:#C2410C">D</span><span><span class="nm">VP of Design</span><br><span class="mt">Design at UCI</span></span><span class="stat st-new">In review</span></div>
+          <div class="peek-r"><span class="av" style="background:#1D6FA3">AR</span><span><span class="nm">Embedded Systems Lead</span><br><span class="mt">Anteater Robotics</span></span><span class="stat st-ok">Accepted</span></div>
+          <div class="peek-r"><span class="av" style="background:#7A3E9D">ZC</span><span><span class="nm">Fall Case Team Analyst</span><br><span class="mt">Zot Consulting &#183; external</span></span><span class="stat st-wait">Applied</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="props">
+      <div class="prop"><span class="n">01</span><div><h4>Real roles, not a directory listing.</h4><p>Officer boards, project teams, committees &#8212; the things clubs actually need filled this quarter.</p></div></div>
+      <div class="prop"><span class="n">02</span><div><h4>Bring the form you already have.</h4><p>Link an existing Google Form in one step, or build the application here. Your choice, not ours.</p></div></div>
+      <div class="prop"><span class="n">03</span><div><h4>Nobody gets ghosted.</h4><p>Close a posting and undecided applicants are declined automatically &#8212; after we tell you exactly who.</p></div></div>
+      <div class="prop"><span class="n">04</span><div><h4>Talk to the people actually deciding.</h4><p>Message the officers running recruitment, not a form inbox nobody reads.</p></div></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Discover</span><span>grouped by club, Wellfound&#8217;s row pattern</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">zothub<b>:</b></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+      <span class="grow"></span>
+      <span class="soft">34 clubs &#183; 61 open roles</span>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <div class="clubblock">
+      <div class="clubbar">
+        <span class="logo" style="background:#C2410C">D</span>
+        <span class="cn">Design at UCI</span>
+        <span class="pulse">Actively recruiting</span>
+        <span class="pills"><span class="pill">Arts &amp; Culture</span><span class="pill">Replies fast</span></span>
+      </div>
+      <div class="jrow">
+        <div><div class="t"><a href="#">VP of Design</a></div><div class="m">Leadership &#183; closes in 2 days &#183; 18 applied</div></div>
+        <div class="r"><span class="flag">Closing soon</span><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+      </div>
+      <div class="jrow">
+        <div><div class="t"><a href="#">Print &amp; Zine Committee</a></div><div class="m">Committee &#183; rolling &#183; 4 applied</div></div>
+        <div class="r"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+      </div>
+    </div>
+
+    <div class="clubblock">
+      <div class="clubbar">
+        <span class="logo" style="background:#1D6FA3">AR</span>
+        <span class="cn">Anteater Robotics</span>
+        <span class="pulse">Actively recruiting</span>
+        <span class="pills"><span class="pill">Engineering</span><span class="pill">62 members</span></span>
+      </div>
+      <div class="jrow">
+        <div><div class="t"><a href="#">Embedded Systems Lead</a></div><div class="m">Project &#183; closes in 4 days &#183; 7 applied</div></div>
+        <div class="r"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+      </div>
+      <div class="jrow">
+        <div><div class="t"><a href="#">Shop Day &amp; Open Build</a></div><div class="m">Event &#183; Tue 29 Sep, 7:00 PM &#183; 18 of 30 going</div></div>
+        <div class="r"><button class="btn btn-sm btn-ink">RSVP</button></div>
+      </div>
+    </div>
+
+    <div class="clubblock" style="margin-bottom:24px">
+      <div class="clubbar">
+        <span class="logo" style="background:#7A3E9D">ZC</span>
+        <span class="cn">Zot Consulting Group</span>
+        <span class="pills"><span class="pill">Business</span><span class="pill">Applies externally</span></span>
+      </div>
+      <div class="jrow">
+        <div><div class="t"><a href="#">Fall Case Team Analyst</a></div><div class="m">Committee &#183; closes in 6 days &#183; 41 applied</div></div>
+        <div class="r"><button class="btn btn-sm">Save</button><button class="btn btn-sm">Apply externally &#8594;</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">zothub<b>:</b></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+    </div>
+    <div class="rbar">
+      <h3>VP of Design</h3>
+      <span class="soft">18 applicants &#183; 6 decided &#183; closes in 2 days</span>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Accept</button><button class="btn btn-sm">Decline</button><button class="btn btn-sm">Export</button>
+    </div>
+    <div class="heads">
+      <p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-accent">Review them</button>
+    </div>
+    <div style="padding:10px 6px 20px">
+      <div class="q"><div><div class="nm">Priya Raman</div><div class="sb">Portfolio attached</div></div><span class="col">Junior &#183; Informatics</span><span class="dt">Sep 18</span><span class="tagq tq-new">New</span><div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+      <div class="q"><div><div class="nm">Marcus Vela</div><div class="sb">R&#233;sum&#233; attached</div></div><span class="col">Sophomore &#183; Studio Art</span><span class="dt">Sep 18</span><span class="tagq tq-seen">Reviewed</span><div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+      <div class="q"><div><div class="nm">Amara Osei</div><div class="sb">Portfolio attached</div></div><span class="col">Senior &#183; Computer Science</span><span class="dt">Sep 17</span><span class="tagq tq-in">Accepted</span><div class="acts"><button class="btn btn-sm">Undo</button></div></div>
+      <div class="q"><div><div class="nm">Ben Okafor</div><div class="sb">No attachment</div></div><span class="col">Freshman &#183; Undeclared</span><span class="dt">Sep 17</span><span class="tagq tq-out">Declined</span><div class="acts"><button class="btn btn-sm">Undo</button></div></div>
+      <div class="q"><div><div class="nm">Sofia Lindqvist</div><div class="sb">Applied externally</div></div><span class="col">Junior &#183; Business Admin</span><span class="dt">Sep 16</span><span class="tagq tq-seen">Reviewed</span><div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-ink">Accept</button></div></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>D &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <h4>No design roles open <i>right now.</i></h4>
+      <p>Three clubs recruit for design most quarters. We can tell you the day one posts.</p>
+      <div class="empty-acts">
+        <button class="btn btn-accent">Notify me</button>
+        <button class="btn">See those clubs</button>
+        <button class="btn">Tell a club to post</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 11 of 11 &#183; The Two-Sided Market. Wellfound sets Graphik; the artifact sandbox blocks font CDNs, so a system grotesque stands in &#8212; the weight-500 treatment and tight tracking are the faithful part. Both themes designed; use the switch.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

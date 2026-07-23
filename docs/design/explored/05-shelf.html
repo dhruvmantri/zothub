@@ -1,0 +1,303 @@
+<title>ZotHub &#8212; Direction 5: The Shelf</title>
+
+<style>
+  :root {
+    --ground: #FFFFFF;
+    --tile: #F5F5F7;
+    --tile-2: #FAFAFC;
+    --ink: #1D1D1F;
+    --ink-2: #55555C;
+    --ink-3: #86868B;
+    --line: #E8E8ED;
+    --accent: #2554E8;
+    --accent-ink: #FFFFFF;
+    --wash: #EDF1FE;
+    --ok: #1F7A46;
+    --warn: #93610A;
+    --bad: #C0392E;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --r: 20px; --r-sm: 12px;
+  }
+  :root[data-theme="dark"] {
+    --ground: #000000; --tile: #1C1C1E; --tile-2: #141416;
+    --ink: #F5F5F7; --ink-2: #B3B3BC; --ink-3: #808089;
+    --line: #2C2C30; --accent: #6C93FF; --accent-ink: #0A1024; --wash: #16204A;
+    --ok: #62C486; --warn: #D9A548; --bad: #E77E71;
+  }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--line); }
+  .thesis { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .note h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+
+  .frame { border: 1px solid var(--line); border-radius: 24px; overflow: hidden; background: var(--ground); }
+
+  .glass {
+    display: flex; align-items: center; gap: 6px; padding: 12px 20px;
+    background: color-mix(in srgb, var(--ground) 78%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .mark { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; margin-right: 10px; }
+  .mark i { font-style: normal; color: var(--accent); }
+  .glass nav { display: flex; gap: 4px; }
+  .glass nav a { font-size: 13.5px; color: var(--ink-2); text-decoration: none; padding: 7px 13px; border-radius: 999px; }
+  .glass nav a[aria-current] { background: var(--ink); color: var(--ground); font-weight: 600; }
+  .glass nav a:hover { color: var(--ink); }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn { font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 42px; padding: 9px 19px; border-radius: 999px; border: 0; background: var(--tile); color: var(--ink); }
+  .btn:hover { filter: brightness(0.96); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-sm { min-height: 34px; padding: 6px 14px; font-size: 13px; }
+  .btn-line { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* hero: enormous type, content-first */
+  .hero { padding: 74px 28px 30px; text-align: center; }
+  .hero h2 { font-size: clamp(38px, 6.4vw, 64px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.03; margin: 0 0 14px; text-wrap: balance; }
+  .hero h2 em { font-style: normal; color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--ink-2); max-width: 46ch; margin: 0 auto 26px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .counts { margin-top: 26px; font-size: 13px; color: var(--ink-3); }
+  .counts b { color: var(--ink); font-weight: 700; }
+
+  /* bento shelf */
+  .shelf { padding: 26px 20px 28px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 860px) { .shelf { grid-template-columns: repeat(4, 1fr); } .big { grid-column: span 2; grid-row: span 2; } }
+  .tile {
+    background: var(--tile); border-radius: var(--r); padding: 22px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 150px;
+    transition: transform 180ms ease;
+  }
+  .tile:hover { transform: translateY(-2px); }
+  .tile .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--ink-3); }
+  .tile h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; font-size: 20px; line-height: 1.15; }
+  .big h3 { font-size: 30px; }
+  .tile h3 a { color: inherit; text-decoration: none; }
+  .tile .by { font-size: 14px; color: var(--ink-2); }
+  .tile .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-3); }
+  .tile-accent { background: var(--wash); }
+  .tile-accent .k { color: var(--accent); }
+  .chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--ground); color: var(--ink-2); }
+
+  /* review: a sheet */
+  .sheet-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 20px 24px 4px; }
+  .sheet-head h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
+  .seg { display: inline-flex; background: var(--tile); border-radius: 999px; padding: 3px; }
+  .seg button { font: inherit; font-size: 13px; font-weight: 600; border: 0; background: transparent; color: var(--ink-2); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ground); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+  .notice { margin: 14px 24px 0; border-radius: var(--r-sm); background: var(--wash); padding: 13px 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .notice p { margin: 0; }
+  .rows { padding: 16px 24px 26px; display: grid; gap: 10px; }
+  .prow {
+    display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center;
+    background: var(--tile-2); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px;
+  }
+  @media (min-width: 800px) { .prow { grid-template-columns: 1.4fr 1fr 130px auto; } }
+  .prow .name { font-weight: 650; font-size: 15.5px; letter-spacing: -0.01em; }
+  .prow .sub, .prow .col { font-size: 13.5px; color: var(--ink-2); }
+  .prow .acts { display: flex; gap: 8px; justify-content: flex-end; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: var(--tile); width: fit-content; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .b-new { color: var(--accent); } .b-seen { color: var(--warn); } .b-in { color: var(--ok); } .b-out { color: var(--bad); }
+
+  .empty { padding: 50px 28px 54px; text-align: center; }
+  .empty h4 { font-size: 26px; font-weight: 700; letter-spacing: -0.025em; margin: 0 0 8px; }
+  .empty p { margin: 0 auto 22px; color: var(--ink-2); font-size: 15.5px; max-width: 44ch; }
+  .empty-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 54px; border-top: 1px solid var(--line); padding: 20px 0 48px; font-size: 13px; color: var(--ink-3); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <div class="thesis">Direction 5 &#183; The Shelf</div>
+    <h1>Premium, spatial, content-first &#8212; hierarchy does all the talking.</h1>
+    <p>Philosophy borrowed from Apple: one enormous idea per screen, everything else recedes. Bento tiles give each posting real presence; whitespace is the luxury. One vivid cobalt on white. Shown light-native. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>light</span></div>
+  <div class="frame">
+    <div class="glass">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-line">Log in</button>
+      <button class="btn btn-sm btn-primary">Get started</button>
+    </div>
+
+    <div class="hero">
+      <h2>Campus, <em>open</em>.</h2>
+      <p>Every role and event UCI clubs are recruiting for. Apply in minutes. Always hear back.</p>
+      <div class="cta">
+        <button class="btn btn-primary">Browse what&#8217;s open</button>
+        <button class="btn">Post a role</button>
+      </div>
+      <div class="counts"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+    </div>
+
+    <div class="shelf">
+      <article class="tile tile-accent big">
+        <span class="k">Leadership &#183; closes in 2 days</span>
+        <h3><a href="#">VP of Design</a></h3>
+        <span class="by">Design at UCI</span>
+        <div class="foot"><span>18 applied</span><button class="btn btn-sm btn-primary">Apply</button></div>
+      </article>
+      <article class="tile">
+        <span class="k">Project &#183; 4 days</span>
+        <h3><a href="#">Embedded Systems Lead</a></h3>
+        <span class="by">Anteater Robotics</span>
+        <div class="foot"><span>7 applied</span><span class="chip">Apply</span></div>
+      </article>
+      <article class="tile">
+        <span class="k">Event &#183; Fri 6pm</span>
+        <h3><a href="#">Fall Kickoff Social</a></h3>
+        <span class="by">Circle K International</span>
+        <div class="foot"><span>54 of 80 going</span><span class="chip">RSVP</span></div>
+      </article>
+      <article class="tile">
+        <span class="k">Committee &#183; 6 days</span>
+        <h3><a href="#">Fall Case Team Analyst</a></h3>
+        <span class="by">Zot Consulting Group</span>
+        <div class="foot"><span>41 applied</span><span class="chip">External</span></div>
+      </article>
+      <article class="tile">
+        <span class="k">Volunteer &#183; rolling</span>
+        <h3><a href="#">Peer Mentor</a></h3>
+        <span class="by">ICS Student Council</span>
+        <div class="foot"><span>9 applied</span><span class="chip">Apply</span></div>
+      </article>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="glass">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-line">Export</button>
+    </div>
+
+    <div class="sheet-head">
+      <h3>VP of Design</h3>
+      <span class="grow"></span>
+      <div class="seg">
+        <button aria-pressed="true">All &#183; 18</button>
+        <button>Unread &#183; 12</button>
+        <button>Decided &#183; 6</button>
+      </div>
+    </div>
+
+    <div class="notice">
+      <p><strong>12 people have been waiting 9 days.</strong> Closing this posting undecided declines them automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Review now</button>
+    </div>
+
+    <div class="rows">
+      <div class="prow">
+        <div><div class="name">Priya Raman</div><div class="sub">Portfolio attached</div></div>
+        <span class="col">Junior &#183; Informatics</span>
+        <span class="badge b-new">New</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+      <div class="prow">
+        <div><div class="name">Marcus Vela</div><div class="sub">R&#233;sum&#233; attached</div></div>
+        <span class="col">Sophomore &#183; Studio Art</span>
+        <span class="badge b-seen">Reviewed</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+      <div class="prow">
+        <div><div class="name">Amara Osei</div><div class="sub">Portfolio attached</div></div>
+        <span class="col">Senior &#183; Computer Science</span>
+        <span class="badge b-in">Accepted</span>
+        <div class="acts"><button class="btn btn-sm">Undo</button></div>
+      </div>
+      <div class="prow">
+        <div><div class="name">Ben Okafor</div><div class="sub">No attachment</div></div>
+        <span class="col">Freshman &#183; Undeclared</span>
+        <span class="badge b-out">Declined</span>
+        <div class="acts"><button class="btn btn-sm">Undo</button></div>
+      </div>
+      <div class="prow">
+        <div><div class="name">Sofia Lindqvist</div><div class="sub">Applied externally</div></div>
+        <span class="col">Junior &#183; Business Admin</span>
+        <span class="badge b-seen">Reviewed</span>
+        <div class="acts"><button class="btn btn-sm">Decline</button><button class="btn btn-sm btn-primary">Accept</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <h4>Nothing open in design right now.</h4>
+      <p>Three clubs post design roles most quarters. Get a note the moment one does.</p>
+      <div class="empty-acts">
+        <button class="btn btn-primary">Notify me</button>
+        <button class="btn">See those clubs</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 5 of 10 &#183; The Shelf. System SF/Segoe stands in for the display face. Light is native; dark exists via the toggle.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

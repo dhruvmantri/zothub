@@ -1,0 +1,278 @@
+<title>ZotHub &#8212; Direction 6: The Wall</title>
+
+<style>
+  :root {
+    --ground: #FAFAFA;
+    --card: #FFFFFF;
+    --ink: #17181C;
+    --ink-2: #565962;
+    --ink-3: #8A8D96;
+    --line: #E7E8EC;
+    --grad: linear-gradient(135deg, #7C3AED 0%, #E1306C 55%, #F77737 100%);
+    --accent: #C13584;
+    --accent-ink: #FFFFFF;
+    --ok: #1F7A46; --warn: #93610A; --bad: #C0392E;
+    --c1: #4F46E5; --c2: #0E9F6E; --c3: #E11D48; --c4: #B45309; --c5: #0369A1;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --ground: #101013; --card: #1A1B1F;
+    --ink: #F2F2F5; --ink-2: #B5B7BF; --ink-3: #7E828C; --line: #2A2B31;
+    --accent: #E97BB8; --accent-ink: #230E1B;
+    --ok: #5FCB8E; --warn: #DCA85A; --bad: #EA8578;
+  }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15.5px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 1px solid var(--line); }
+  .thesis { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; }
+  .note h1 { font-size: 21px; font-weight: 750; letter-spacing: -0.02em; margin: 6px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .divider { padding: 46px 0 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+
+  .frame { border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--card); }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 13px 20px; border-bottom: 1px solid var(--line); }
+  .mark { font-size: 17px; font-weight: 800; letter-spacing: -0.03em; margin-right: 8px; }
+  .mark i { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .bar nav { display: flex; gap: 2px; }
+  .bar nav a { font-size: 13.5px; font-weight: 600; color: var(--ink-2); text-decoration: none; padding: 7px 12px; border-radius: 10px; }
+  .bar nav a[aria-current] { color: var(--ink); background: var(--ground); }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .btn { font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 42px; padding: 9px 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .btn:hover { background: var(--ground); }
+  .btn-hot { background: var(--grad); border: 0; color: #fff; }
+  .btn-hot:hover { filter: brightness(1.06); }
+  .btn-sm { min-height: 34px; padding: 6px 13px; font-size: 13px; }
+
+  /* stories row */
+  .stories { display: flex; gap: 18px; padding: 18px 20px 6px; overflow-x: auto; }
+  .story { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2); min-width: 64px; text-decoration: none; }
+  .story .ring { width: 58px; height: 58px; border-radius: 50%; padding: 3px; background: var(--grad); }
+  .story .face { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; color: #fff; border: 2px solid var(--card); }
+  .f1 { background: var(--c1); } .f2 { background: var(--c2); } .f3 { background: var(--c3); } .f4 { background: var(--c4); } .f5 { background: var(--c5); }
+
+  .hero { padding: 30px 20px 8px; }
+  .hero h2 { font-size: clamp(26px, 4.4vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 8px; max-width: 22ch; }
+  .hero h2 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { margin: 0 0 6px; color: var(--ink-2); max-width: 52ch; }
+  .counts { font-size: 13px; color: var(--ink-3); margin-top: 10px; }
+  .counts b { color: var(--ink); font-weight: 800; }
+
+  /* wall grid */
+  .wall { padding: 20px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .wall { grid-template-columns: repeat(3, 1fr); } }
+  .post { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); display: flex; flex-direction: column; }
+  .post:hover { border-color: var(--ink-3); }
+  .cover { height: 118px; display: flex; align-items: flex-end; padding: 12px; color: #fff; font-weight: 800; font-size: 21px; letter-spacing: -0.02em; }
+  .cv1 { background: linear-gradient(135deg, var(--c1), #818CF8); }
+  .cv2 { background: linear-gradient(135deg, var(--c2), #5EEAD4); }
+  .cv3 { background: linear-gradient(135deg, var(--c3), #FB7185); }
+  .cv4 { background: linear-gradient(135deg, var(--c4), #FCD34D); }
+  .cv5 { background: linear-gradient(135deg, var(--c5), #7DD3FC); }
+  .post-b { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .post-b .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  .dotav { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10.5px; font-weight: 800; }
+  .post-b h3 { margin: 0; font-size: 17px; font-weight: 750; letter-spacing: -0.015em; line-height: 1.25; }
+  .post-b h3 a { color: inherit; text-decoration: none; }
+  .meta { display: flex; gap: 10px; font-size: 12.5px; color: var(--ink-3); margin-top: auto; padding-top: 8px; }
+  .pill { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--ground); color: var(--ink-2); width: fit-content; }
+
+  /* review: people-first cards */
+  .rev-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 20px 0; }
+  .rev-head h3 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+  .soft { font-size: 13px; color: var(--ink-3); }
+  .warnbar { margin: 14px 20px 0; border-radius: 14px; padding: 12px 16px; background: #FDF3E7; color: #713F12; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13.5px; }
+  :root[data-theme="dark"] .warnbar { background: #2A2113; color: #E8C892; }
+  .warnbar p { margin: 0; }
+  .people { padding: 16px 20px 24px; display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .people { grid-template-columns: repeat(2, 1fr); } }
+  .person { border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .p-top { display: flex; gap: 11px; align-items: center; }
+  .bigav { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; }
+  .p-top .nm { font-weight: 750; font-size: 15.5px; }
+  .p-top .dt { font-size: 12.5px; color: var(--ink-3); }
+  .stat { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; margin-left: auto; }
+  .s-new { background: #EEF; color: var(--c1); } .s-seen { background: #FBF0DC; color: var(--warn); } .s-in { background: #E3F4EA; color: var(--ok); } .s-out { background: #FBE9E6; color: var(--bad); }
+  :root[data-theme="dark"] .s-new { background: #232345; } :root[data-theme="dark"] .s-seen { background: #322817; }
+  :root[data-theme="dark"] .s-in { background: #14291D; } :root[data-theme="dark"] .s-out { background: #321B17; }
+  .p-acts { display: flex; gap: 8px; }
+  .p-acts .grow { flex: 1; }
+
+  .empty { padding: 46px 24px 50px; text-align: center; }
+  .empty .art { width: 72px; height: 72px; border-radius: 22px; background: var(--grad); margin: 0 auto 18px; transform: rotate(-6deg); }
+  .empty h4 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .empty p { margin: 0 auto 20px; color: var(--ink-2); max-width: 44ch; }
+  .empty-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 54px; border-top: 1px solid var(--line); padding: 20px 0 48px; font-size: 13px; color: var(--ink-3); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <div class="thesis">Direction 6 &#183; The Wall</div>
+    <h1>Visual, expressive, social &#8212; clubs bring the colour, the chrome stays quiet.</h1>
+    <p>Philosophy borrowed from Instagram: identity and belonging first, information second. Every club gets a vivid identity tile; the one gradient belongs to the brand. Shown light-native so the colour pops. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>light</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Log in</button>
+      <button class="btn btn-sm btn-hot">Join</button>
+    </div>
+
+    <div class="stories" aria-label="Active clubs">
+      <a class="story" href="#"><span class="ring"><span class="face f1">D</span></span>Design</a>
+      <a class="story" href="#"><span class="ring"><span class="face f2">R</span></span>Robotics</a>
+      <a class="story" href="#"><span class="ring"><span class="face f3">CK</span></span>Circle K</a>
+      <a class="story" href="#"><span class="ring"><span class="face f4">ZC</span></span>Consulting</a>
+      <a class="story" href="#"><span class="ring"><span class="face f5">IC</span></span>ICS</a>
+    </div>
+
+    <div class="hero">
+      <h2>Your people are <em>already here</em>.</h2>
+      <p>See what UCI clubs are recruiting for, apply from your phone, and actually hear back.</p>
+      <div class="counts"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+    </div>
+
+    <div class="wall">
+      <article class="post">
+        <div class="cover cv1">VP of Design</div>
+        <div class="post-b">
+          <span class="who"><span class="dotav f1">D</span>Design at UCI</span>
+          <h3><a href="#">Lead the visual identity for everything we ship</a></h3>
+          <span class="pill">Leadership</span>
+          <div class="meta"><span>closes in 2 days</span><span>18 applied</span></div>
+        </div>
+      </article>
+      <article class="post">
+        <div class="cover cv2">Embedded Lead</div>
+        <div class="post-b">
+          <span class="who"><span class="dotav f2">R</span>Anteater Robotics</span>
+          <h3><a href="#">Own the firmware on our competition bot</a></h3>
+          <span class="pill">Project</span>
+          <div class="meta"><span>closes in 4 days</span><span>7 applied</span></div>
+        </div>
+      </article>
+      <article class="post">
+        <div class="cover cv3">Fall Kickoff</div>
+        <div class="post-b">
+          <span class="who"><span class="dotav f3">CK</span>Circle K International</span>
+          <h3><a href="#">Meet everyone before the quarter swallows you</a></h3>
+          <span class="pill">Event &#183; Fri 6pm</span>
+          <div class="meta"><span>54 of 80 going</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm">List view</button>
+    </div>
+
+    <div class="rev-head"><h3>VP of Design</h3><span class="soft">18 applicants &#183; 6 decided</span></div>
+    <div class="warnbar">
+      <p><strong>12 people waiting 9 days.</strong> Closing undecided declines them automatically.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Review now</button>
+    </div>
+
+    <div class="people">
+      <div class="person">
+        <div class="p-top"><span class="bigav f1">PR</span><div><div class="nm">Priya Raman</div><div class="dt">Junior &#183; Informatics &#183; Sep 18</div></div><span class="stat s-new">New</span></div>
+        <div class="p-acts"><button class="btn btn-sm" style="flex:1">Decline</button><button class="btn btn-sm btn-hot" style="flex:1">Accept</button></div>
+      </div>
+      <div class="person">
+        <div class="p-top"><span class="bigav f2">MV</span><div><div class="nm">Marcus Vela</div><div class="dt">Sophomore &#183; Studio Art &#183; Sep 18</div></div><span class="stat s-seen">Reviewed</span></div>
+        <div class="p-acts"><button class="btn btn-sm" style="flex:1">Decline</button><button class="btn btn-sm btn-hot" style="flex:1">Accept</button></div>
+      </div>
+      <div class="person">
+        <div class="p-top"><span class="bigav f4">AO</span><div><div class="nm">Amara Osei</div><div class="dt">Senior &#183; CS &#183; Sep 17</div></div><span class="stat s-in">Accepted</span></div>
+        <div class="p-acts"><button class="btn btn-sm" style="flex:1">Undo</button></div>
+      </div>
+      <div class="person">
+        <div class="p-top"><span class="bigav f5">SL</span><div><div class="nm">Sofia Lindqvist</div><div class="dt">Junior &#183; Business &#183; Sep 16 &#183; external</div></div><span class="stat s-seen">Reviewed</span></div>
+        <div class="p-acts"><button class="btn btn-sm" style="flex:1">Decline</button><button class="btn btn-sm btn-hot" style="flex:1">Accept</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <div class="art" aria-hidden="true"></div>
+      <h4>Nothing open in design right now.</h4>
+      <p>Three clubs usually post design roles each quarter. Want a ping the moment one does?</p>
+      <div class="empty-acts">
+        <button class="btn btn-hot">Notify me</button>
+        <button class="btn">See those clubs</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 6 of 10 &#183; The Wall. Club tiles are placeholder gradients standing in for real club logos and banners &#8212; with real clubs, their imagery carries this direction. Light-native; dark exists via toggle.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>

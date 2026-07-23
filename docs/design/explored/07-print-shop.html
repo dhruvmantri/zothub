@@ -1,0 +1,274 @@
+<title>ZotHub &#8212; Direction 7: The Print Shop</title>
+
+<style>
+  :root {
+    --paper: #F3F0E7;
+    --card: #FDFBF4;
+    --ink: #101010;
+    --ink-2: #4C4A42;
+    --mustard: #F2B90D;
+    --cobalt: #2743D6;
+    --red: #E03A2B;
+    --green: #1D8A4E;
+    --shadow: 5px 5px 0 var(--ink);
+    --shadow-sm: 3px 3px 0 var(--ink);
+    /* text that sits on a bright ink block (mustard/cobalt/red) stays dark in BOTH themes */
+    --on-bright: #101010;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+  /* Night press: the ground goes to ink and the ink goes to paper. Hard shadows
+     invert with it — a light offset shadow is the correct dark-neubrutalist move,
+     because a black shadow is invisible on a black ground. The spot colours stay
+     saturated; only cobalt darkens, so white type on it still clears AA. */
+  :root[data-theme="dark"] {
+    --paper: #17150E;
+    --card: #211E15;
+    --ink: #F4F1E4;
+    --ink-2: #ADA894;
+    --mustard: #F2B90D;
+    --cobalt: #4A62E0;
+    --red: #F0604E;
+    --green: #46B87A;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 15.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+  .note { padding: 26px 0; border-bottom: 3px solid var(--ink); }
+  .thesis { display: inline-block; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; background: var(--ink); color: var(--paper); padding: 3px 8px; }
+  .note h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 10px 0 4px; }
+  .note p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 66ch; }
+  .divider { padding: 46px 0 8px; margin-bottom: 26px; border-bottom: 3px solid var(--ink); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800; display: flex; justify-content: space-between; }
+
+  .frame { border: 3px solid var(--ink); background: var(--card); box-shadow: var(--shadow); }
+
+  .bar { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 3px solid var(--ink); background: var(--card); flex-wrap: wrap; }
+  .mark { font-size: 19px; font-weight: 900; letter-spacing: -0.03em; }
+  .mark i { font-style: normal; background: var(--mustard); padding: 0 4px; }
+  .bar nav { display: flex; gap: 0; margin-left: 8px; flex-wrap: wrap; }
+  .bar nav a { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; padding: 7px 12px; border: 2px solid transparent; }
+  .bar nav a[aria-current] { border-color: var(--ink); background: var(--mustard); box-shadow: var(--shadow-sm); }
+  .bar nav a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+  .grow { flex: 1; }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; }
+
+  .btn { font: inherit; font-size: 13.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; min-height: 42px; padding: 8px 16px; border: 2.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+  .btn:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn:active { transform: translate(3px, 3px); box-shadow: none; }
+  .btn-y { background: var(--mustard); color: var(--on-bright); border-color: var(--on-bright); }
+  .btn-b { background: var(--cobalt); color: #fff; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 12px; box-shadow: var(--shadow-sm); }
+
+  /* hero: a poster */
+  .hero { padding: 46px 24px 34px; border-bottom: 3px solid var(--ink); background: var(--mustard); color: var(--on-bright); }
+  .hero .stamp { display: inline-block; border: 2.5px solid var(--on-bright); background: var(--card); color: var(--ink); font-weight: 800; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; transform: rotate(-2deg); margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+  .hero h2 { font-size: clamp(34px, 6vw, 58px); font-weight: 900; letter-spacing: -0.03em; line-height: 0.98; text-transform: uppercase; margin: 0 0 16px; max-width: 16ch; }
+  .hero h2 .ul { box-shadow: inset 0 -0.28em 0 var(--card); color: var(--on-bright); }
+  .hero p { font-size: 16.5px; font-weight: 600; margin: 0 0 22px; max-width: 46ch; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .counts { margin-top: 24px; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* poster wall */
+  .postwall { padding: 22px 20px 26px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .postwall { grid-template-columns: repeat(3, 1fr); } }
+  .poster { border: 3px solid var(--ink); background: var(--card); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+  .poster:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--ink); }
+  .poster .tape { height: 34px; display: flex; align-items: center; padding: 0 12px; font-weight: 800; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; border-bottom: 3px solid var(--ink); }
+  .t-blue { background: var(--cobalt); } .t-red { background: var(--red); } .t-green { background: var(--green); }
+  .poster .body { padding: 14px 15px 15px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+  .poster h3 { margin: 0; font-size: 19px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.12; text-transform: uppercase; }
+  .poster h3 a { color: inherit; text-decoration: none; }
+  .poster h3 a:hover { background: var(--mustard); }
+  .poster .who { font-size: 13.5px; font-weight: 700; color: var(--ink-2); }
+  .poster .foot { margin-top: auto; padding-top: 10px; border-top: 2px dashed var(--ink); display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+
+  /* review: a job board */
+  .warn { padding: 12px 20px; border-bottom: 3px solid var(--ink); background: var(--red); color: #fff; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-weight: 700; font-size: 13.5px; }
+  .warn p { margin: 0; }
+  .subhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 3px solid var(--ink); }
+  .subhead h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; }
+  .soft { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  th { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 9px 14px; border-bottom: 3px solid var(--ink); background: var(--mustard); color: var(--on-bright); white-space: nowrap; }
+  td { padding: 11px 14px; border-bottom: 2px solid var(--ink); font-size: 14px; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--paper); }
+  .nm { font-weight: 800; }
+  .dim { color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+  .tagst { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border: 2px solid var(--ink); }
+  .g-new { background: var(--cobalt); color: #fff; border-color: var(--on-bright); }
+  .g-seen { background: var(--mustard); color: var(--on-bright); border-color: var(--on-bright); }
+  .g-in { background: var(--green); color: #fff; }
+  .g-out { background: var(--red); color: #fff; }
+  .racts { display: flex; gap: 6px; justify-content: flex-end; }
+
+  .empty { padding: 42px 24px 46px; }
+  .empty .stamp2 { display: inline-block; border: 2.5px solid var(--on-bright); background: var(--mustard); color: var(--on-bright); font-weight: 900; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; transform: rotate(-2deg); margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+  .empty h4 { font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin: 0 0 8px; max-width: 24ch; }
+  .empty p { margin: 0 0 20px; color: var(--ink-2); font-weight: 600; max-width: 52ch; }
+  .empty-acts { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  footer.foot { margin-top: 54px; border-top: 3px solid var(--ink); padding: 20px 0 48px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; transform: none !important; } }
+</style>
+
+<div class="note">
+  <div class="wrap">
+    <span class="thesis">Direction 7 &#183; The Print Shop</span>
+    <h1>Campus silkscreen &#8212; the energy of posters stapled to a kiosk.</h1>
+    <p>Unconventional on purpose: flat ink, hard borders, block shadows, poster type. Unmistakably student-made, impossible to confuse with an enterprise tool or an official campus system. Light is its native register &#8212; a poster is ink on paper. The dark theme inverts the press: the ground becomes ink, and the hard shadows become light, because a black shadow is invisible on black. Content illustrative.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="divider"><span>A &#183; Landing</span><span>one theme, on purpose</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a></nav>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Log in</button>
+      <button class="btn btn-sm btn-b">Get started</button>
+    </div>
+
+    <div class="hero">
+      <span class="stamp">UC Irvine &#183; Fall Quarter</span>
+      <h2>Do <span class="ul">something</span> this year.</h2>
+      <p>Every role UCI clubs are hiring for, on one board. Apply in minutes. Nobody leaves you on read.</p>
+      <div class="cta">
+        <button class="btn btn-b">See the board</button>
+        <button class="btn">I run a club</button>
+      </div>
+      <div class="counts">34 clubs &#183; 61 open roles &#183; 12 events this week</div>
+    </div>
+
+    <div class="postwall">
+      <article class="poster">
+        <div class="tape t-blue">Leadership &#183; 2 days left</div>
+        <div class="body">
+          <h3><a href="#">VP of Design</a></h3>
+          <span class="who">Design at UCI</span>
+          <div class="foot"><span>18 applied</span><span>Apply &#8594;</span></div>
+        </div>
+      </article>
+      <article class="poster">
+        <div class="tape t-green">Project &#183; 4 days left</div>
+        <div class="body">
+          <h3><a href="#">Embedded Systems Lead</a></h3>
+          <span class="who">Anteater Robotics</span>
+          <div class="foot"><span>7 applied</span><span>Apply &#8594;</span></div>
+        </div>
+      </article>
+      <article class="poster">
+        <div class="tape t-red">Event &#183; Fri 6pm</div>
+        <div class="body">
+          <h3><a href="#">Fall Kickoff Social</a></h3>
+          <span class="who">Circle K International</span>
+          <div class="foot"><span>54/80 going</span><span>RSVP &#8594;</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <div class="divider"><span>B &#183; Responses &#8212; review</span><span>the dense test</span></div>
+  <div class="frame">
+    <div class="bar">
+      <span class="mark">Zot<i>Hub</i></span>
+      <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+    </div>
+
+    <div class="warn">
+      <p>&#9888; 12 PEOPLE WAITING 9 DAYS. Close undecided and they&#8217;re auto-declined.</p>
+      <span class="grow"></span>
+      <button class="btn btn-sm btn-y">Review now</button>
+    </div>
+
+    <div class="subhead">
+      <h3>VP of Design</h3><span class="soft">18 applicants &#183; 3 selected</span>
+      <span class="grow"></span>
+      <button class="btn btn-sm">Accept</button>
+      <button class="btn btn-sm">Decline</button>
+      <button class="btn btn-sm">Export</button>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Applicant</th><th>Year / Major</th><th>Applied</th><th>Status</th><th style="text-align:right">Decide</th></tr></thead>
+        <tbody>
+          <tr><td><div class="nm">Priya Raman</div><div class="dim">Portfolio attached</div></td><td class="dim">Junior &#183; Informatics</td><td class="dim">Sep 18</td><td><span class="tagst g-new">New</span></td><td><div class="racts"><button class="btn btn-sm">No</button><button class="btn btn-sm btn-b">Yes</button></div></td></tr>
+          <tr><td><div class="nm">Marcus Vela</div><div class="dim">R&#233;sum&#233; attached</div></td><td class="dim">Soph &#183; Studio Art</td><td class="dim">Sep 18</td><td><span class="tagst g-seen">Seen</span></td><td><div class="racts"><button class="btn btn-sm">No</button><button class="btn btn-sm btn-b">Yes</button></div></td></tr>
+          <tr><td><div class="nm">Amara Osei</div><div class="dim">Portfolio attached</div></td><td class="dim">Senior &#183; CS</td><td class="dim">Sep 17</td><td><span class="tagst g-in">In</span></td><td><div class="racts"><button class="btn btn-sm">Undo</button></div></td></tr>
+          <tr><td><div class="nm">Ben Okafor</div><div class="dim">No attachment</div></td><td class="dim">Frosh &#183; Undeclared</td><td class="dim">Sep 17</td><td><span class="tagst g-out">Out</span></td><td><div class="racts"><button class="btn btn-sm">Undo</button></div></td></tr>
+          <tr><td><div class="nm">Sofia Lindqvist</div><div class="dim">Applied externally</div></td><td class="dim">Junior &#183; Business</td><td class="dim">Sep 16</td><td><span class="tagst g-seen">Seen</span></td><td><div class="racts"><button class="btn btn-sm">No</button><button class="btn btn-sm btn-b">Yes</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"><span>C &#183; Empty</span><span>no match</span></div>
+  <div class="frame">
+    <div class="empty">
+      <span class="stamp2">Nothing posted</span>
+      <h4>No design roles on the board this week.</h4>
+      <p>Three clubs usually post design gigs every quarter. We&#8217;ll slap a note on your door the day one goes up.</p>
+      <div class="empty-acts">
+        <button class="btn btn-b">Tell me when</button>
+        <button class="btn">See those clubs</button>
+        <button class="btn btn-y">Tell a club to post</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Direction 7 of 10 &#183; The Print Shop. Poster type is system-weight 900 standing in for a real display face. Both themes designed; use the switch.</footer>
+</div>
+
+<style>
+  .themetoggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9999;
+    font-family: var(--sans, system-ui, sans-serif);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 40px; padding: 0 15px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid currentColor;
+    background: rgba(127,127,127,0.16);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: inherit; opacity: 0.78;
+  }
+  .themetoggle:hover { opacity: 1; }
+  .themetoggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; opacity: 1; }
+  .themetoggle .tt-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid currentColor; background: transparent;
+  }
+  :root[data-theme="dark"] .themetoggle .tt-dot { background: currentColor; }
+  @media print { .themetoggle { display: none; } }
+</style>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite">
+  <span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('tt');
+  var lbl = document.getElementById('ttl');
+  function current() {
+    var a = root.getAttribute('data-theme');
+    if (a === 'dark' || a === 'light') return a;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function apply(t) {
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    lbl.textContent = (t === 'dark') ? 'Light' : 'Dark';
+    btn.setAttribute('aria-label', 'Switch to ' + ((t === 'dark') ? 'light' : 'dark') + ' mode');
+  }
+  apply(current());
+  btn.addEventListener('click', function () { apply(current() === 'dark' ? 'light' : 'dark'); });
+})();
+</script>
