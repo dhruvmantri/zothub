@@ -1,0 +1,477 @@
+<title>ZotHub &#8212; Identity Lab 2: wordmark, dark neutrals, motion</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+  /* ============ RAMP: ROSE (default — the "middle" candidate: warm, tinted by the accent hue) ============ */
+  :root{
+    --bg:#FFFFFF; --bg-2:#FAF6F5; --bg-3:#F3ECEA;
+    --ink:#170F12; --ink-2:#4C4144; --ink-3:#6D6064;
+    --line:#ECE2E1; --line-2:#D8CCCB; --line-3:#8F7E82;
+    --panel:#160F13; --panel-2:#20161B; --panel-ink:#F4EEF0; --panel-ink-2:#9A8C93; --panel-line:#332630;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+    --panel-accent:#FF4C86; --panel-accent-text:#FF87AE;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--rp:999px;
+    --e1:0 1px 2px rgba(23,15,18,.05);
+    --e2:0 2px 8px rgba(23,15,18,.07),0 1px 2px rgba(23,15,18,.04);
+    --e3:0 12px 32px rgba(23,15,18,.10),0 2px 6px rgba(23,15,18,.05);
+    --t-fast:150ms; --t-base:200ms; --t-slow:250ms;
+    --ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --f-display:"Instrument Sans",var(--sys); --f-ui:"Instrument Sans",var(--sys);
+    --track-d1:-.034em; --track-d2:-.026em; --track-d3:-.018em;
+  }
+  :root[data-type="system"]{--f-display:var(--sys);--f-ui:var(--sys);--track-d1:-.042em;--track-d2:-.032em;--track-d3:-.022em}
+  :root[data-type="schibsted"]{--f-display:"Schibsted Grotesk",var(--sys);--f-ui:"Inter",var(--sys);--track-d1:-.028em;--track-d2:-.022em;--track-d3:-.014em}
+
+  /* DEFAULT DARK = GRAPHITE (decision 2026-07-24: hybrid ramp — rose light, graphite dark) */
+  :root[data-theme="dark"]{
+    --bg:#0E0F10; --bg-2:#141517; --bg-3:#1B1D1F;
+    --ink:#F0F1F2; --ink-2:#A8ABAF; --ink-3:#85888D;
+    --line:#26282B; --line-2:#37393D; --line-3:#64676C;
+    --panel:#17181A; --panel-2:#1F2124; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2E3033;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    --accent:#FF4C86; --accent-text:#FF87AE; --accent-ink:#1B0410; --accent-wash:#2E1220; --accent-line:#4E1F35;
+    --e1:0 1px 2px rgba(0,0,0,.4); --e2:0 2px 10px rgba(0,0,0,.45); --e3:0 14px 36px rgba(0,0,0,.55);
+  }
+  /* pure Rose dark, kept for comparison */
+  :root[data-ramp="rose"][data-theme="dark"]{
+    --bg:#120D10; --bg-2:#171114; --bg-3:#1F171B;
+    --ink:#F3EEF0; --ink-2:#B2A5AB; --ink-3:#8C7E85;
+    --line:#2B2127; --line-2:#3E3038; --line-3:#6F5D66;
+    --panel:#1A1318; --panel-2:#221A1F; --panel-ink:#F3EEF0; --panel-ink-2:#9A8C93; --panel-line:#33272E;
+  }
+
+  /* ============ RAMP: COOL (Direction 11 as shipped) ============ */
+  :root[data-ramp="cool"]{
+    --bg:#FFFFFF; --bg-2:#F7F9F9; --bg-3:#EFF3F3;
+    --ink:#071417; --ink-2:#3F4E52; --ink-3:#616E72;
+    --line:#E4E8E9; --line-2:#CDD5D7; --line-3:#849095;
+    --panel:#0B1316; --panel-2:#131D21; --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#233034;
+    --e1:0 1px 2px rgba(7,20,23,.05);
+    --e2:0 2px 8px rgba(7,20,23,.07),0 1px 2px rgba(7,20,23,.04);
+    --e3:0 12px 32px rgba(7,20,23,.10),0 2px 6px rgba(7,20,23,.05);
+  }
+  :root[data-ramp="cool"][data-theme="dark"]{
+    --bg:#080F11; --bg-2:#0D1618; --bg-3:#131F22;
+    --ink:#EEF3F4; --ink-2:#A7B6BA; --ink-3:#839297;
+    --line:#1D282B; --line-2:#2E3D41; --line-3:#5B6C71;
+    --panel:#111B1F; --panel-2:#17242A; --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#27343A;
+  }
+
+  /* ============ RAMP: PAPER (lab-1 warm — light was liked, dark was rejected as yellow) ============ */
+  :root[data-ramp="paper"]{
+    --bg:#FFFFFF; --bg-2:#F9F7F3; --bg-3:#F1EDE6;
+    --ink:#141109; --ink-2:#48443B; --ink-3:#676257;
+    --line:#E9E4DC; --line-2:#D6D0C5; --line-3:#8D8779;
+    --panel:#14100B; --panel-2:#1D1812; --panel-ink:#F5F2EC; --panel-ink-2:#A39C8F; --panel-line:#332C22;
+    --e1:0 1px 2px rgba(20,17,9,.05);
+    --e2:0 2px 8px rgba(20,17,9,.07),0 1px 2px rgba(20,17,9,.04);
+    --e3:0 12px 32px rgba(20,17,9,.10),0 2px 6px rgba(20,17,9,.05);
+  }
+  :root[data-ramp="paper"][data-theme="dark"]{
+    --bg:#0F0D0A; --bg-2:#14110D; --bg-3:#1C1812;
+    --ink:#F2EFE9; --ink-2:#ADA598; --ink-3:#8B8375;
+    --line:#28221B; --line-2:#3B342A; --line-3:#6B6255;
+    --panel:#171310; --panel-2:#1F1A15; --panel-ink:#F5F2EC; --panel-ink-2:#A39C8F; --panel-line:#332C22;
+  }
+
+  /* ============ RAMP: GRAPHITE (pure neutral — no temperature at all) ============ */
+  :root[data-ramp="graphite"]{
+    --bg:#FFFFFF; --bg-2:#F7F7F8; --bg-3:#EEEFF1;
+    --ink:#101113; --ink-2:#43474B; --ink-3:#66696E;
+    --line:#E6E7E9; --line-2:#D2D4D7; --line-3:#85888D;
+    --panel:#101112; --panel-2:#191A1C; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2A2C2F;
+    --e1:0 1px 2px rgba(16,17,19,.05);
+    --e2:0 2px 8px rgba(16,17,19,.07),0 1px 2px rgba(16,17,19,.04);
+    --e3:0 12px 32px rgba(16,17,19,.10),0 2px 6px rgba(16,17,19,.05);
+  }
+  :root[data-ramp="graphite"][data-theme="dark"]{
+    --bg:#0E0F10; --bg-2:#141517; --bg-3:#1B1D1F;
+    --ink:#F0F1F2; --ink-2:#A8ABAF; --ink-3:#85888D;
+    --line:#26282B; --line-2:#37393D; --line-3:#64676C;
+    --panel:#17181A; --panel-2:#1F2124; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2E3033;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 13px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+
+  h2.sec{font-size:13px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:var(--s8) 0 var(--s4);padding-bottom:var(--s2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+  .why{font-family:var(--f-ui);font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-3);font-weight:400;max-width:52ch}
+  .demo{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center;padding:var(--s5);border:1px solid var(--line);border-radius:var(--r3);background:var(--bg)}
+  .demo.col{flex-direction:column;align-items:stretch}
+  .cols2{display:grid;grid-template-columns:1fr;gap:var(--s4)}
+  @media(min-width:840px){.cols2{grid-template-columns:1fr 1fr}}
+  .lb{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .sm{font-size:13.5px;color:var(--ink-3)}
+  .sm b{color:var(--ink);font-weight:650}
+  .bd{font-size:15px;line-height:1.55;color:var(--ink-2)}
+  .verdict{border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px;margin-top:var(--s4)}
+  .verdict b{color:var(--accent-text)}
+
+  .btn{font:inherit;font-family:var(--f-ui);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease)}
+  .btn:hover{background:var(--bg-3)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp)}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .b-idle{background:var(--bg-3);color:var(--ink-3)}
+
+  /* ============ 01 wordmark round 2 ============ */
+  .wm{font-family:var(--f-display);font-weight:700;letter-spacing:-.045em;line-height:1;white-space:nowrap}
+  /* period v2: the dot is an inline-block sitting exactly on the baseline — no transform */
+  .wm .dot{display:inline-block;vertical-align:baseline;width:.15em;height:.15em;border-radius:50%;background:var(--accent);margin-left:.055em}
+  .wm-ih i{font-style:italic;color:var(--accent);margin-left:.015em}
+  .wm-it{font-style:italic;letter-spacing:-.04em}
+  .wm-hl i{font-style:normal;background:var(--accent-wash);color:var(--accent-text);padding:.03em .1em .05em;border-radius:.16em;margin-left:.04em}
+  .wm-w .l{font-weight:430}
+  .wm-w i{font-style:normal;font-weight:760}
+  .wmrow{display:grid;grid-template-columns:130px 1fr;gap:var(--s3) var(--s5);align-items:center;padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+  .wmrow:last-child{border-bottom:0}
+  .wmctx{display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap}
+  .tabsim{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid var(--line);border-bottom:2px solid var(--accent);border-radius:9px 9px 0 0;background:var(--bg);font-size:12px;color:var(--ink-2);white-space:nowrap}
+  /* favicon v2: the z+device is one centered composition */
+  .fav{width:16px;height:16px;border-radius:4px;background:var(--ink);color:var(--bg);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fav .u{display:inline-flex;align-items:baseline;font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:-.05em;line-height:1}
+  .fav .fd{display:inline-block;vertical-align:baseline;width:3px;height:3px;border-radius:50%;background:var(--panel-accent);margin-left:1px}
+  .fav32{width:32px;height:32px;border-radius:8px}
+  .fav32 .u{font-size:21px}
+  .fav32 .fd{width:5.5px;height:5.5px;margin-left:2px}
+  .fav-acc{background:var(--accent);color:#fff}
+  .fav-acc .fd{background:#fff}
+  .fav-lite{background:var(--accent-wash);color:var(--accent-text);border:1px solid var(--accent-line)}
+  .fav-lite .fd{background:var(--accent)}
+  .fav .u i{font-style:italic}
+
+  /* ---- the stacked mark: zot over italic hub, one centred unit ---- */
+  .stk{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:#101112;font-family:var(--f-display);font-weight:700;line-height:.86;letter-spacing:-.035em;flex-shrink:0}
+  .stk .t{color:#F5F5F6}
+  .stk .h{font-style:italic;color:#FF4C86;margin-right:.06em}
+  .stk-sq{border-radius:24%}
+  .stk-lite{background:#FFFFFF;box-shadow:inset 0 0 0 1px var(--line-2)}
+  .stk-lite .t{color:#17181A}
+  .stk-lite .h{color:#D81E5B}
+  .s128{width:128px;height:128px;font-size:40px}
+  .s64{width:64px;height:64px;font-size:20px}
+  .s32{width:32px;height:32px;font-size:10px}
+  .s24{width:24px;height:24px;font-size:7.5px}
+  .s16{width:16px;height:16px;font-size:5px}
+  .s16t{width:16px;height:16px;font-size:6px;letter-spacing:-.05em;line-height:.82}
+  .stkrow{display:flex;gap:var(--s5);align-items:flex-end;flex-wrap:wrap}
+  .stkcell{display:flex;flex-direction:column;gap:var(--s2);align-items:center}
+
+  /* ============ 02 ramps ============ */
+  .grp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1)}
+  .grpbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pdot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jl{display:flex;gap:var(--s3);align-items:center;min-width:0}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2);flex-shrink:0}
+  .datechip .m{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--accent-text);text-transform:uppercase}
+  .datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  .panelbox{background:var(--panel);color:var(--panel-ink);border-radius:var(--r3);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s2)}
+  .heroX{background:linear-gradient(180deg,var(--accent-wash) 0%,var(--bg) 62%);padding:var(--s6) var(--s5);text-align:center;border:1px solid var(--line);border-radius:var(--r3)}
+  .heroX h1{font-family:var(--f-display);font-size:clamp(30px,4.4vw,44px);font-weight:500;letter-spacing:var(--track-d1);line-height:1.02;margin:0 auto var(--s3);max-width:17ch}
+  .heroX .sig{font-style:italic;color:var(--accent)}
+  .heroX p{color:var(--ink-2);font-size:15.5px;max-width:46ch;margin:0 auto}
+
+  /* ============ 03 motion v2 ============ */
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}
+  .state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  .mrow{display:grid;grid-template-columns:1fr auto;gap:var(--s3);align-items:center;padding:var(--s3) var(--s4);border:1px solid var(--line);border-radius:var(--r2);background:var(--bg)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.8;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Identity lab 2</span>
+    <span class="lab" style="color:var(--ink-2)">Neutrals</span>
+    <span class="seg" role="group" aria-label="Neutral ramp">
+      <button data-ramp="hybrid" aria-pressed="true">Hybrid&#10003;</button>
+      <button data-ramp="rose" aria-pressed="false">Rose</button>
+      <button data-ramp="graphite" aria-pressed="false">Graphite</button>
+      <button data-ramp="paper" aria-pressed="false">Paper</button>
+      <button data-ramp="cool" aria-pressed="false">Cool</button>
+    </span>
+    <span class="lab" style="color:var(--ink-2)">Type</span>
+    <span class="seg" role="group" aria-label="Typeface">
+      <button data-type="instrument" aria-pressed="true">Instrument</button>
+      <button data-type="system" aria-pressed="false">System</button>
+      <button data-type="schibsted" aria-pressed="false">Schibsted</button>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div style="padding:var(--s5) 0 0">
+    <p class="bd" style="max-width:72ch;margin:0">Round 2, built from your decisions: the italic signature is <b>locked</b> (it styles the candidates below), pills are <b>locked</b>, and this file answers the three things still open &#8212; a wordmark beyond the dot, a dark mode that is neither yellow nor cheap-cool, and motion you can actually see. <b>Use the theme toggle on every ramp</b> &#8212; the dark halves are the whole point.</p>
+  </div>
+
+  <!-- ================= 01 WORDMARK ROUND 2 ================= -->
+  <h2 class="sec"><span>01 &#183; Wordmark, round 2</span><span class="why">The period stays on the ballot (dot re-drawn: it now sits exactly on the baseline, and the favicon centres the whole &#8220;z + dot&#8221; unit). Four new candidates carry the vibe without leaning on the dot.</span></h2>
+
+  <div class="demo col">
+    <div class="wmrow">
+      <span class="lb">Period &#183; v2, re-centred</span>
+      <span class="wmctx">
+        <span class="wm" style="font-size:44px">zothub<span class="dot"></span></span>
+        <span class="wm" style="font-size:19px">zothub<span class="dot"></span></span>
+        <span class="tabsim"><span class="fav"><span class="u">z<span class="fd"></span></span></span>zothub &#8212; Discover</span>
+        <span class="fav fav32"><span class="u">z<span class="fd"></span></span></span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Italic hub &#183; the signature move, in the mark</span>
+      <span class="wmctx">
+        <span class="wm wm-ih" style="font-size:44px">zot<i>hub</i></span>
+        <span class="wm wm-ih" style="font-size:19px">zot<i>hub</i></span>
+        <span class="tabsim"><span class="fav"><span class="u"><i>z</i></span></span>zothub &#8212; Discover</span>
+        <span class="fav fav32 fav-acc"><span class="u"><i>z</i></span></span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">All italic &#183; the whole mark leans</span>
+      <span class="wmctx">
+        <span class="wm wm-it" style="font-size:44px">zothub</span>
+        <span class="wm wm-it" style="font-size:19px">zothub</span>
+        <span class="tabsim"><span class="fav"><span class="u"><i>z</i></span></span>zothub &#8212; Discover</span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Highlight &#183; &#8220;hub&#8221; marked as the place</span>
+      <span class="wmctx">
+        <span class="wm wm-hl" style="font-size:44px">zot<i>hub</i></span>
+        <span class="wm wm-hl" style="font-size:19px">zot<i>hub</i></span>
+        <span class="tabsim"><span class="fav fav-acc"><span class="u">z</span></span>zothub &#8212; Discover</span>
+        <span class="fav fav32 fav-acc"><span class="u">z</span></span>
+        <span class="fav fav32 fav-lite"><span class="u">z</span></span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Weight shift &#183; searching &#8594; found</span>
+      <span class="wmctx">
+        <span class="wm wm-w" style="font-size:44px"><span class="l">zot</span><i>hub</i></span>
+        <span class="wm wm-w" style="font-size:19px"><span class="l">zot</span><i>hub</i></span>
+        <span class="tabsim"><span class="fav"><span class="u">z</span></span>zothub &#8212; Discover</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">Tradeoffs</span>
+      <div class="sm"><b>Period v2.</b> Unchanged case: device + meaning + system. Now optically corrected &#8212; judge it fresh.</div>
+      <div class="sm"><b>Italic hub.</b> The locked signature (upright ink &#8594; italic accent) becomes the mark itself: <i>zot</i> is the campus, <i>hub</i> is the place it tips into. One brand move everywhere &#8212; headline, empty states, wordmark. Favicon: an italic z, which is quietly distinctive. Risk: at 19px the lean is subtle; needs the colour to read.</div>
+      <div class="sm"><b>All italic.</b> Energy and forward motion, no colour dependency. Risk: italic wordmarks read &#8220;sports/racing&#8221; fast, and it borrows nothing from the signature system &#8212; it flattens it.</div>
+      <div class="sm"><b>Highlight.</b> The wash chip marks <i>hub</i> like a highlighter &#8212; &#8220;this is the place.&#8221; Strongest small-size survival after the period (the chip stays visible at 19px), and it hands us a crimson favicon for free. Risk: reads &#8220;label/beta chip&#8221; to some eyes; the chip must never gain a border or it becomes a button.</div>
+      <div class="sm"><b>Weight shift.</b> Quietest: thin <i>zot</i>, heavy <i>hub</i> &#8212; searching resolving into found. Zero colour, zero device. Risk: at 19px the contrast almost vanishes; it depends on display sizes it will rarely get.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">All five in the topbar, at real size</span>
+      <div style="display:flex;flex-direction:column;gap:var(--s3)">
+        <span class="wm" style="font-size:19px">zothub<span class="dot"></span></span>
+        <span class="wm wm-ih" style="font-size:19px">zot<i>hub</i></span>
+        <span class="wm wm-it" style="font-size:19px">zothub</span>
+        <span class="wm wm-hl" style="font-size:19px">zot<i>hub</i></span>
+        <span class="wm wm-w" style="font-size:19px"><span class="l">zot</span><i>hub</i></span>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">The topbar is where the mark lives 99% of the time &#8212; weight the decision here, not at 44px.</div>
+    </div>
+  </div>
+  <div class="verdict"><b>DECIDED (2026-07-24): Italic hub.</b> One gesture &#8212; upright ink tipping into italic accent &#8212; carries the headline signature, the wordmark, and the mark. The maintainer&#8217;s read: it says fast, simple, easy to apply and get started. The plain &#8220;z&#8221; favicon was rejected as forgettable; the stacked mark below replaces it.</div>
+
+  <!-- ================= 01B THE STACKED MARK ================= -->
+  <h2 class="sec"><span>01b &#183; The stacked mark</span><span class="why">The avatar/icon lockup from the maintainer&#8217;s reference: upright <b>zot</b> over italic accent <b>hub</b>, one centred unit on a disc. Judged at every size it will actually live at &#8212; and honestly at 16px, where words become pattern.</span></h2>
+
+  <div class="demo col">
+    <div class="stkrow">
+      <span class="stkcell"><span class="stk s128"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">128 &#183; avatar</span></span>
+      <span class="stkcell"><span class="stk s64"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">64</span></span>
+      <span class="stkcell"><span class="stk s32"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">32</span></span>
+      <span class="stkcell"><span class="stk s24"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">24</span></span>
+      <span class="stkcell"><span class="stk s16"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">16</span></span>
+      <span class="stkcell"><span class="stk s16t"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">16 tight</span></span>
+    </div>
+    <div class="stkrow" style="margin-top:var(--s3)">
+      <span class="stkcell"><span class="stk stk-sq s64"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">app icon &#183; squircle</span></span>
+      <span class="stkcell"><span class="stk stk-lite s64"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">light surface</span></span>
+      <span class="stkcell"><span class="stk stk-lite stk-sq s64"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">light squircle</span></span>
+      <span class="stkcell"><span class="tabsim"><span class="stk s16t" style="border-radius:4px"><span class="t">zot</span><span class="h">hub</span></span>zothub &#8212; Discover</span><span class="lb">browser tab, real size</span></span>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">What to accept about 16px</span>
+      <div class="sm">At 16px no three-letter word is readable &#8212; not ours, not anyone&#8217;s. What survives is the <b>pattern</b>: dark disc, light cap, pink base. That is the same mechanism Reddit&#8217;s and Spotify&#8217;s favicons rely on, and it is memorable in a way a lone letter is not &#8212; which was the objection to the plain &#8220;z&#8221;. The <b>16 tight</b> cut (bigger type, thinner padding) maximises it.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Usage rule</span>
+      <div class="sm"><b>Inline wordmark</b> (topbar, documents): zot<i style="color:var(--accent)">hub</i>, always one line. <b>Stacked mark</b> (avatar, app icon, favicon, social): the disc. Never stack the wordmark in running text; never put the inline mark in a disc. The italic accent <i>hub</i> is the constant across both.</div>
+    </div>
+  </div>
+  <div class="verdict"><b>Recommendation:</b> adopt the stacked disc as the universal mark, with the <b>16 tight</b> cut for browser tabs. If the 16px pattern-read feels too soft after a day of living with it, the fallback is the same disc with <b>hub</b> alone (italic, pink) &#8212; still on-system, still not a lone &#8220;z&#8221;.</div>
+
+  <!-- ================= 02 DARK NEUTRALS ================= -->
+  <h2 class="sec"><span>02 &#183; Neutrals, round 2 &#8212; the dark problem</span><span class="why">Verdicts so far: Paper light = yes, Paper dark = too yellow, Cool light = too bright, Cool dark = cheap. Rose is the proposed middle: warmth taken from the accent&#8217;s own hue instead of yellow. Graphite is the no-temperature control.</span></h2>
+
+  <div class="heroX">
+    <h1>Where good clubs <span class="sig">meet good people.</span></h1>
+    <p>Every open role at UCI, and a real answer either way.</p>
+  </div>
+
+  <div style="height:var(--s4)"></div>
+
+  <div class="grp">
+    <div class="grpbar">
+      <span class="clogo" style="background:#C2410C">D</span><span class="cn">Design at UCI</span>
+      <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag">Closing soon</span></span>
+    </div>
+    <div class="jrow">
+      <div class="jl"><div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div></div>
+      <div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+    <div class="jrow">
+      <div class="jl">
+        <span class="datechip"><span class="m">Sep</span><span class="d">29</span></span>
+        <div><div class="jt">Shop Day &amp; Open Build</div><div class="jm">Tue 7:00 PM &#183; 18 of 30 going</div></div>
+      </div>
+      <div class="jr"><button class="btn btn-sm btn-ink">RSVP</button></div>
+    </div>
+  </div>
+
+  <div style="height:var(--s4)"></div>
+
+  <div class="cols2">
+    <div class="panelbox">
+      <span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--panel-accent)">For clubs</span>
+      <div style="font-family:var(--f-display);font-size:22px;font-weight:500;letter-spacing:var(--track-d3)">Recruit without the spreadsheet.</div>
+      <div style="font-size:14px;color:var(--panel-ink-2)">The dark card re-tints with each ramp &#8212; watch whether it stays premium or goes muddy.</div>
+    </div>
+    <div class="demo col" style="justify-content:center">
+      <span class="lb">Status set on this ramp</span>
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+        <span class="badge b-new"><span class="dot"></span>New</span>
+        <span class="badge b-warn"><span class="dot"></span>Reviewed</span>
+        <span class="badge b-ok"><span class="dot"></span>Accepted</span>
+        <span class="badge b-bad"><span class="dot"></span>Declined</span>
+        <span class="badge b-idle"><span class="dot"></span>Applied</span>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">Semantics stay constant across ramps &#8212; only the neutral spine moves.</div>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">Rose &#8212; the proposed middle</span>
+      <div class="sm">Neutrals tinted by the <b>accent&#8217;s own hue</b>: ivory-with-a-blush light (very close to the Paper light you liked), and a dark of <b>warm charcoal with a rose undertone</b> &#8212; #120D10, not yellow, not blue. The crimson/pink accent sits <i>inside its own temperature</i>, so dark mode stops fighting the brand. This is the only ramp where light and dark feel like the same product.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Graphite &#8212; the control</span>
+      <div class="sm">No temperature at all: pure neutral greys. Dark is sober and never clashes; light is a hair less generous than the warm ramps. If Rose reads &#8220;too pink&#8221; anywhere, Graphite is the safe landing &#8212; but it gives the brand nothing back, and the accent has to do all the warmth alone.</div>
+    </div>
+  </div>
+  <div class="verdict"><b>Recommendation: Rose.</b> It keeps everything you liked about Paper&#8217;s light mode (swap them back and forth &#8212; the difference is a blush instead of a yellow), and its dark mode answers both complaints at once: warmer than Cool&#8217;s blue-green &#8220;cheap&#8221; cast, and no yellow anywhere. All four ramps are fully measured (text 4.5:1, boundaries 3:1) in both themes.</div>
+
+  <!-- ================= 03 MOTION V2 ================= -->
+  <h2 class="sec"><span>03 &#183; Motion, round 2 &#8212; a pulse you can see</span><span class="why">v1&#8217;s pulse was an 8px whisper. v2 is a compound: the badge pops (1.06&#215;), the dot jumps (1.55&#215;), and a 14px ring falls away &#8212; 750ms total, still once, still silent under reduced-motion.</span></h2>
+
+  <div class="cols2">
+    <div class="demo col">
+      <span class="lb">Decision demo &#8212; click it</span>
+      <div class="mrow">
+        <div><div class="jt" style="font-size:15px">Priya Raman</div><div class="jm">Junior &#183; Informatics &#183; portfolio attached</div></div>
+        <div style="display:flex;gap:var(--s2);align-items:center">
+          <span class="badge b-new" id="mbadge"><span class="dot"></span><span id="mlabel">New</span></span>
+          <button class="btn btn-sm btn-ink" id="maccept">Accept</button>
+          <button class="btn btn-sm btn-ghost" id="mundo" hidden>Undo</button>
+        </div>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">The same compound fires on: application submitted, decision made, posting published. Nothing else pulses, ever.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Side by side &#8212; v1 vs v2</span>
+      <div style="display:flex;gap:var(--s4);align-items:center;flex-wrap:wrap">
+        <button class="btn btn-sm" id="rv1">Play v1 (old)</button>
+        <span class="badge b-ok" id="bv1"><span class="dot"></span>Accepted</span>
+        <button class="btn btn-sm" id="rv2">Play v2 (new)</button>
+        <span class="badge b-ok" id="bv2"><span class="dot"></span>Accepted</span>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">v1 animated only a 6px dot&#8217;s shadow. v2 moves the badge itself &#8212; motion reads at arm&#8217;s length, which is where a phone lives.</div>
+    </div>
+  </div>
+
+  <footer style="margin-top:var(--s7);border-top:1px solid var(--line);padding:var(--s4) 0 var(--s6);font-size:13px;color:var(--ink-3)">
+    Identity lab 2 &#183; locked: crimson &#183; italic signature &#183; <b>italic-hub wordmark</b> &#183; pills &#183; <b>hybrid ramp (rose light / graphite dark)</b> &#183; <b>motion v2</b> &#183; <b>Instrument</b>. Open: the stacked mark&#8217;s 16px cut (&#167;01b). Applied in practice in <b>direction-11-v3-pages.html</b>. Webfonts degrade to system offline.
+  </footer>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  function group(sel,attr,key){var b=$$(sel);b.forEach(function(x){x.addEventListener('click',function(){b.forEach(function(y){y.setAttribute('aria-pressed',String(y===x));});document.documentElement.setAttribute(attr,x.dataset[key]);});});}
+  group('.seg [data-ramp]','data-ramp','ramp');
+  group('.seg [data-type]','data-type','type');
+  document.documentElement.setAttribute('data-ramp','hybrid');
+  document.documentElement.setAttribute('data-type','instrument');
+})();
+(function(){
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  var badge=document.getElementById('mbadge'),label=document.getElementById('mlabel'),
+      accept=document.getElementById('maccept'),undo=document.getElementById('mundo');
+  accept.addEventListener('click',function(){badge.className='badge b-ok';label.textContent='Accepted';accept.hidden=true;undo.hidden=false;fire(badge);});
+  undo.addEventListener('click',function(){badge.className='badge b-new';label.textContent='New';accept.hidden=false;undo.hidden=true;fire(badge);});
+  var bv1=document.getElementById('bv1');
+  document.getElementById('rv1').addEventListener('click',function(){
+    var d=bv1.querySelector('.dot');d.style.animation='none';void d.offsetWidth;
+    d.style.animation='ringout .6s var(--ease) 1';
+  });
+  document.getElementById('rv2').addEventListener('click',function(){fire(document.getElementById('bv2'));});
+})();
+</script>

@@ -1,0 +1,148 @@
+<title>ZotHub &#8212; Icon / mark exploration</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF;--bg-2:#F5F7FA;--bg-3:#EBEFF4;--ink:#0D1519;--ink-2:#44515A;--ink-3:#5F6B74;
+    --line:#E4E9EE;--line-2:#CDD6DD;--accent:#0F5FA8;--accent-text:#0B4E8C;
+    --disc:#101112;--disc-ink:#F5F5F6;--disc-blue:#5AA2E6;
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.08);--rp:999px;
+  }
+  :root[data-theme="dark"]{--bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;--line:#26282B;--line-2:#37393D;--accent:#5AA2E6;--accent-text:#8FBEF2;--e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45)}
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .top{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px}
+  .wm{font-family:var(--f);font-size:19px;font-weight:700;letter-spacing:-.045em}.wm i{font-style:italic;color:var(--accent-text)}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .grow{flex:1}
+  h1{font-family:var(--f);font-size:34px;font-weight:500;letter-spacing:-.03em;margin:40px 0 6px}
+  .lede{color:var(--ink-2);max-width:70ch;margin:0 0 8px}
+  .concept{border:1px solid var(--line);border-radius:16px;background:var(--bg);box-shadow:var(--e1);padding:24px;margin-top:22px}
+  .chead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .cnum{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:700}
+  .cname{font-size:20px;font-weight:650;letter-spacing:-.015em}
+  .ctag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--line-2);border-radius:999px;padding:3px 9px}
+  .row{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
+  .cell{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .cap{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  /* disc */
+  .disc{border-radius:50%;background:var(--disc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sq{border-radius:24%}
+  .lite{background:#fff;box-shadow:inset 0 0 0 1px var(--line-2)}
+  .d96{width:96px;height:96px}.d48{width:48px;height:48px}.d32{width:32px;height:32px}.d16{width:16px;height:16px}
+  .disc svg{width:62%;height:62%;display:block}
+  /* stacked type mark */
+  .stk{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f);font-weight:700;line-height:.86;letter-spacing:-.035em}
+  .stk .t{color:var(--disc-ink)}.stk .h{font-style:italic;color:var(--disc-blue);margin-right:.06em}
+  .lite .stk .t{color:#14171B}.lite .stk .h{color:#0F5FA8}
+  .stk96{font-size:30px}.stk48{font-size:15px}.stk32{font-size:10px}.stk16{font-size:6px;letter-spacing:-.05em}
+  /* lockup */
+  .lock{display:inline-flex;align-items:center;gap:9px}
+  .lock .wmk{font-family:var(--f);font-size:22px;font-weight:700;letter-spacing:-.045em}.lock .wmk i{font-style:italic;color:var(--accent-text)}
+  .notes{margin-top:16px;font-size:13.5px;color:var(--ink-2);max-width:74ch}
+  .notes b{color:var(--ink)}
+  .verdict{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin-top:24px}
+  .verdict b{color:var(--accent-text)}
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:99;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:999px;cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);backdrop-filter:blur(10px);color:inherit;opacity:.85}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="top">
+  <span class="wm">zot<i>hub</i></span><span class="lab">Icon exploration</span><span class="grow"></span>
+  <span class="lab">grounded in the brand &#183; a nod to UCI</span>
+</div>
+
+<div class="wrap">
+  <h1>The mark, explored</h1>
+  <p class="lede">You liked the stacked wordmark; these push on <b>memorability</b> and a <b>light touch of UCI</b> without impersonating it &#8212; no seal, no gold, no copy of Peter the Anteater. Each shown at avatar / app-icon / favicon / tab size, on dark and light, plus in the wordmark lockup. The italic <b>hub</b> and Pacific blue stay constant.</p>
+
+  <!-- A · STACKED (baseline) -->
+  <div class="concept">
+    <div class="chead"><span class="cnum">A</span><span class="cname">Stacked wordmark</span><span class="ctag">baseline &#183; current</span></div>
+    <div class="row">
+      <span class="cell"><span class="disc d96"><span class="stk stk96"><span class="t">zot</span><span class="h">hub</span></span></span><span class="cap">96</span></span>
+      <span class="cell"><span class="disc sq d48"><span class="stk stk48"><span class="t">zot</span><span class="h">hub</span></span></span><span class="cap">48 app</span></span>
+      <span class="cell"><span class="disc d32"><span class="stk stk32"><span class="t">zot</span><span class="h">hub</span></span></span><span class="cap">32</span></span>
+      <span class="cell"><span class="disc d16"><span class="stk stk16"><span class="t">zot</span><span class="h">hub</span></span></span><span class="cap">16</span></span>
+      <span class="cell"><span class="disc d96 lite"><span class="stk stk96"><span class="t">zot</span><span class="h">hub</span></span></span><span class="cap">light</span></span>
+      <span class="cell"><span class="lock"><span class="disc d32"><span class="stk stk32"><span class="t">zot</span><span class="h">hub</span></span></span><span class="wmk">zot<i>hub</i></span></span><span class="cap">lockup</span></span>
+    </div>
+    <p class="notes"><b>Honest read:</b> the two words say the name in full, but at 16&#8211;32px they compress to a texture, not a form. Safe and legible large; least distinctive small. No UCI cue.</p>
+  </div>
+
+  <!-- B · RING (Ring Road) -->
+  <div class="concept">
+    <div class="chead"><span class="cnum">B</span><span class="cname">The Ring</span><span class="ctag">Ring Road &#183; the hub at the centre</span></div>
+    <div class="row" id="rowB"></div>
+    <p class="notes"><b>The idea:</b> UCI is built as concentric circles &#8212; <b>Ring Road</b> around Aldrich Park. A ring with the hub at its centre means &#8220;<b>hub</b>&#8221; (our name, the gathering point) <em>and</em> UCI&#8217;s actual campus shape. Insiders read it instantly; outsiders just see a clean, ownable mark. Survives 16px as a solid form. Risk: a plain ring+dot can read generic (target/record) &#8212; the slight top gap (a &#8220;you-are-here&#8221; break) is what keeps it a place, not a bullseye.</p>
+  </div>
+
+  <!-- C · ZOT BOLT -->
+  <div class="concept">
+    <div class="chead"><span class="cnum">C</span><span class="cname">Zot</span><span class="ctag">the chant &#183; a charged Z</span></div>
+    <div class="row" id="rowC"></div>
+    <p class="notes"><b>The idea:</b> &#8220;<b>Zot!</b>&#8221; is the UCI chant (the anteater&#8217;s zap). A single bold <b>Z</b>, leaned into the same italic as the signature, carries that energy &#8212; student, confident, unmistakably Zot. Cleanest read at 16px of the whole set. Risk: a lone Z is a common shape; the italic slant + the blue-on-disc are what keep it ours. (Could add a lightning cut if you want more edge.)</p>
+  </div>
+
+  <!-- D · SNOUT CURL -->
+  <div class="concept">
+    <div class="chead"><span class="cnum">D</span><span class="cname">The Snout</span><span class="ctag">anteater &#183; abstracted, not Peter</span></div>
+    <div class="row" id="rowD"></div>
+    <p class="notes"><b>The idea:</b> the anteater is the most-loved UCI signifier; its <b>long curled snout</b> is the silhouette everyone knows. Drawn as one original bold curl (deliberately <em>not</em> the trademarked Peter), it reads &#8220;anteater = UCI&#8221; to anyone who knows, and as a friendly distinctive hook to anyone who doesn&#8217;t. Most ownable and most UCI. Risk: at 16px a curl can read as an abstract swoosh &#8212; needs the weight kept heavy.</p>
+  </div>
+
+  <!-- E · HUB-H IN RING -->
+  <div class="concept">
+    <div class="chead"><span class="cnum">E</span><span class="cname">Hub &#215; Ring</span><span class="ctag">our own letter &#183; the h from hub, in the campus ring</span></div>
+    <div class="row" id="rowE"></div>
+    <p class="notes"><b>The idea:</b> the icon becomes a piece of the wordmark itself &#8212; the italic <b>h</b> from <b>hub</b> (in accent) held inside the <b>Ring</b> (Ring Road). The one option that literally derives from our own mark <em>and</em> nods to UCI, so icon and wordmark are obviously the same brand. Risk: the h needs the ring&#8217;s breathing room, so it&#8217;s the softest of the set at 16px.</p>
+  </div>
+
+  <div class="verdict"><b>My lead:</b> <b>B (the Ring)</b> or <b>E (Hub &#215; Ring)</b> &#8212; the Ring Road nod is a genuine UCI insight that stays clean at every size and never risks looking like the official mascot, and E ties the icon straight to our own wordmark. <b>D (the Snout)</b> is the most emotionally &#8220;UCI&#8221; if you want the anteater in there; <b>C (Zot)</b> is the loud student pick. All keep the italic-<b>hub</b> wordmark beside them &#8212; the icon anchors app identity, the wordmark carries the name. Pick a direction and I&#8217;ll refine that one to final (and outline it to production SVG).</div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+// icon SVGs (accent-blue mark on dark disc; auto-recolours on light disc via currentColor)
+var SVGS = {
+  // Ring Road (white) with the hub at centre (blue) — "the hub in the ring"
+  ring: '<svg viewBox="0 0 100 100" fill="none"><path d="M50 17 a33 33 0 1 1 -0.1 0" stroke="var(--mk2)" stroke-width="10" stroke-linecap="round"/><circle cx="50" cy="50" r="10.5" fill="var(--mk)"/></svg>',
+  // clean bold Z for Zot, with a slight italic lean to match the signature
+  zot:  '<svg viewBox="0 0 100 100" fill="none" stroke="var(--mk)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(6 0) skewX(-9)"><path d="M32 34 H64 L34 66 H66"/></g></svg>',
+  // abstract anteater snout — one heavy curl, tapering to the tip
+  snout:'<svg viewBox="0 0 100 100" fill="none" stroke="var(--mk)" stroke-linecap="round" stroke-linejoin="round"><path d="M70 36 a24 24 0 1 0 4 26" stroke-width="13"/><path d="M74 62 q-3 12 -16 15" stroke-width="9"/></svg>',
+  // our wordmark's italic h, held in the campus ring — brand + UCI in one
+  hring:'<svg viewBox="0 0 100 100" fill="none"><path d="M50 17 a33 33 0 1 1 -0.1 0" stroke="var(--mk2)" stroke-width="8"/><text x="52" y="70" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-style="italic" font-weight="700" font-size="52" letter-spacing="-2" fill="var(--mk)">h</text></svg>'
+};
+function disc(kind,cls,sz){
+  return '<span class="disc '+cls+' d'+sz+'">'+SVGS[kind]+'</span>';
+}
+function buildRow(id,kind){
+  var el=document.getElementById(id);
+  el.innerHTML =
+    '<span class="cell">'+disc(kind,'',96)+'<span class="cap">96</span></span>'+
+    '<span class="cell">'+disc(kind,'sq',48)+'<span class="cap">48 app</span></span>'+
+    '<span class="cell">'+disc(kind,'',32)+'<span class="cap">32</span></span>'+
+    '<span class="cell">'+disc(kind,'',16)+'<span class="cap">16</span></span>'+
+    '<span class="cell">'+disc(kind,'lite',96)+'<span class="cap">light</span></span>'+
+    '<span class="cell"><span class="lock">'+disc(kind,'',32)+'<span class="wmk">zot<i>hub</i></span></span><span class="cap">lockup</span></span>';
+}
+buildRow('rowB','ring');buildRow('rowC','zot');buildRow('rowD','snout');buildRow('rowE','hring');
+// set mark colours: on dark disc mk=blue, mk2=white; on light disc invert via CSS var override
+(function(){
+  var css=document.createElement('style');
+  css.textContent='.disc{--mk:var(--disc-blue);--mk2:var(--disc-ink)} .disc.lite{--mk:#0F5FA8;--mk2:#14171B}';
+  document.head.appendChild(css);
+})();
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+</script>

@@ -1,0 +1,364 @@
+<title>ZotHub &#8212; Student apply journey</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);--e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;
+    --line:#26282B;--line-2:#37393D;--line-3:#64676C;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;
+    --accent:#5AA2E6;--accent-text:#8FBEF2;--accent-ink:#06182B;--accent-wash:#0E2338;--accent-line:#234A6B;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px;flex-wrap:wrap}
+  .seg button{font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 12px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+  .screen{display:none;margin-top:var(--s5)}
+  .screen[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2)}
+
+  .btn{font:inherit;font-family:var(--f);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  .btn:where(:hover){background:var(--bg-3)} .btn:active{transform:translateY(1px)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)} .btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)} .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px} .btn-lg{min-height:50px;padding:13px 26px;font-size:15px}
+  .full{width:100%}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}.b-ok{background:var(--ok-wash);color:var(--ok)}.b-warn{background:var(--warn-wash);color:var(--warn)}.b-bad{background:var(--bad-wash);color:var(--bad)}.b-idle{background:var(--bg-3);color:var(--ink-3)}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}.soft b{color:var(--ink);font-weight:650}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;font-weight:600}.field .hint{font-size:12.5px;color:var(--ink-3)}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--ink-3)}
+  textarea.inp{min-height:96px;resize:vertical;line-height:1.5}
+
+  .ava{--sz:40px;width:var(--sz);height:var(--sz);flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--avc,#475569);color:#fff;font-weight:700;font-style:normal;line-height:1;overflow:hidden}
+  .ava.org{border-radius:calc(var(--sz)*.26)}
+  .ava.sm{--sz:32px;font-size:12.5px}.ava.md{--sz:40px;font-size:15px}.ava.lg{--sz:48px;font-size:17.5px}.ava.xl{--sz:64px;font-size:23px}
+
+  .wm{font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:-.045em;line-height:1;color:var(--ink)}.wm i{font-style:italic;color:var(--accent-text)}
+  .topbar{display:flex;align-items:stretch;gap:22px;padding:0 22px;min-height:60px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .topbar>.wm,.topbar>.grow,.topbar>.nvright{align-self:center}
+  .topbar nav{display:flex;gap:22px}
+  .topbar nav a{position:relative;display:inline-flex;align-items:center;font-size:14px;font-weight:500;text-decoration:none;color:var(--ink-2);white-space:nowrap}
+  .topbar nav a:hover{color:var(--ink)}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--accent)}
+  .ncount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .nvright{display:flex;align-items:center;gap:12px}
+
+  /* discover */
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-family:var(--f);font-size:32px;font-weight:500;letter-spacing:-.026em}
+  .toolrow{display:flex;gap:var(--s2);padding:0 var(--s5) var(--s4);flex-wrap:wrap;align-items:center}
+  .oppgrid{display:grid;grid-template-columns:1fr;gap:var(--s4);padding:0 var(--s5) var(--s6)}
+  @media(min-width:620px){.oppgrid{grid-template-columns:1fr 1fr}}
+  @media(min-width:980px){.oppgrid{grid-template-columns:1fr 1fr 1fr}}
+  .opp{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:var(--s4);display:flex;gap:var(--s3);transition:box-shadow var(--t-base) var(--ease),transform var(--t-base) var(--ease),border-color var(--t-base) var(--ease);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+  .opp:hover{box-shadow:var(--e3);transform:translateY(-2px);border-color:var(--line-2)}
+  .opp-tile{width:46px;height:46px;border-radius:11px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;overflow:hidden}
+  .opp-tile.date{background:var(--bg-2);border:1px solid var(--line-2);font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+  .opp-tile.date .m{font-size:9px;letter-spacing:.1em;font-weight:700;color:var(--accent-text);text-transform:uppercase;line-height:1}
+  .opp-tile.date .d{font-size:18px;font-weight:600;line-height:1.2}
+  .opp-body{flex:1;min-width:0;display:flex;flex-direction:column}
+  .opp-title{font-family:var(--f);font-size:18px;font-weight:600;letter-spacing:-.018em;line-height:1.18}
+  .opp-club{font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:3px}
+  .opp-meta{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .opp-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--s2)}
+  .opp-foot{display:flex;gap:var(--s2);margin-top:auto;padding-top:var(--s4)}
+  .opp-foot .btn{flex:1;justify-content:center}
+
+  /* detail */
+  .detail{max-width:760px;margin:0 auto;padding:var(--s5) var(--s5) var(--s7)}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2);text-decoration:none;margin-bottom:var(--s4)}
+  .back:hover{color:var(--ink)}.back svg{width:15px;height:15px}
+  .dhead{display:flex;gap:var(--s4);align-items:flex-start}
+  .dhead .db{flex:1;min-width:0}
+  .dtitle{font-family:var(--f);font-size:30px;font-weight:500;letter-spacing:-.026em;line-height:1.08;margin:0}
+  .dclub{font-size:14px;font-weight:600;color:var(--accent-text);text-decoration:none;margin-top:6px;display:inline-block}
+  .dmeta{font-size:13.5px;color:var(--ink-3);margin-top:6px}
+  .dtags{display:flex;gap:6px;margin-top:12px}
+  .dact{display:flex;gap:10px;margin:var(--s5) 0;flex-wrap:wrap}
+  .dact .btn{min-width:130px}
+  .dsection{padding:var(--s5) 0;border-top:1px solid var(--line)}
+  .dsection h4{font-family:var(--f);font-size:16px;font-weight:600;letter-spacing:-.01em;margin:0 0 10px}
+  .dsection p{margin:0 0 10px;color:var(--ink-2);font-size:14.5px}
+  .aboutclub{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:var(--r3);background:var(--bg-2);padding:16px}
+  .aboutclub .ac-b{flex:1;min-width:0}
+  .aboutclub .ac-n{font-weight:650;font-size:15px}
+  .aboutclub .ac-m{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .aboutclub .ac-act{display:flex;gap:8px;flex-shrink:0}
+
+  /* apply */
+  .apply{max-width:620px;margin:0 auto;padding:var(--s5) var(--s5) var(--s7)}
+  .applyhead{display:flex;gap:12px;align-items:center;margin-bottom:var(--s3)}
+  .applyhead .ah-t{font-family:var(--f);font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+  .applyhead .ah-s{font-size:13px;color:var(--ink-3)}
+  .applyform{display:flex;flex-direction:column;gap:18px;margin-top:var(--s4)}
+  .nudge{border-left:3px solid var(--accent);background:var(--bg-2);border-radius:0 var(--r2) var(--r2) 0;padding:14px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .nudge .nb{flex:1;min-width:180px}
+  .nudge .nt{font-size:14px;font-weight:600}
+  .nudge .nh{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .attach{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--ink-3);background:var(--bg-2);border-radius:var(--r2);padding:12px 14px}
+  .attach svg{width:16px;height:16px;flex-shrink:0;color:var(--ink-2);margin-top:1px}
+  .applyact{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:var(--s2)}
+  .lnk{font:inherit;font-family:var(--f);font-size:13px;font-weight:600;color:var(--accent-text);background:none;border:0;cursor:pointer;padding:0;text-decoration:none}
+
+  /* activity */
+  .actwrap{max-width:760px;margin:0 auto;padding:var(--s5) var(--s5) var(--s7)}
+  .actrow{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1)}
+  .actrow+.actrow{margin-top:10px}
+  .actrow .ab{flex:1;min-width:0}
+  .acttitle{font-weight:650;font-size:15.5px;letter-spacing:-.01em}
+  .actclub{font-size:13px;color:var(--ink-2);margin-top:1px}
+  .actright{display:flex;align-items:center;gap:14px;flex-shrink:0}
+  .actdate{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+  .actrow.fresh{border-color:var(--accent-line);box-shadow:inset 0 0 0 1px var(--accent-line),var(--e1)}
+  /* the humane decline: direct, then a door */
+  .actrow.col{flex-direction:column;align-items:stretch;gap:0;padding:0}
+  .rj-top{display:flex;align-items:center;gap:14px;padding:14px 16px}
+  .rj-msg{padding:0 16px 14px}
+  .rj-msg .rj-h{font-size:14.5px;font-weight:600}
+  .rj-msg .rj-p{font-size:13.5px;color:var(--ink-2);margin:4px 0 0}
+  .rj-door{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:13px 16px;background:var(--bg-2)}
+  .rj-door .rj-d{font-size:13.5px;color:var(--ink-2)}.rj-door .rj-d b{color:var(--ink)}
+  .rj-door a{color:var(--accent-text);font-weight:600;text-decoration:none;font-size:14px;white-space:nowrap}
+
+  .toast-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:var(--ink);color:var(--bg);border-radius:var(--rp);padding:11px 18px;box-shadow:var(--e3);font-size:14px;display:inline-flex;align-items:center;gap:10px;animation:tin var(--t-base) var(--ease)}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}.state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  .note{margin:0 var(--s5);border-left:3px solid var(--accent);background:var(--accent-wash);padding:12px 16px;border-radius:0 var(--r2) var(--r2) 0;font-size:14px;color:var(--ink-2)}.note b{color:var(--accent-text)}
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Student apply</span>
+    <span class="seg" role="group" aria-label="Step">
+      <button data-screen="sa1" aria-pressed="true">1 &#183; Discover</button>
+      <button data-screen="sa2" aria-pressed="false">2 &#183; Detail</button>
+      <button data-screen="sa3" aria-pressed="false">3 &#183; Apply</button>
+      <button data-screen="sa4" aria-pressed="false">4 &#183; Activity</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">The same VP-of-Design posting, student side</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1 · DISCOVER -->
+  <div class="screen" data-screen="sa1" data-active>
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="soft"><b>34</b> clubs &#183; <b>61</b> open</span><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="pagehead"><h2>Discover</h2><span class="soft"><b>8</b> open right now</span></div>
+      <div class="toolrow">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Search roles, events, clubs&#8230;" aria-label="Search">
+        <button class="chip" aria-pressed="true">All</button><button class="chip" aria-pressed="false">Roles</button><button class="chip" aria-pressed="false">Events</button><button class="chip" aria-pressed="false">Following</button>
+      </div>
+      <div class="oppgrid">
+        <button class="opp" data-go="sa2">
+          <span class="opp-tile" style="background:#C2410C">D</span>
+          <span class="opp-body"><span class="opp-title">VP of Design</span><span class="opp-club">Design at UCI</span><span class="opp-meta">Leadership &#183; closes in 2 days &#183; 18 applied</span><span class="opp-tags"><span class="tag">Closing soon</span></span>
+          <span class="opp-foot"><span class="btn btn-sm">Save</span><span class="btn btn-sm btn-ink">View</span></span></span>
+        </button>
+        <button class="opp" data-go="sa2">
+          <span class="opp-tile" style="background:#1D6FA3">AR</span>
+          <span class="opp-body"><span class="opp-title">Embedded Systems Lead</span><span class="opp-club">Anteater Robotics</span><span class="opp-meta">Project &#183; closes in 4 days &#183; 7 applied</span>
+          <span class="opp-foot"><span class="btn btn-sm">Save</span><span class="btn btn-sm btn-ink">View</span></span></span>
+        </button>
+        <button class="opp" data-go="sa2">
+          <span class="opp-tile date"><span class="m">Sep</span><span class="d">29</span></span>
+          <span class="opp-body"><span class="opp-title">Shop Day &amp; Open Build</span><span class="opp-club">Anteater Robotics</span><span class="opp-meta">Tue 7:00 PM &#183; Engineering Tower &#183; 18 going</span>
+          <span class="opp-foot"><span class="btn btn-sm">Save</span><span class="btn btn-sm btn-ink">RSVP</span></span></span>
+        </button>
+      </div>
+      <div class="note" style="margin-bottom:24px"><b>Card-first Discover</b> (the density-follows-the-task default). A role leads with the club&#8217;s square logo; an event leads with the mono date chip &#8212; same card anatomy, different time semantics. Click <b>VP of Design</b> to open it.</div>
+    </div>
+  </div>
+
+  <!-- 2 · DETAIL -->
+  <div class="screen" data-screen="sa2">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="detail">
+        <a class="back" href="#" data-go="sa1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Discover</a>
+        <div class="dhead">
+          <span class="ava lg org" style="--avc:#C2410C">D</span>
+          <div class="db">
+            <h1 class="dtitle">VP of Design</h1>
+            <a class="dclub" href="#">Design at UCI &#8594;</a>
+            <div class="dmeta">Leadership &#183; closes Fri, Sep 25 &#183; 18 applied &#183; ~4&#8211;6 hrs/week</div>
+            <div class="dtags"><span class="tag">Closing soon</span><span class="tag tag-n">Arts &amp; Culture</span></div>
+          </div>
+        </div>
+        <div class="dact">
+          <button class="btn btn-acc btn-lg" data-go="sa3">Apply</button>
+          <button class="btn btn-lg">Save</button>
+        </div>
+        <div class="dsection">
+          <h4>What you&#8217;ll do</h4>
+          <p>Lead the visual identity for everything we ship &#8212; event artwork, the quarterly zine, and the site. You&#8217;ll run a small design committee and set the look for the year.</p>
+          <p>We&#8217;re looking for someone with a point of view about type and layout, who can take a brief and run. Prior board experience isn&#8217;t required &#8212; a portfolio is.</p>
+        </div>
+        <div class="dsection">
+          <h4>About the club</h4>
+          <div class="aboutclub">
+            <span class="ava md org" style="--avc:#C2410C">D</span>
+            <div class="ac-b"><div class="ac-n">Design at UCI</div><div class="ac-m">Arts &amp; Culture &#183; 62 members &#183; usually replies within a day</div></div>
+            <div class="ac-act"><button class="btn btn-sm">Follow</button><button class="btn btn-sm">Message</button></div>
+          </div>
+        </div>
+        <div class="dsection">
+          <h4>How to apply</h4>
+          <p>A few short questions here on ZotHub &#8212; about three minutes. You&#8217;ll get a decision either way, and you can message the officers anytime.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · APPLY -->
+  <div class="screen" data-screen="sa3">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="apply">
+        <a class="back" href="#" data-go="sa2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Back to role</a>
+        <div class="applyhead">
+          <span class="ava md org" style="--avc:#C2410C">D</span>
+          <div><div class="ah-t">Apply to VP of Design</div><div class="ah-s">Design at UCI &#183; 2 questions</div></div>
+        </div>
+        <div class="applyform">
+          <div class="nudge">
+            <div class="nb"><div class="nt">Add your year first?</div><div class="nh">It helps Design at UCI put a face to your application. You can skip &#8212; it won&#8217;t block you.</div></div>
+            <select class="inp" style="max-width:150px" aria-label="Year"><option>Freshman</option><option>Sophomore</option><option selected>Junior</option><option>Senior</option><option>Grad student</option></select>
+            <button class="lnk">Skip</button>
+          </div>
+          <div class="field"><label for="q1">Why do you want to join?</label><textarea class="inp" id="q1" placeholder="A few sentences&#8230;"></textarea></div>
+          <div class="field"><label for="q2">Link a portfolio <span style="font-weight:400;color:var(--ink-3)">(optional)</span></label><input class="inp" id="q2" placeholder="https://&#8230;"></div>
+          <div class="attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Your profile is attached &#8212; Design at UCI will see your <b style="color:var(--ink-2)">name, year, and major</b>. Nothing else.</span></div>
+          <div class="applyact">
+            <button class="btn btn-ghost" data-go="sa2">Cancel</button>
+            <button class="btn btn-acc" id="submitBtn">Submit application</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 · ACTIVITY -->
+  <div class="screen" data-screen="sa4">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#">Clubs</a><a href="#" aria-current="page">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="pagehead" style="padding-bottom:12px"><h2>Activity</h2></div>
+      <div class="toolrow"><button class="chip" aria-pressed="true">Applications</button><button class="chip" aria-pressed="false">RSVPs</button><button class="chip" aria-pressed="false">Saved</button></div>
+      <div class="actwrap" style="padding-top:4px">
+        <div class="actrow fresh">
+          <span class="ava md org" style="--avc:#C2410C">D</span>
+          <div class="ab"><div class="acttitle">VP of Design</div><div class="actclub">Design at UCI</div></div>
+          <div class="actright"><span class="badge b-idle"><span class="dot"></span>Applied</span><span class="actdate">just now</span></div>
+        </div>
+        <div class="actrow">
+          <span class="ava md org" style="--avc:#1D6FA3">AR</span>
+          <div class="ab"><div class="acttitle">Embedded Systems Lead</div><div class="actclub">Anteater Robotics</div></div>
+          <div class="actright"><span class="badge b-warn"><span class="dot"></span>Reviewed</span><span class="actdate">3d ago</span></div>
+        </div>
+        <div class="actrow">
+          <span class="ava md org" style="--avc:#7A3E9D">ZC</span>
+          <div class="ab"><div class="acttitle">Fall Case Team Analyst</div><div class="actclub">Zot Consulting</div></div>
+          <div class="actright"><a class="lnk" href="#">Next steps &#8594;</a><span class="badge b-ok"><span class="dot"></span>Accepted</span><span class="actdate">1w ago</span></div>
+        </div>
+        <!-- the humane decline: direct, then a door -->
+        <div class="actrow col">
+          <div class="rj-top">
+            <span class="ava md org" style="--avc:#2E7D6B">DS</span>
+            <div class="ab"><div class="acttitle">Marketing Analyst</div><div class="actclub">Design Society</div></div>
+            <div class="actright"><span class="badge b-bad"><span class="dot"></span>Not selected</span><span class="actdate">1w ago</span></div>
+          </div>
+          <div class="rj-msg"><div class="rj-h">Design Society didn&#8217;t move forward with your application.</div><div class="rj-p">It was a competitive round this quarter. Thanks for putting yourself forward.</div></div>
+          <div class="rj-door"><span class="rj-d"><b>3 open roles</b> look like a fit for you.</span><a href="#" data-go="sa1">See them &#8594;</a></div>
+        </div>
+      </div>
+      <div class="note" style="margin-bottom:24px"><b>Always hear back.</b> One status vocabulary and one colour across every row (Applied &#183; Reviewed &#183; Accepted &#183; Not selected). The decline reads <i>direct, then a door</i> &#8212; the outcome first, the next opportunity second and separated, never in the same breath. An auto-declined student sees these exact words.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('tt'),l=document.getElementById('ttl');
+  function c(){var a=r.getAttribute('data-theme');return(a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function s(t){r.setAttribute('data-theme',t);r.style.colorScheme=t;l.textContent=t==='dark'?'Light':'Dark';}
+  s(c());b.addEventListener('click',function(){s(c()==='dark'?'light':'dark');});})();
+function go(id){
+  [].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.setAttribute('aria-pressed',String(x.dataset.screen===id));});
+  [].forEach.call(document.querySelectorAll('.screen'),function(p){p.toggleAttribute('data-active',p.dataset.screen===id);});
+  window.scrollTo({top:0,behavior:'instant'});
+}
+[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.addEventListener('click',function(){go(x.dataset.screen);});});
+[].forEach.call(document.querySelectorAll('[data-go]'),function(x){x.addEventListener('click',function(e){e.preventDefault();go(x.dataset.go);});});
+// filter chips
+[].forEach.call(document.querySelectorAll('.toolrow'),function(g){g.addEventListener('click',function(e){var ch=e.target.closest('.chip');if(!ch)return;[].forEach.call(g.querySelectorAll('.chip'),function(x){x.setAttribute('aria-pressed',String(x===ch));});});});
+// toast + submit -> motion + advance to Activity
+function toast(msg){var w=document.getElementById('toasts');var t=document.createElement('div');t.className='toast';t.textContent=msg;w.appendChild(t);setTimeout(function(){t.remove();},3200);}
+document.getElementById('submitBtn').addEventListener('click',function(){
+  toast('Application submitted');
+  var fresh=document.querySelector('.actrow.fresh .badge');if(fresh){fresh.classList.remove('state-change');void fresh.offsetWidth;fresh.classList.add('state-change');}
+  go('sa4');
+});
+</script>

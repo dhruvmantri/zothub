@@ -1,0 +1,877 @@
+<title>ZotHub &#8212; Component Library v1</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --panel:#14171B; --panel-2:#1E2228; --panel-ink:#F0F2F4; --panel-ink-2:#9AA1A8; --panel-line:#2B3037;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --panel-accent:#5AA2E6; --panel-accent-text:#8FBEF2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);--e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;
+    --line:#26282B;--line-2:#37393D;--line-3:#64676C;--panel:#17181A;--panel-2:#1F2124;--panel-ink:#F0F1F2;--panel-ink-2:#95989D;--panel-line:#2E3033;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;
+    --accent:#5AA2E6;--accent-text:#8FBEF2;--accent-ink:#06182B;--accent-wash:#0E2338;--accent-line:#234A6B;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+  .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .top-in{max-width:1080px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .wm{font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:-.045em}.wm i{font-style:italic;color:var(--accent-text)}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .grow{flex:1}
+  h1{font-family:var(--f);font-size:clamp(30px,4.4vw,46px);font-weight:500;letter-spacing:-.03em;margin:40px 0 6px}
+  .lede{color:var(--ink-2);max-width:70ch;margin:0}
+  section{padding:44px 0;border-top:1px solid var(--line)}
+  .sec-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+  .sec-n{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:700}
+  h2{font-family:var(--f);font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0}
+  .sec-note{font-size:13.5px;color:var(--ink-3);max-width:60ch;margin:0 0 20px}
+  h3.sub{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:26px 0 12px}
+  .panelbox{border:1px solid var(--line);border-radius:14px;background:var(--bg);box-shadow:var(--e1);padding:22px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  .cols2{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:720px){.cols2{grid-template-columns:1fr 1fr}}
+  .mt{font-size:13px;color:var(--ink-3)} .mt b{color:var(--ink)}
+  .note{border-left:3px solid var(--accent);background:var(--accent-wash);padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;color:var(--ink-2)} .note b{color:var(--accent-text)}
+  .cap{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-top:6px;display:block}
+
+  /* buttons */
+  .btn{font:inherit;font-family:var(--f);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease);display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn:where(:hover){background:var(--bg-3)} .btn:active{transform:translateY(1px)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)} .btn-ink:hover{filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} .btn-acc:hover{filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-bad{background:var(--bad);border-color:var(--bad);color:#fff} .btn-bad:hover{filter:brightness(1.06);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)} .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px} .btn-lg{min-height:50px;padding:13px 26px;font-size:15px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
+  .btn.is-focus{outline:2px solid var(--accent);outline-offset:3px}
+  .spin{width:15px;height:15px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* tags / badges / chips */
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}.b-ok{background:var(--ok-wash);color:var(--ok)}.b-warn{background:var(--warn-wash);color:var(--warn)}.b-bad{background:var(--bad-wash);color:var(--bad)}.b-idle{background:var(--bg-3);color:var(--ink-3)}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+
+  /* mini card for the coherence demo */
+  .mcard{border:1px solid var(--line);border-radius:14px;background:var(--bg);box-shadow:var(--e1);padding:16px;display:flex;gap:12px}
+  .mtile{width:46px;height:46px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px}
+  .mbody{flex:1;min-width:0;display:flex;flex-direction:column}
+  .mtitle{font-family:var(--f);font-size:18px;font-weight:600;letter-spacing:-.018em;line-height:1.18}
+  .mclub{font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:3px}
+  .mmeta{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .mtags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .mfoot{display:flex;gap:8px;margin-top:auto;padding-top:16px}.mfoot .btn{flex:1}
+
+  /* form */
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;font-weight:600}
+  .field .hint{font-size:12.5px;color:var(--ink-3)}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)} .inp::placeholder{color:var(--ink-3)}
+  .inp.is-focus{border-color:var(--accent);outline:2px solid var(--accent);outline-offset:1px}
+  textarea.inp{min-height:92px;resize:vertical;line-height:1.5}
+  .field.err .inp{border-color:var(--bad)}
+  .errmsg{font-size:12.5px;color:var(--bad);display:flex;align-items:center;gap:6px}.errmsg::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+  .check{display:inline-flex;align-items:center;gap:9px;font-size:14px;cursor:pointer}
+  .check input{position:absolute;opacity:0;width:0;height:0}
+  .box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-3);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--t-fast) var(--ease)}
+  .check input:checked+.box{background:var(--accent);border-color:var(--accent)}
+  .box svg{width:12px;height:12px;stroke:#fff;opacity:0}.check input:checked+.box svg{opacity:1}
+  .radio .box{border-radius:50%}.radio input:checked+.box{background:var(--accent);border-color:var(--accent)}.radio .box::after{content:"";width:7px;height:7px;border-radius:50%;background:#fff;opacity:0}.radio input:checked+.box::after{opacity:1}.radio .box svg{display:none}
+  .check input:focus-visible+.box{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* review */
+  .heads{border-radius:var(--r2);background:var(--warn-wash);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}.heads p{margin:0}
+  /* fixed grid tracks so every column aligns regardless of which action a row shows */
+  .q{display:grid;grid-template-columns:minmax(150px,1fr) 160px 54px 108px 154px;gap:16px;align-items:center;padding:13px 4px}.q+.q{border-top:1px solid var(--line)}
+  .qmain{min-width:0}.qn{font-weight:650;font-size:15px}.qs{font-size:13px;color:var(--ink-3)}
+  .qc{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qd{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .q .badge{justify-self:start}
+  .qa{display:flex;gap:8px;justify-content:flex-end}
+  @media(max-width:700px){
+    .q{grid-template-columns:1fr auto;gap:8px 12px}
+    .qc,.qd{display:none}
+    .qmain{grid-column:1;grid-row:1}
+    .q .badge{grid-column:1;grid-row:2}
+    .qa{grid-column:2;grid-row:1/3;align-self:center}
+  }
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}.state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+
+  /* dialog */
+  .scrim{position:fixed;inset:0;background:rgba(6,13,22,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+  .scrim[data-open]{display:flex;animation:fade var(--t-base) var(--ease)}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .dialog{background:var(--bg);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--e4);max-width:440px;width:100%;padding:24px;animation:pop var(--t-base) var(--ease)}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+  .dialog h4{font-family:var(--f);font-size:21px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+  .dialog p{margin:0 0 8px;color:var(--ink-2);font-size:14.5px}
+  .dialog .dact{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+  .sev{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);margin-bottom:12px}
+  .sev-hi{background:var(--bad-wash);color:var(--bad)} .sev-lo{background:var(--bg-3);color:var(--ink-3)}
+  .callout{background:var(--warn-wash);border-radius:var(--r2);padding:12px 14px;font-size:14px;margin:4px 0 0}
+
+  /* rejection message pattern */
+  .reject{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);padding:20px;max-width:420px}
+  .reject .head{font-size:16px;font-weight:600}
+  .reject .door{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .reject .door a{color:var(--accent-text);font-weight:600;text-decoration:none;font-size:14px}
+
+  /* empty + skeleton */
+  .empty{border:1px dashed var(--line-2);border-radius:var(--r3);padding:34px 24px;text-align:center}
+  .empty h4{font-family:var(--f);font-size:22px;font-weight:500;letter-spacing:-.02em;margin:0 0 8px}.empty h4 i{font-style:italic;color:var(--accent-text)}
+  .empty p{margin:0 auto 16px;color:var(--ink-2);font-size:14px;max-width:38ch}.empty .row{justify-content:center}
+  .sk{border:1px solid var(--line);border-radius:14px;background:var(--bg);padding:16px;display:flex;flex-direction:column;gap:12px}
+  .sk .top2{display:flex;gap:12px}
+  .shimmer{background:linear-gradient(90deg,var(--bg-3) 25%,var(--bg-2) 37%,var(--bg-3) 63%);background-size:400% 100%;animation:sh 1.4s ease infinite;border-radius:6px}
+  @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+  /* toast */
+  .toast-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:var(--panel);color:var(--panel-ink);border-radius:var(--rp);padding:11px 18px;box-shadow:var(--e3);font-size:14px;display:inline-flex;align-items:center;gap:10px;animation:tin var(--t-base) var(--ease)}
+  .toast .u{color:var(--panel-accent-text);font-weight:600;cursor:pointer}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:130;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);backdrop-filter:blur(10px);color:inherit;opacity:.85}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+
+  /* ===================== NAV — desktop top bar + mobile tab bar ===================== */
+  /* Same four destinations per role (Structure §2 student / §5 club), identical items on
+     both, each platform in its own idiom. Active language is UNIFIED: an accent bar marks
+     "you are here" — a bottom bar on desktop, a top bar on the tab bar. (v4 had desktop=ink,
+     mobile=accent; consistent beats clever, so they match now.) */
+  .demoframe{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:var(--e1)}
+  .demoframe+.demoframe{margin-top:14px}
+  .nvbar{display:flex;align-items:stretch;gap:22px;padding:0 18px;min-height:60px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .nvbar>.wm,.nvbar>.grow,.nvbar>.nvright{align-self:center}
+  .nvbar>.grow{flex:1}
+  .nvbar nav{display:flex;gap:22px}
+  .nvbar nav a{position:relative;display:inline-flex;align-items:center;font-family:var(--f);font-size:14px;font-weight:500;text-decoration:none;color:var(--ink-2);white-space:nowrap;transition:color var(--t-fast) var(--ease)}
+  .nvbar nav a:hover{color:var(--ink)}
+  .nvbar nav a[aria-current]{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--accent)}
+  .ncount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .nvright{position:relative;display:flex;align-items:center;gap:10px}
+  .avbtn{position:relative;display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;cursor:pointer;padding:5px 7px 5px 5px;border-radius:12px;min-height:44px;color:var(--ink-2)}
+  .avbtn:hover{background:var(--bg-3)}
+  .avbtn .car{width:14px;height:14px;color:var(--ink-3);transition:transform var(--t-fast) var(--ease)}
+  .avbtn[aria-expanded="true"] .car{transform:rotate(180deg)}
+  .avmenu{position:absolute;top:calc(100% + 6px);right:0;min-width:216px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--e3);padding:6px;z-index:40;display:none}
+  .avmenu[data-open]{display:block;animation:pop var(--t-base) var(--ease)}
+  .avmenu .mh{padding:8px 11px 9px;border-bottom:1px solid var(--line);margin-bottom:4px}
+  .avmenu .mh b{font-size:14px;display:block}
+  .avmenu .mh span{display:block;font-size:12px;color:var(--ink-3);margin-top:1px}
+  .avmenu a{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:var(--r2);font-size:14px;color:var(--ink);text-decoration:none}
+  .avmenu a:hover{background:var(--bg-3)}
+  .avmenu a.danger{color:var(--bad)}
+  .avmenu svg{width:15px;height:15px;flex-shrink:0;color:var(--ink-3)}
+  .avmenu a.danger svg{color:var(--bad)}
+  .framebody{padding:16px 18px;background:var(--bg-2);display:flex;flex-direction:column;gap:10px}
+  .framebody .ft{font-family:var(--f);font-size:19px;font-weight:600;letter-spacing:-.02em}
+  .fauxrow{height:52px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+
+  /* mobile: phone frame + bottom tab bar */
+  .phone{max-width:288px;margin:0 auto;border:1px solid var(--line-2);border-radius:24px;overflow:hidden;background:var(--bg);box-shadow:var(--e2);display:flex;flex-direction:column}
+  .mtop{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .mtop .wm{font-size:17px}
+  .mbell{margin-left:auto;position:relative;width:38px;height:38px;border-radius:10px;border:0;background:transparent;color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .mbell:hover{background:var(--bg-3)}
+  .mbell svg{width:19px;height:19px}
+  .mbell .bdot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+  .mscreen{background:var(--bg-2);min-height:132px;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .tabbar{display:flex;background:var(--bg);border-top:1px solid var(--line)}
+  .tabbar a{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;min-height:56px;font-size:11px;font-weight:600;letter-spacing:.01em;color:var(--ink-3);text-decoration:none;transition:color var(--t-fast) var(--ease)}
+  .tabbar a svg{width:22px;height:22px}
+  .tabbar a:hover{color:var(--ink-2)}
+  .tabbar a[aria-current]{color:var(--accent-text);box-shadow:inset 0 2px 0 var(--accent)}
+  .ti{position:relative;display:inline-flex}
+  .tind{position:absolute;top:-5px;left:12px;min-width:12px;height:16px;padding:0 4px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-variant-numeric:tabular-nums;line-height:1}
+  .tind.dot{min-width:0;width:9px;height:9px;padding:0;left:15px}
+
+  /* ===================== AVATARS ===================== */
+  /* shape = kind: PEOPLE are circles, CLUBS/orgs are rounded-squares — you know what you're
+     looking at before you read it. Fallback chain: photo -> initials on a name-derived colour
+     -> a neutral glyph. Square radius scales with size so a logo never reads as a nested card. */
+  .ava{--sz:40px;width:var(--sz);height:var(--sz);flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--avc,#475569);color:#fff;font-family:var(--f);font-weight:700;font-style:normal;line-height:1;overflow:hidden;user-select:none}
+  .ava.org{border-radius:calc(var(--sz)*.26)}
+  .ava img{width:100%;height:100%;object-fit:cover;display:block}
+  .ava.xs{--sz:24px;font-size:9.5px}
+  .ava.sm{--sz:32px;font-size:12.5px}
+  .ava.md{--sz:40px;font-size:15px}
+  .ava.lg{--sz:48px;font-size:17.5px}
+  .ava.xl{--sz:64px;font-size:23px}
+  .ava.xxl{--sz:88px;font-size:31px}
+  .ava.ph{background:var(--bg-3);color:var(--ink-3)}
+  .ava.ph svg{width:56%;height:56%;stroke-width:1.7}
+  .ava.unclaimed{background:var(--bg-2);color:var(--ink-3);border:1.5px dashed var(--line-3)}
+  .ava-b{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-variant-numeric:tabular-nums;line-height:1}
+  .ava-b.dot{min-width:0;width:11px;height:11px;padding:0;top:0;right:0}
+  .avwrap{position:relative;display:inline-flex}
+  .avstack{display:inline-flex;align-items:center}
+  .avstack>*:not(:first-child){margin-left:-10px}
+  .avstack .ava{box-shadow:0 0 0 2px var(--bg)}
+  .avstack .more{--sz:32px;width:var(--sz);height:var(--sz);border-radius:50%;background:var(--bg-3);color:var(--ink-2);box-shadow:0 0 0 2px var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:650;font-family:var(--mono);position:relative}
+  .avrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .avcell{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:56px}
+  .avcell .cap{margin-top:0}
+  .swatchset{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ===================== MESSAGES ===================== */
+  /* two relationships on one surface: student<->club (exists) and student<->member
+     (net-new, Positioning §8 — "connection, not a feed"). person=circle, club=square,
+     so you always know who you're talking to. classic received-grey / sent-accent bubbles. */
+  .convolist{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:6px;display:flex;flex-direction:column;gap:2px}
+  .convo{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--r2);text-decoration:none;color:inherit;cursor:pointer}
+  .convo:hover{background:var(--bg-2)}
+  .convo[aria-current]{background:var(--bg-2);box-shadow:inset 3px 0 0 var(--accent)}
+  .convo .cbody{flex:1;min-width:0}
+  .convo .crow1{display:flex;align-items:baseline;gap:8px}
+  .convo .cname{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  .convo .ctime{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3);flex-shrink:0}
+  .convo .cprev{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .convo.unread .cprev{color:var(--ink-2);font-weight:600}
+  .rolechip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:var(--rp);background:var(--bg-3);color:var(--ink-3);flex-shrink:0}
+  .rolechip.member{background:var(--accent-wash);color:var(--accent-text)}
+  .thread{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);display:flex;flex-direction:column;overflow:hidden}
+  .thread-h{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)}
+  .thread-h .th-b{min-width:0;flex:1}
+  .thread-h .tn{font-weight:650;font-size:14.5px;display:flex;align-items:center;gap:8px}
+  .thread-h .ts{font-size:12px;color:var(--ink-3);margin-top:1px}
+  /* the identity cluster is a link to the club page / member profile (never a dead end) */
+  .thread-h .th-id{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit;border-radius:var(--r2);padding:4px 6px;margin:-4px -6px;transition:background var(--t-fast) var(--ease)}
+  .thread-h .th-id:hover{background:var(--bg-2)}
+  .thread-h .th-id:hover .tn{text-decoration:underline;text-underline-offset:2px}
+  .thread-h .chev{width:17px;height:17px;color:var(--ink-3);flex-shrink:0}
+  .thread-body{padding:14px 13px;display:flex;flex-direction:column;gap:6px;background:var(--bg);min-height:150px}
+  .sysline{align-self:center;font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);background:var(--bg-2);padding:4px 11px;border-radius:var(--rp);margin:3px 0}
+  .sysline.ok{background:var(--ok-wash);color:var(--ok)}
+  .bubrow{display:flex;gap:8px;align-items:flex-end;max-width:84%}
+  .bubrow.me{align-self:flex-end}
+  .bubrow.them{align-self:flex-start}
+  .bub{padding:9px 13px;border-radius:var(--r3);font-size:14px;line-height:1.45}
+  .bubrow.them .bub{background:var(--bg-2);color:var(--ink);border-bottom-left-radius:5px}
+  .bubrow.me .bub{background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:5px}
+  .bubmeta{font-family:var(--mono);font-size:10px;color:var(--ink-3);margin:0 4px 4px}
+  .bubmeta.me{align-self:flex-end}
+  .bubmeta.them{align-self:flex-start;margin-left:40px}
+  .composer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--bg);align-items:center}
+  .composer .inp{flex:1;min-height:44px}
+  .sendbtn{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:filter var(--t-fast) var(--ease)}
+  .sendbtn:hover{filter:brightness(1.08)}
+  .sendbtn svg{width:18px;height:18px;margin-left:-1px}
+
+  /* ===================== PROFILE ===================== */
+  /* soft gate, never a wall (Structure §6): setup = short, skippable first-run;
+     editing = a plain settings form, not the wizard again. */
+  .phead{display:flex;gap:16px;align-items:flex-start}
+  .phead .pinfo{flex:1;min-width:0}
+  .pname{font-family:var(--f);font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+  .pmeta{font-size:13.5px;color:var(--ink-3);margin-top:3px}
+  .pmeta .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .pbio{font-size:14px;color:var(--ink-2);margin-top:10px}
+  .ptags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .pact{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  .recruit{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ok)}
+  .recruit::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .setupcard{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:22px;max-width:470px}
+  .setup-top{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .pbar{flex:1;height:5px;border-radius:var(--rp);background:var(--bg-3);overflow:hidden}
+  .pbar>i{display:block;height:100%;width:33%;background:var(--accent);border-radius:var(--rp)}
+  .setupcard h4{font-family:var(--f);font-size:20px;font-weight:600;letter-spacing:-.018em;margin:16px 0 4px}
+  .setupcard .sub2{font-size:13.5px;color:var(--ink-3);margin:0 0 16px}
+  .setup-fields{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+  .avchange{display:inline-flex;flex-direction:column;align-items:center;gap:7px}
+  .avchange .lnk{font:inherit;font-family:var(--f);font-size:12px;font-weight:600;color:var(--accent-text);background:none;border:0;cursor:pointer;padding:0}
+  .reassure{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-3);margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .reassure svg{width:15px;height:15px;flex-shrink:0;color:var(--ok);margin-top:1px}
+  .sact{display:flex;gap:10px;margin-top:16px}
+  .editrow{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+  .editrow .et{font-weight:600;font-size:14px}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="top">
+  <div class="top-in">
+    <span class="wm">zot<i>hub</i></span>
+    <nav class="row" style="gap:12px"><a class="lab" style="text-decoration:none" href="#buttons">Buttons</a><a class="lab" style="text-decoration:none" href="#tags">Tags</a><a class="lab" style="text-decoration:none" href="#forms">Forms</a><a class="lab" style="text-decoration:none" href="#review">Review</a><a class="lab" style="text-decoration:none" href="#confirm">Confirm</a><a class="lab" style="text-decoration:none" href="#states">States</a><a class="lab" style="text-decoration:none" href="#nav">Nav</a><a class="lab" style="text-decoration:none" href="#avatars">Avatars</a><a class="lab" style="text-decoration:none" href="#messages">Messages</a><a class="lab" style="text-decoration:none" href="#profile">Profile</a></nav>
+    <span class="grow"></span><span class="lab">Component Library v1</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1>Components, as real stateful pieces</h1>
+  <p class="lede">The parts the product screens are assembled from &#8212; every state built and, where it matters, interactive. Built on the locked tokens; both themes designed (use the toggle). Highest-value set first: the review &amp; confirmation flow is the product&#8217;s differentiator. Click things.</p>
+
+  <!-- BUTTONS -->
+  <section id="buttons">
+    <div class="sec-h"><span class="sec-n">01</span><h2>Buttons</h2></div>
+    <p class="sec-note">One base, tokenised variants. Filled variants keep their fill on hover (the `:where(:hover)` rule). Every state below is real.</p>
+    <div class="panelbox stack">
+      <div>
+        <h3 class="sub" style="margin-top:0">Variants</h3>
+        <div class="row"><button class="btn btn-acc">Primary</button><button class="btn btn-ink">Ink</button><button class="btn">Default</button><button class="btn btn-ghost">Ghost</button><button class="btn btn-bad">Destructive</button></div>
+      </div>
+      <div>
+        <h3 class="sub">States &#8212; hover me, tab to me</h3>
+        <div class="row">
+          <span><button class="btn btn-acc">Default</button><span class="cap">rest</span></span>
+          <span><button class="btn btn-acc is-focus">Focused</button><span class="cap">focus ring</span></span>
+          <span><button class="btn btn-acc" disabled>Disabled</button><span class="cap">disabled</span></span>
+          <span><button class="btn btn-acc" id="loadBtn"><span class="spin"></span>Working&#8230;</button><span class="cap">loading</span></span>
+        </div>
+      </div>
+      <div>
+        <h3 class="sub">Sizes</h3>
+        <div class="row"><button class="btn btn-acc btn-sm">Small 34</button><button class="btn btn-acc">Base 44</button><button class="btn btn-acc btn-lg">Large 50</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAGS / BADGES / CHIPS -->
+  <section id="tags">
+    <div class="sec-h"><span class="sec-n">02</span><h2>Tags, badges, chips</h2></div>
+    <p class="sec-note">Rule: these live in their <b>own dedicated slot</b> and never share a line with flexible content (a title, a name). That way a card <em>with</em> a tag and one <em>without</em> stay identical &#8212; only the tag zone differs.</p>
+    <div class="panelbox stack">
+      <div><h3 class="sub" style="margin-top:0">Status badges (one shared map: label + colour + dot)</h3>
+        <div class="row"><span class="badge b-new"><span class="dot"></span>New</span><span class="badge b-warn"><span class="dot"></span>Reviewed</span><span class="badge b-ok"><span class="dot"></span>Accepted</span><span class="badge b-bad"><span class="dot"></span>Declined</span><span class="badge b-idle"><span class="dot"></span>Applied</span></div></div>
+      <div><h3 class="sub">Tags (accent = demands action &#183; neutral = category)</h3>
+        <div class="row"><span class="tag">Closing soon</span><span class="tag tag-n">Arts &amp; Culture</span><span class="tag tag-n">External</span><span class="tag tag-n">Event</span></div></div>
+      <div><h3 class="sub">Chips (filter, toggle)</h3>
+        <div class="row"><button class="chip" aria-pressed="true">All</button><button class="chip" aria-pressed="false">Roles</button><button class="chip" aria-pressed="false">Events</button><button class="chip" aria-pressed="false">Following</button></div></div>
+    </div>
+    <div class="panelbox" style="margin-top:16px">
+      <h3 class="sub" style="margin-top:0">The dedicated-slot rule, proven</h3>
+      <p class="mt" style="margin:0 0 14px">Same layout, tag or no tag. The tile is its own left column; title / club / meta / tag / footer share one aligned column &#8212; so the left edges match and the footers line up whether or not a tag is present.</p>
+      <div class="cols2" style="gap:16px">
+        <div class="mcard">
+          <span class="mtile" style="background:#C2410C">D</span>
+          <div class="mbody">
+            <div class="mtitle">VP of Design</div>
+            <div class="mclub">Design at UCI</div>
+            <div class="mmeta">Leadership &#183; closes in 2 days &#183; 18 applied</div>
+            <div class="mtags"><span class="tag">Closing soon</span></div>
+            <div class="mfoot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+          </div>
+        </div>
+        <div class="mcard">
+          <span class="mtile" style="background:#1D6FA3">AR</span>
+          <div class="mbody">
+            <div class="mtitle">Embedded Systems Lead</div>
+            <div class="mclub">Anteater Robotics</div>
+            <div class="mmeta">Project &#183; closes in 4 days &#183; 7 applied</div>
+            <div class="mfoot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORMS -->
+  <section id="forms">
+    <div class="sec-h"><span class="sec-n">03</span><h2>Form fields</h2></div>
+    <p class="sec-note">Label always visible (never placeholder-only). Hint below the label; errors inline at the field, never only at the top. 46px min, `line-3` boundary, accent focus.</p>
+    <div class="panelbox">
+      <div class="cols2">
+        <div class="field"><label for="f1">Role title</label><input class="inp" id="f1" value="VP of Design"><span class="hint">Shown on Discover the moment you publish.</span></div>
+        <div class="field"><label for="f2">Type</label><select class="inp" id="f2"><option>Leadership</option><option>Project</option><option>Committee</option><option>Volunteer</option><option>Internship</option><option>Other</option></select></div>
+        <div class="field"><label for="f3">Applications close</label><input class="inp is-focus" id="f3" type="date" value="2026-09-25"><span class="hint">Focused state &#8594;</span></div>
+        <div class="field err"><label for="f4">Weekly commitment</label><input class="inp" id="f4" value="a lot"><span class="errmsg">Enter a number of hours, e.g. &#8220;4&#8211;6&#8221;.</span></div>
+      </div>
+      <div class="field" style="margin-top:16px"><label for="f5">What they&#8217;ll actually do</label><textarea class="inp" id="f5">Lead the visual identity for everything we ship &#8212; event artwork, the quarterly zine, and the site.</textarea></div>
+      <div class="row" style="margin-top:16px;gap:20px">
+        <label class="check"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 14 14" fill="none" stroke-width="2.4"><path d="M2 7.5 L5.5 11 L12 3"/></svg></span>Email me new applicants</label>
+        <label class="check radio"><input type="radio" name="r" checked><span class="box"></span>Build the form here</label>
+        <label class="check radio"><input type="radio" name="r"><span class="box"></span>Link a Google Form</label>
+        <label class="check"><input type="checkbox" disabled><span class="box"></span><span style="opacity:.5">Disabled option</span></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="review">
+    <div class="sec-h"><span class="sec-n">04</span><h2>Review row &#8212; the work queue</h2><span class="lab" style="color:var(--accent-text)">interactive</span></div>
+    <p class="sec-note">The highest-volume, highest-stakes surface. Accept / Decline / Undo are live; the decision pulses once. The banner is the &#8220;nobody gets ghosted&#8221; promise as a component.</p>
+    <div class="panelbox">
+      <div class="heads"><p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically.</p><span class="grow"></span><button class="btn btn-sm btn-acc">Review them</button></div>
+      <div id="queue" style="margin-top:8px">
+        <div class="q" data-orig="New"><div class="qmain"><div class="qn">Priya Raman</div><div class="qs">Portfolio attached</div></div><span class="qc">Junior &#183; Informatics</span><span class="qd">Sep 18</span><span class="badge b-new"><span class="dot"></span><span class="lbl">New</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Marcus Vela</div><div class="qs">R&#233;sum&#233; attached</div></div><span class="qc">Sophomore &#183; Studio Art</span><span class="qd">Sep 18</span><span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Amara Osei</div><div class="qs">Portfolio attached</div></div><span class="qc">Senior &#183; Computer Science</span><span class="qd">Sep 17</span><span class="badge b-ok"><span class="dot"></span><span class="lbl">Accepted</span></span><div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIRM -->
+  <section id="confirm">
+    <div class="sec-h"><span class="sec-n">05</span><h2>Confirmation, keyed to severity</h2><span class="lab" style="color:var(--accent-text)">interactive</span></div>
+    <p class="sec-note">One confirmation model, weighted by stakes &#8212; not three paradigms applied at random. A reversible tidy-up asks lightly; an action that affects real people names the human cost and offers the gentler path first.</p>
+    <div class="cols2">
+      <div class="panelbox">
+        <h3 class="sub" style="margin-top:0">Low stakes &#8212; reversible</h3>
+        <p class="mt">A quick confirm, dismissable, no alarm.</p>
+        <button class="btn btn-sm" id="openLo">Remove draft</button>
+      </div>
+      <div class="panelbox">
+        <h3 class="sub" style="margin-top:0">High stakes &#8212; affects real people</h3>
+        <p class="mt">Names exactly who is affected; the safe path (&#8220;review first&#8221;) is the calm default, the destructive one is explicit.</p>
+        <button class="btn btn-sm btn-bad" id="openHi">Close posting</button>
+      </div>
+    </div>
+    <h3 class="sub">The rejection a student sees &#8212; direct, then a door</h3>
+    <p class="sec-note" style="margin-bottom:12px">Acknowledge first; offer second; never in the same breath. An auto-declined student reads the same words as a deliberately-declined one.</p>
+    <div class="reject">
+      <div class="head">Design Society didn&#8217;t move forward with your application.</div>
+      <p class="mt" style="margin:6px 0 0">It was a competitive round this quarter. Thanks for putting yourself forward.</p>
+      <div class="door"><span class="mt"><b>3 open roles</b> look like a fit for you.</span><a href="#">See them &#8594;</a></div>
+    </div>
+  </section>
+
+  <!-- STATES -->
+  <section id="states">
+    <div class="sec-h"><span class="sec-n">06</span><h2>Empty &amp; loading &#8212; never a dead end</h2></div>
+    <p class="sec-note">No empty result ends the journey; every one offers the next action. Skeletons match the component they stand in for, so nothing reflows on load.</p>
+    <div class="cols2">
+      <div class="empty">
+        <h4>No design roles open <i>right now.</i></h4>
+        <p>Three clubs recruit for design most quarters. We can tell you the day one posts.</p>
+        <div class="row"><button class="btn btn-sm btn-acc">Notify me</button><button class="btn btn-sm">See those clubs</button></div>
+      </div>
+      <div class="sk">
+        <div class="top2"><div class="shimmer" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1"><div class="shimmer" style="width:70%;height:16px"></div><div class="shimmer" style="width:45%;height:12px;margin-top:8px"></div><div class="shimmer" style="width:60%;height:12px;margin-top:6px"></div></div></div>
+        <div class="row" style="gap:8px"><div class="shimmer" style="flex:1;height:34px;border-radius:999px"></div><div class="shimmer" style="flex:1;height:34px;border-radius:999px"></div></div>
+        <span class="cap">skeleton matches the opportunity card exactly</span>
+      </div>
+    </div>
+    <div class="row" style="margin-top:20px"><button class="btn btn-sm" id="toastBtn">Trigger a toast</button><span class="mt">Confirmation for the common case &#8212; quiet, with an undo, auto-dismissing.</span></div>
+  </section>
+
+  <!-- NAV -->
+  <section id="nav">
+    <div class="sec-h"><span class="sec-n">07</span><h2>Navigation</h2><span class="lab" style="color:var(--accent-text)">interactive</span></div>
+    <p class="sec-note">Four fixed destinations per role &#8212; identical <em>items</em> on mobile and desktop (Structure &#167;2 student, &#167;5 club), each platform in its own idiom. One <b>active language</b>: an accent bar marks &#8220;you are here&#8221; &#8212; along the bottom on desktop, along the top on the tab bar. Click the items; open the avatar.</p>
+
+    <h3 class="sub" style="margin-top:0">Desktop &#8212; student</h3>
+    <div class="demoframe">
+      <div class="nvbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav data-nav aria-label="Primary">
+          <a href="#" aria-current="page">Discover</a>
+          <a href="#">Clubs</a>
+          <a href="#">Activity</a>
+          <a href="#">Messages<span class="ncount">3</span></a>
+        </nav>
+        <span class="grow"></span>
+        <div class="nvright">
+          <button class="avbtn" data-avbtn aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">
+            <span class="ava sm" style="--avc:#7A4BE0">JL</span>
+            <svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="avmenu" role="menu">
+            <div class="mh"><b>Jordan Lee</b><span>Student &#183; UCI</span></div>
+            <a role="menuitem" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>View profile</a>
+            <a role="menuitem" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+            <a role="menuitem" class="danger" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>Log out</a>
+          </div>
+        </div>
+      </div>
+      <div class="framebody"><span class="ft">Discover</span><div class="fauxrow"></div><div class="fauxrow"></div><div class="fauxrow"></div></div>
+    </div>
+    <span class="cap">active = ink + weight + accent underbar &#183; unread count on Messages &#183; avatar opens the account menu (profile lives here on desktop)</span>
+
+    <h3 class="sub">Desktop &#8212; club officer</h3>
+    <div class="demoframe">
+      <div class="nvbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav data-nav aria-label="Primary">
+          <a href="#" aria-current="page">Postings</a>
+          <a href="#">Responses<span class="ncount">5</span></a>
+          <a href="#">Messages</a>
+          <a href="#">My Club</a>
+        </nav>
+        <span class="grow"></span>
+        <div class="nvright">
+          <button class="avbtn" data-avbtn aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">
+            <span class="ava sm org" style="--avc:#C2410C">D</span>
+            <svg class="car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="avmenu" role="menu">
+            <div class="mh"><b>Design at UCI</b><span>Officer &#183; Jordan Lee</span></div>
+            <a role="menuitem" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/></svg>Club profile</a>
+            <a role="menuitem" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Club settings</a>
+            <a role="menuitem" class="danger" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>Log out</a>
+          </div>
+        </div>
+      </div>
+      <div class="framebody"><span class="ft">Your postings</span><div class="fauxrow"></div><div class="fauxrow"></div><div class="fauxrow"></div></div>
+    </div>
+    <span class="cap">clubs land on Responses (the work queue); shown mid-session on Postings, with <b>5</b> new responses waiting &#8212; the nav carries the next action</span>
+
+    <h3 class="sub">Desktop &#8212; logged out</h3>
+    <div class="demoframe">
+      <div class="nvbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav data-nav aria-label="Primary">
+          <a href="#">For clubs</a>
+          <a href="#">For students</a>
+          <a href="#">Discover</a>
+        </nav>
+        <span class="grow"></span>
+        <div class="nvright"><button class="btn btn-sm btn-ghost">Log in</button><button class="btn btn-sm btn-acc">Sign up</button></div>
+      </div>
+      <div class="framebody" style="min-height:64px"></div>
+    </div>
+    <span class="cap">the marketing nav sits transparent over the campus hero on the landing (see v4); solid everywhere else</span>
+
+    <h3 class="sub">Mobile &#8212; bottom tab bar</h3>
+    <p class="sec-note" style="margin-bottom:16px">Same items, same active accent bar (top edge here). Icons earn their place on mobile where labels shrink to 11px; 56px targets clear the 44&#215;44 gate. Profile has no tab &#8212; it lives inside Activity (student) / the account on My&nbsp;Club (Structure &#167;2).</p>
+    <div class="cols2">
+      <div class="phone">
+        <div class="mtop">
+          <span class="wm">zot<i>hub</i></span>
+          <button class="mbell" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="bdot"></span></button>
+        </div>
+        <div class="mscreen"><span class="ft" style="font-size:20px;font-weight:600;letter-spacing:-.02em">Discover</span><div class="fauxrow"></div><div class="fauxrow"></div></div>
+        <nav class="tabbar" data-nav aria-label="Primary">
+          <a href="#" aria-current="page"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88"/></svg></span>Discover</a>
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Clubs</a>
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span>Activity</a>
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="tind">3</span></span>Messages</a>
+        </nav>
+      </div>
+      <div class="phone">
+        <div class="mtop">
+          <span class="wm">zot<i>hub</i></span>
+          <button class="mbell" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+        </div>
+        <div class="mscreen"><span class="ft" style="font-size:20px;font-weight:600;letter-spacing:-.02em">Responses</span><div class="fauxrow"></div><div class="fauxrow"></div></div>
+        <nav class="tabbar" data-nav aria-label="Primary">
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></span>Postings</a>
+          <a href="#" aria-current="page"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="tind">5</span></span>Responses</a>
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>Messages</a>
+          <a href="#"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>My Club</a>
+        </nav>
+      </div>
+    </div>
+    <span class="cap">student (left) &#183; club officer (right) &#8212; count badge rides the icon; the top-bar bell carries a dot for lighter &#8220;something new&#8221;</span>
+  </section>
+
+  <!-- AVATARS -->
+  <section id="avatars">
+    <div class="sec-h"><span class="sec-n">08</span><h2>Avatars</h2></div>
+    <p class="sec-note"><b>Shape carries meaning: people are circles, clubs are rounded-squares</b> &#8212; you know what you&#8217;re looking at before you read it, which matters on a two-sided marketplace where a review row is people and a Discover row is clubs. Fallback chain: photo &#8594; initials on a name-derived colour &#8594; a neutral glyph. Never a broken image.</p>
+
+    <div class="panelbox stack">
+      <div>
+        <h3 class="sub" style="margin-top:0">Shape = kind &#8212; proposed</h3>
+        <div class="avrow">
+          <span class="ava md" style="--avc:#5B3FB0">JL</span>
+          <span class="ava md" style="--avc:#1C6699">PR</span>
+          <span class="ava md" style="--avc:#0C6E77">MV</span>
+          <span class="mt" style="margin:0 8px">people</span>
+          <span class="ava md org" style="--avc:#C2410C">D</span>
+          <span class="ava md org" style="--avc:#1D6FA3">AR</span>
+          <span class="ava md org" style="--avc:#7A3E9D">ZC</span>
+          <span class="mt" style="margin:0 8px">clubs</span>
+        </div>
+      </div>
+      <div>
+        <h3 class="sub">Current spec &#8212; everything rounded-square</h3>
+        <div class="avrow">
+          <span class="ava md org" style="--avc:#5B3FB0">JL</span>
+          <span class="ava md org" style="--avc:#1C6699">PR</span>
+          <span class="ava md org" style="--avc:#0C6E77">MV</span>
+          <span class="mt" style="margin:0 8px">people</span>
+          <span class="ava md org" style="--avc:#C2410C">D</span>
+          <span class="ava md org" style="--avc:#1D6FA3">AR</span>
+          <span class="ava md org" style="--avc:#7A3E9D">ZC</span>
+          <span class="mt" style="margin:0 8px">clubs</span>
+        </div>
+        <p class="mt" style="margin:10px 0 0">No shape signal &#8212; a person and a club read the same; you&#8217;re relying on the initials alone to tell them apart.</p>
+      </div>
+    </div>
+
+    <div class="panelbox" style="margin-top:16px">
+      <h3 class="sub" style="margin-top:0">Sizes</h3>
+      <div class="avrow" style="align-items:flex-end">
+        <span class="avcell"><span class="ava xs" style="--avc:#5B3FB0">JL</span><span class="cap">24 &#183; inline</span></span>
+        <span class="avcell"><span class="ava sm" style="--avc:#5B3FB0">JL</span><span class="cap">32 &#183; nav / list</span></span>
+        <span class="avcell"><span class="ava md" style="--avc:#5B3FB0">JL</span><span class="cap">40 &#183; rows</span></span>
+        <span class="avcell"><span class="ava lg" style="--avc:#5B3FB0">JL</span><span class="cap">48 &#183; cards</span></span>
+        <span class="avcell"><span class="ava xl" style="--avc:#5B3FB0">JL</span><span class="cap">64 &#183; profile</span></span>
+        <span class="avcell"><span class="ava xxl" style="--avc:#5B3FB0">JL</span><span class="cap">88 &#183; header</span></span>
+      </div>
+    </div>
+
+    <div class="panelbox" style="margin-top:16px">
+      <h3 class="sub" style="margin-top:0">Fallback chain</h3>
+      <div class="avrow">
+        <span class="avcell"><span class="ava lg"><img src="assets/hero-campus.jpg" alt=""></span><span class="cap">photo</span></span>
+        <span class="avcell"><span class="ava lg org"><img src="assets/hero-campus.jpg" alt=""></span><span class="cap">uploaded logo</span></span>
+        <span class="avcell"><span class="ava lg" style="--avc:#1C6699">PR</span><span class="cap">initials</span></span>
+        <span class="avcell"><span class="ava lg org" style="--avc:#C2410C">D</span><span class="cap">monogram</span></span>
+        <span class="avcell"><span class="ava lg ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="cap">person, no name</span></span>
+        <span class="avcell"><span class="ava lg org ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/></svg></span><span class="cap">club, no logo</span></span>
+        <span class="avcell"><span class="ava lg org unclaimed">ZS</span><span class="cap">unclaimed club</span></span>
+      </div>
+      <p class="mt" style="margin:16px 0 8px">Name-derived colour &#8212; hashed from the identity so a person always gets the same one; decorative, not semantic. Every swatch clears AA with white text.</p>
+      <div class="swatchset">
+        <span class="ava md" style="--avc:#5B3FB0">AB</span>
+        <span class="ava md" style="--avc:#1C6699">CD</span>
+        <span class="ava md" style="--avc:#0C6E77">EF</span>
+        <span class="ava md" style="--avc:#10794D">GH</span>
+        <span class="ava md" style="--avc:#9C4A0C">JK</span>
+        <span class="ava md" style="--avc:#B23227">LM</span>
+        <span class="ava md" style="--avc:#7A3E9D">NP</span>
+        <span class="ava md" style="--avc:#475569">QR</span>
+      </div>
+    </div>
+
+    <div class="panelbox" style="margin-top:16px">
+      <h3 class="sub" style="margin-top:0">In context</h3>
+      <div class="avrow" style="gap:28px">
+        <span class="avcell"><span class="avwrap"><span class="ava md" style="--avc:#1C6699">PR</span><span class="ava-b">3</span></span><span class="cap">unread thread</span></span>
+        <span class="avcell"><span class="avwrap"><span class="ava md org" style="--avc:#C2410C">D</span><span class="ava-b dot"></span></span><span class="cap">new activity</span></span>
+        <span class="avcell"><span class="avstack"><span class="ava sm" style="--avc:#5B3FB0">JL</span><span class="ava sm" style="--avc:#0C6E77">MV</span><span class="ava sm" style="--avc:#B23227">AO</span><span class="ava sm" style="--avc:#9C4A0C">BK</span><span class="more">+14</span></span><span class="cap">18 applied</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MESSAGES -->
+  <section id="messages">
+    <div class="sec-h"><span class="sec-n">09</span><h2>Messages</h2><span class="lab" style="color:var(--accent-text)">interactive</span></div>
+    <p class="sec-note">Two relationships, one surface: <b>student &#8596; club</b> (the officers running recruitment) and the net-new <b>student &#8596; member</b> (Positioning &#167;8 &#8212; ask someone actually in the club what it&#8217;s really like). Connection, not a feed. Person = circle, club = square, so you always know who&#8217;s on the other end. On desktop the list and thread sit side by side; on mobile it&#8217;s list &#8594; thread. The thread header is a link &#8212; tap the club to open its page, or a member to open their profile (never a dead end). Type in a composer and hit send.</p>
+
+    <h3 class="sub" style="margin-top:0">Inbox &#8212; conversation list</h3>
+    <div class="convolist">
+      <a class="convo unread" href="#" aria-current="page">
+        <span class="avwrap"><span class="ava sm org" style="--avc:#C2410C">D</span><span class="ava-b">1</span></span>
+        <span class="cbody"><span class="crow1"><span class="cname">Design at UCI</span><span class="ctime">2m</span></span><span class="cprev">Are you free Thursday for a quick chat?</span></span>
+      </a>
+      <a class="convo" href="#">
+        <span class="ava sm" style="--avc:#0C6E77">MV</span>
+        <span class="cbody"><span class="crow1"><span class="cname">Marcus Vela</span><span class="rolechip member">Member</span><span class="ctime">1h</span></span><span class="cprev">Honestly ~6 hrs/wk during builds &#8212; super worth it.</span></span>
+      </a>
+      <a class="convo" href="#">
+        <span class="ava sm org" style="--avc:#C0392E">CK</span>
+        <span class="cbody"><span class="crow1"><span class="cname">Circle K</span><span class="ctime">Tue</span></span><span class="cprev">Thanks for RSVPing to the beach cleanup!</span></span>
+      </a>
+    </div>
+
+    <h3 class="sub">Threads</h3>
+    <div class="cols2">
+      <div class="thread" data-thread>
+        <div class="thread-h">
+          <a class="th-id" href="#" aria-label="View Design at UCI's club page">
+            <span class="ava sm org" style="--avc:#C2410C">D</span>
+            <span class="th-b"><span class="tn">Design at UCI</span><span class="ts">You applied to VP of Design</span></span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+        </div>
+        <div class="thread-body">
+          <span class="sysline">Sep 18 &#183; Application received</span>
+          <div class="bubrow them"><span class="ava xs" style="--avc:#C2410C">D</span><span class="bub">Hi Jordan! Thanks for applying &#8212; we loved the zine work in your portfolio.</span></div>
+          <div class="bubrow me"><span class="bub">Thank you! The print committee is exactly what I was hoping to do.</span></div>
+          <span class="bubmeta me">Read &#183; 9:12 AM</span>
+          <div class="bubrow them"><span class="ava xs" style="--avc:#C2410C">D</span><span class="bub">Are you free Thursday for a quick chat?</span></div>
+          <span class="bubmeta them">9:40 AM</span>
+        </div>
+        <div class="composer">
+          <input class="inp" placeholder="Message Design at UCI&#8230;" aria-label="Message Design at UCI">
+          <button class="sendbtn" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+
+      <div class="thread" data-thread>
+        <div class="thread-h">
+          <a class="th-id" href="#" aria-label="View Marcus Vela's profile">
+            <span class="ava sm" style="--avc:#0C6E77">MV</span>
+            <span class="th-b"><span class="tn">Marcus Vela <span class="rolechip member">Member</span></span><span class="ts">Anteater Robotics &#183; 2nd year</span></span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+        </div>
+        <div class="thread-body">
+          <span class="sysline">You asked to connect about Anteater Robotics</span>
+          <div class="bubrow me"><span class="bub">Hey! Thinking of applying to Robotics &#8212; what&#8217;s the time commitment actually like?</span></div>
+          <span class="bubmeta me">Yesterday</span>
+          <div class="bubrow them"><span class="ava xs" style="--avc:#0C6E77">MV</span><span class="bub">~6 hrs/wk during builds, way less otherwise. Honestly the most fun I&#8217;ve had at UCI &#8212; do it.</span></div>
+          <span class="bubmeta them">1h</span>
+        </div>
+        <div class="composer">
+          <input class="inp" placeholder="Message Marcus&#8230;" aria-label="Message Marcus">
+          <button class="sendbtn" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <span class="cap">left: student &#8596; club, tied to the application (the context line) &#183; right: the net-new student &#8596; member channel, labelled &#8220;Member&#8221; so it&#8217;s never mistaken for the official club account</span>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="profile">
+    <div class="sec-h"><span class="sec-n">10</span><h2>Profile</h2></div>
+    <p class="sec-note">Soft gate, never a wall (Structure &#167;6). Three bits: the <b>view</b> (person = circle, club = square destination page), the <b>first-run setup</b> (short, always skippable), and <b>editing</b> (a plain settings form &#8212; never the wizard again).</p>
+
+    <h3 class="sub" style="margin-top:0">Profile view</h3>
+    <div class="cols2">
+      <div class="panelbox">
+        <div class="phead">
+          <span class="ava xl" style="--avc:#7A4BE0">JL</span>
+          <div class="pinfo">
+            <div class="pname">Jordan Lee</div>
+            <div class="pmeta">Junior &#183; Informatics &#183; she/her</div>
+            <p class="pbio">Design-obsessed. Into editorial layout, risograph, and making zines people actually keep.</p>
+            <div class="ptags"><span class="tag tag-n">Design</span><span class="tag tag-n">Print</span><span class="tag tag-n">Illustration</span></div>
+            <div class="pact"><button class="btn btn-sm">Edit profile</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="panelbox">
+        <div class="phead">
+          <span class="ava xl org" style="--avc:#C2410C">D</span>
+          <div class="pinfo">
+            <div class="pname">Design at UCI</div>
+            <div class="pmeta">Arts &amp; Culture &#183; <span class="num">62</span> members</div>
+            <p class="pbio">The design community at UCI &#8212; workshops, the quarterly zine, and client work for campus orgs.</p>
+            <div class="ptags"><span class="recruit">Actively recruiting</span></div>
+            <div class="pact"><button class="btn btn-sm btn-acc">Follow</button><button class="btn btn-sm">Message</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="cap">left: a student (owner&#8217;s view &#8594; &#8220;Edit profile&#8221;) &#183; right: a club &#8212; a destination page you Follow or Message; no private activity counts exposed to others</span>
+
+    <h3 class="sub">First-run setup &#8212; the soft gate</h3>
+    <div class="setupcard">
+      <div class="setup-top"><span>Step 1 of 3</span><span class="pbar"><i></i></span></div>
+      <h4>Add a photo and your year</h4>
+      <p class="sub2">Helps clubs put a face to your application. Takes about ten seconds.</p>
+      <div class="setup-fields">
+        <div class="avchange"><span class="ava lg ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><button class="lnk">Add photo</button></div>
+        <div class="field" style="flex:1;min-width:170px"><label for="pyr">Year</label><select class="inp" id="pyr"><option>Freshman</option><option>Sophomore</option><option selected>Junior</option><option>Senior</option><option>Grad student</option></select></div>
+      </div>
+      <div class="reassure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>You can finish this anytime &#8212; it never blocks you from applying.</div>
+      <div class="sact"><button class="btn btn-sm btn-ghost">Skip for now</button><button class="btn btn-sm btn-acc">Save &amp; continue</button></div>
+    </div>
+    <span class="cap">skippable at every step; the same nudge reappears once before your first application, then stops &#8212; a gate that never becomes a wall</span>
+
+    <h3 class="sub">Editing &#8212; settings, not a wizard</h3>
+    <div class="panelbox" style="max-width:560px">
+      <div class="editrow">
+        <span class="ava lg" style="--avc:#7A4BE0">JL</span>
+        <div><div class="et">Profile photo</div><button class="btn btn-sm btn-ghost" style="margin-top:5px">Change</button></div>
+      </div>
+      <div class="cols2">
+        <div class="field"><label for="edn">Display name</label><input class="inp" id="edn" value="Jordan Lee"></div>
+        <div class="field"><label for="edp">Pronouns</label><input class="inp" id="edp" value="she/her"></div>
+        <div class="field"><label for="edy">Year</label><select class="inp" id="edy"><option>Freshman</option><option>Sophomore</option><option selected>Junior</option><option>Senior</option><option>Grad student</option></select></div>
+        <div class="field"><label for="edm">Major</label><input class="inp" id="edm" value="Informatics"></div>
+      </div>
+      <div class="field" style="margin-top:16px"><label for="edb">Bio</label><textarea class="inp" id="edb">Design-obsessed. Into editorial layout, risograph, and making zines people actually keep.</textarea></div>
+      <div class="row" style="margin-top:18px;justify-content:flex-end;gap:10px"><button class="btn btn-sm btn-ghost">Cancel</button><button class="btn btn-sm btn-acc">Save changes</button></div>
+    </div>
+    <span class="cap">plain, sectioned, always available &#8212; editing a field never re-runs onboarding (Structure &#167;6)</span>
+  </section>
+
+  <div class="note" style="margin-top:32px"><b>Reviewing:</b> everything here is live &#8212; click nav items and tab bars, open the avatar menu, open a thread header, send a message, run Accept/Decline/Undo, open both confirmation dialogs, trigger the toast, tab through, flip the theme. That&#8217;s the full component set &#8212; next we assemble the product screens, starting with the club first-run journey.</div>
+</div>
+
+<!-- dialogs -->
+<div class="scrim" id="scrimLo"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="loTitle">
+  <span class="sev sev-lo">Low stakes</span>
+  <h4 id="loTitle">Remove this draft?</h4>
+  <p>&#8220;VP of Design (draft)&#8221; hasn&#8217;t been published, so no one has seen it. You can&#8217;t undo removing it.</p>
+  <div class="dact"><button class="btn btn-sm btn-ghost" data-close>Cancel</button><button class="btn btn-sm btn-bad" data-close>Remove draft</button></div>
+</div></div>
+
+<div class="scrim" id="scrimHi"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="hiTitle">
+  <span class="sev sev-hi">Affects 12 people</span>
+  <h4 id="hiTitle">Close &#8220;VP of Design&#8221;?</h4>
+  <p>Closing stops new applications. <strong>12 undecided applicants will be declined automatically</strong> and told the same way as everyone else &#8212; nobody is left waiting.</p>
+  <div class="callout">Rather decide them yourself? Review the 12 first &#8212; it takes about 4 minutes.</div>
+  <div class="dact"><button class="btn btn-sm" data-close>Review them first</button><button class="btn btn-sm btn-bad" data-close id="hiConfirm">Close &amp; decline 12</button></div>
+</div></div>
+
+<div class="toast-wrap" id="toasts"></div>
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('tt'),l=document.getElementById('ttl');
+  function c(){var a=r.getAttribute('data-theme');return(a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function s(t){r.setAttribute('data-theme',t);r.style.colorScheme=t;l.textContent=t==='dark'?'Light':'Dark';}
+  s(c());b.addEventListener('click',function(){s(c()==='dark'?'light':'dark');});})();
+// chips
+[].forEach.call(document.querySelectorAll('#tags .chip'),function(ch){ch.addEventListener('click',function(){var g=ch.parentNode.querySelectorAll('.chip');[].forEach.call(g,function(x){x.setAttribute('aria-pressed',String(x===ch));});});});
+// review
+(function(){var q=document.getElementById('queue');
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  function setB(row,cls,t){var x=row.querySelector('.badge');x.className='badge '+cls;x.querySelector('.lbl').textContent=t;fire(x);}
+  function acts(row,h){row.querySelector('.qa').innerHTML=h;}
+  q.addEventListener('click',function(e){var btn=e.target.closest('[data-act]');if(!btn)return;var row=btn.closest('.q'),a=btn.dataset.act;
+    if(a==='accept'){setB(row,'b-ok','Accepted');acts(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(a==='decline'){setB(row,'b-bad','Declined');acts(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(a==='undo'){var o=row.dataset.orig||'Reviewed';setB(row,o==='New'?'b-new':'b-warn',o);acts(row,'<button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button>');}
+  });})();
+// dialogs
+function openS(id){var s=document.getElementById(id);s.setAttribute('data-open','');var f=s.querySelector('.btn');if(f)f.focus();}
+function closeS(s){s.removeAttribute('data-open');}
+document.getElementById('openLo').addEventListener('click',function(){openS('scrimLo');});
+document.getElementById('openHi').addEventListener('click',function(){openS('scrimHi');});
+[].forEach.call(document.querySelectorAll('.scrim'),function(s){
+  s.addEventListener('click',function(e){if(e.target===s||e.target.hasAttribute('data-close'))closeS(s);});
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('.scrim[data-open]'),closeS);});
+document.getElementById('hiConfirm').addEventListener('click',function(){toast('Posting closed &#183; 12 applicants declined',true);});
+// toast
+function toast(msg,undo){var w=document.getElementById('toasts');var t=document.createElement('div');t.className='toast';
+  t.innerHTML=msg+(undo?' <span class="u">Undo</span>':'');w.appendChild(t);
+  var to=setTimeout(function(){t.remove();},4200);
+  var u=t.querySelector('.u');if(u)u.addEventListener('click',function(){clearTimeout(to);t.remove();});}
+document.getElementById('toastBtn').addEventListener('click',function(){toast('Application submitted',true);});
+// nav: move aria-current on click (desktop navs + tab bars), scoped to the Nav section
+[].forEach.call(document.querySelectorAll('#nav [data-nav]'),function(g){
+  g.addEventListener('click',function(e){var a=e.target.closest('a');if(!a||!g.contains(a))return;e.preventDefault();
+    [].forEach.call(g.querySelectorAll('a'),function(x){if(x===a)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
+  });
+});
+// nav: avatar account menu
+function closeMenus(){[].forEach.call(document.querySelectorAll('#nav .avmenu[data-open]'),function(m){m.removeAttribute('data-open');m.parentNode.querySelector('[data-avbtn]').setAttribute('aria-expanded','false');});}
+[].forEach.call(document.querySelectorAll('#nav [data-avbtn]'),function(btn){
+  var menu=btn.parentNode.querySelector('.avmenu');
+  btn.addEventListener('click',function(e){e.stopPropagation();var open=menu.hasAttribute('data-open');closeMenus();
+    if(!open){menu.setAttribute('data-open','');btn.setAttribute('aria-expanded','true');}});
+});
+document.addEventListener('click',closeMenus);
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenus();});
+// messages: send appends a bubble (textContent, no injection)
+[].forEach.call(document.querySelectorAll('#messages [data-thread]'),function(t){
+  var input=t.querySelector('.inp'),send=t.querySelector('.sendbtn'),body=t.querySelector('.thread-body');
+  function push(){var v=input.value.trim();if(!v)return;
+    var row=document.createElement('div');row.className='bubrow me';
+    var b=document.createElement('span');b.className='bub';b.textContent=v;row.appendChild(b);body.appendChild(row);
+    var m=document.createElement('span');m.className='bubmeta me';m.textContent='Just now';body.appendChild(m);
+    input.value='';body.scrollTop=body.scrollHeight;input.focus();}
+  send.addEventListener('click',push);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();push();}});
+});
+</script>

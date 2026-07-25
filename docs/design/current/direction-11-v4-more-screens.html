@@ -1,0 +1,346 @@
+<title>ZotHub &#8212; Messages, Profile, Postings screens</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);--e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;
+    --line:#26282B;--line-2:#37393D;--line-3:#64676C;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;
+    --accent:#5AA2E6;--accent-text:#8FBEF2;--accent-ink:#06182B;--accent-wash:#0E2338;--accent-line:#234A6B;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px;flex-wrap:wrap}
+  .seg button{font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 12px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+  .screen{display:none;margin-top:var(--s5)}.screen[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2)}
+
+  .btn{font:inherit;font-family:var(--f);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  .btn:where(:hover){background:var(--bg-3)}.btn:active{transform:translateY(1px)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}.btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}.btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}.b-idle{background:var(--bg-3);color:var(--ink-3)}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}.soft b{color:var(--ink);font-weight:650}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .field{display:flex;flex-direction:column;gap:6px}.field label{font-size:13px;font-weight:600}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--ink-3)}
+  textarea.inp{min-height:80px;resize:vertical;line-height:1.5}
+  .cols2{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:600px){.cols2{grid-template-columns:1fr 1fr}}
+
+  .ava{--sz:40px;width:var(--sz);height:var(--sz);flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--avc,#475569);color:#fff;font-weight:700;font-style:normal;line-height:1;overflow:hidden}
+  .ava.org{border-radius:calc(var(--sz)*.26)}
+  .ava.xs{--sz:24px;font-size:9.5px}.ava.sm{--sz:32px;font-size:12.5px}.ava.md{--sz:40px;font-size:15px}.ava.lg{--sz:48px;font-size:17.5px}.ava.xl{--sz:72px;font-size:26px}
+  .avwrap{position:relative;display:inline-flex}
+  .ava-b{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--bg);font-variant-numeric:tabular-nums;line-height:1}
+
+  .wm{font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:-.045em;line-height:1;color:var(--ink)}.wm i{font-style:italic;color:var(--accent-text)}
+  .topbar{display:flex;align-items:stretch;gap:22px;padding:0 22px;min-height:60px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .topbar>.wm,.topbar>.grow,.topbar>.nvright{align-self:center}
+  .topbar nav{display:flex;gap:22px}
+  .topbar nav a{position:relative;display:inline-flex;align-items:center;font-size:14px;font-weight:500;text-decoration:none;color:var(--ink-2);white-space:nowrap}
+  .topbar nav a:hover{color:var(--ink)}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--accent)}
+  .ncount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .nvright{display:flex;align-items:center;gap:12px}
+  .avbtn{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;cursor:pointer;padding:4px;border-radius:10px}.avbtn:hover{background:var(--bg-3)}.avbtn svg{width:14px;height:14px;color:var(--ink-3)}
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-family:var(--f);font-size:32px;font-weight:500;letter-spacing:-.026em}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2);text-decoration:none}.back svg{width:15px;height:15px}
+
+  /* messages two-pane */
+  .msgpane{display:grid;grid-template-columns:322px 1fr;height:560px}
+  .mlist{border-right:1px solid var(--line);overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+  .convo{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--r2);text-decoration:none;color:inherit;cursor:pointer}
+  .convo:hover{background:var(--bg-2)}
+  .convo[aria-current]{background:var(--bg-2);box-shadow:inset 3px 0 0 var(--accent)}
+  .convo .cbody{flex:1;min-width:0}
+  .convo .crow1{display:flex;align-items:baseline;gap:8px}
+  .convo .cname{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  .convo .ctime{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3);flex-shrink:0}
+  .convo .cprev{font-size:13px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .convo.unread .cprev{color:var(--ink-2);font-weight:600}
+  .rolechip{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:var(--rp);background:var(--bg-3);color:var(--ink-3);flex-shrink:0}
+  .rolechip.member{background:var(--accent-wash);color:var(--accent-text)}
+  .mthread{display:flex;flex-direction:column;min-height:0}
+  .thread-h{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)}
+  .th-id{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-decoration:none;color:inherit;border-radius:var(--r2);padding:4px 6px;margin:-4px -6px}
+  .th-id:hover{background:var(--bg-2)}.th-id:hover .tn{text-decoration:underline;text-underline-offset:2px}
+  .th-b{min-width:0;flex:1}.tn{font-weight:650;font-size:14.5px}.ts{font-size:12px;color:var(--ink-3);margin-top:1px}
+  .chev{width:17px;height:17px;color:var(--ink-3);flex-shrink:0}
+  .thread-body{flex:1;overflow-y:auto;padding:14px 13px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+  .sysline{align-self:center;font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);background:var(--bg-2);padding:4px 11px;border-radius:var(--rp);margin:3px 0}
+  .bubrow{display:flex;gap:8px;align-items:flex-end;max-width:82%}.bubrow.me{align-self:flex-end}.bubrow.them{align-self:flex-start}
+  .bub{padding:9px 13px;border-radius:var(--r3);font-size:14px;line-height:1.45}
+  .bubrow.them .bub{background:var(--bg-2);color:var(--ink);border-bottom-left-radius:5px}
+  .bubrow.me .bub{background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:5px}
+  .bubmeta{font-family:var(--mono);font-size:10px;color:var(--ink-3);margin:0 4px 4px}.bubmeta.me{align-self:flex-end}.bubmeta.them{align-self:flex-start;margin-left:40px}
+  .composer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--bg);align-items:center}
+  .composer .inp{flex:1;min-height:44px}
+  .sendbtn{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.sendbtn:hover{filter:brightness(1.08)}.sendbtn svg{width:18px;height:18px;margin-left:-1px}
+  @media(max-width:720px){.msgpane{grid-template-columns:1fr}.mlist{display:none}}
+
+  /* profile */
+  .pbody{max-width:720px;margin:0 auto;padding:var(--s6) var(--s5) var(--s7)}
+  .phead{display:flex;gap:18px;align-items:flex-start}
+  .phead .pinfo{flex:1;min-width:0}
+  .pname{font-family:var(--f);font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.12}
+  .pmeta{font-size:13.5px;color:var(--ink-3);margin-top:4px}
+  .pbio{font-size:14.5px;color:var(--ink-2);margin-top:12px;max-width:56ch}
+  .ptags{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  .pact{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  .psec{margin-top:var(--s6);padding-top:var(--s5);border-top:1px solid var(--line)}
+  .psec h3{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:0 0 14px}
+  .memberof{display:flex;gap:20px;flex-wrap:wrap}
+  .moc{display:flex;align-items:center;gap:10px}
+  .moc .mn{font-weight:600;font-size:14px}.moc .mm{font-size:12px;color:var(--ink-3)}
+  .editrow{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}.editrow .et{font-weight:600;font-size:14px}
+  .editcard{max-width:600px;margin:0 auto}
+
+  /* postings */
+  .postlist{padding:0 0 var(--s6)}
+  .postrow{display:flex;align-items:center;gap:16px;padding:16px 22px;cursor:pointer}
+  .postrow+.postrow{border-top:1px solid var(--line)}
+  .postrow:hover{background:var(--bg-2)}
+  .post-tile{width:42px;height:42px;border-radius:11px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;background:var(--avc,#C2410C)}
+  .post-tile.date{background:var(--bg-2);border:1px solid var(--line-2);font-family:var(--mono);color:var(--ink)}
+  .post-tile.muted{background:var(--bg-3);color:var(--ink-3)}
+  .post-tile.date .m{font-size:8.5px;letter-spacing:.1em;font-weight:700;color:var(--accent-text);text-transform:uppercase;line-height:1}
+  .post-tile.date .d{font-size:16px;font-weight:600;line-height:1.2}
+  .post-b{flex:1;min-width:0}
+  .post-t{font-weight:650;font-size:16px;letter-spacing:-.01em}
+  .post-m{font-size:13px;color:var(--ink-3);margin-top:2px}
+  .post-stats{display:flex;align-items:center;gap:16px;flex-shrink:0}
+  .post-n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-2)}
+  .post-n .new{color:var(--accent-text);font-weight:650}
+  .livepulse{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ok)}.livepulse::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  @media(max-width:720px){.post-n,.post-stats .badge{display:none}}
+
+  .note{margin:0 var(--s5) 24px;border-left:3px solid var(--accent);background:var(--accent-wash);padding:12px 16px;border-radius:0 var(--r2) var(--r2) 0;font-size:14px;color:var(--ink-2)}.note b{color:var(--accent-text)}
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Remaining screens</span>
+    <span class="seg" role="group" aria-label="Screen">
+      <button data-screen="m" aria-pressed="true">Messages</button>
+      <button data-screen="p" aria-pressed="false">Profile</button>
+      <button data-screen="e" aria-pressed="false">Edit profile</button>
+      <button data-screen="po" aria-pressed="false">Postings</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Assembled from locked components</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- MESSAGES (two-pane) -->
+  <div class="screen" data-screen="m" data-active>
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#" aria-current="page">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="msgpane">
+        <div class="mlist" data-list>
+          <a class="convo unread" href="#" aria-current="page">
+            <span class="avwrap"><span class="ava sm org" style="--avc:#C2410C">D</span><span class="ava-b">1</span></span>
+            <span class="cbody"><span class="crow1"><span class="cname">Design at UCI</span><span class="ctime">2m</span></span><span class="cprev">Are you free Thursday for a quick chat?</span></span>
+          </a>
+          <a class="convo" href="#">
+            <span class="ava sm" style="--avc:#0C6E77">MV</span>
+            <span class="cbody"><span class="crow1"><span class="cname">Marcus Vela</span><span class="rolechip member">Member</span><span class="ctime">1h</span></span><span class="cprev">Honestly ~6 hrs/wk during builds &#8212; super worth it.</span></span>
+          </a>
+          <a class="convo" href="#">
+            <span class="ava sm org" style="--avc:#C0392E">CK</span>
+            <span class="cbody"><span class="crow1"><span class="cname">Circle K</span><span class="ctime">Tue</span></span><span class="cprev">Thanks for RSVPing to the beach cleanup!</span></span>
+          </a>
+          <a class="convo" href="#">
+            <span class="ava sm org" style="--avc:#1D6FA3">AR</span>
+            <span class="cbody"><span class="crow1"><span class="cname">Anteater Robotics</span><span class="ctime">Mon</span></span><span class="cprev">Your application status changed to Reviewed.</span></span>
+          </a>
+        </div>
+        <div class="mthread" data-thread>
+          <div class="thread-h">
+            <a class="th-id" href="#" aria-label="View Design at UCI's club page">
+              <span class="ava sm org" style="--avc:#C2410C">D</span>
+              <span class="th-b"><span class="tn">Design at UCI</span><span class="ts">You applied to VP of Design</span></span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+          <div class="thread-body">
+            <span class="sysline">Sep 18 &#183; Application received</span>
+            <div class="bubrow them"><span class="ava xs org" style="--avc:#C2410C">D</span><span class="bub">Hi Jordan! Thanks for applying &#8212; we loved the zine work in your portfolio.</span></div>
+            <div class="bubrow me"><span class="bub">Thank you! The print committee is exactly what I was hoping to do.</span></div>
+            <span class="bubmeta me">Read &#183; 9:12 AM</span>
+            <div class="bubrow them"><span class="ava xs org" style="--avc:#C2410C">D</span><span class="bub">Are you free Thursday for a quick chat?</span></div>
+            <span class="bubmeta them">9:40 AM</span>
+          </div>
+          <div class="composer">
+            <input class="inp" placeholder="Message Design at UCI&#8230;" aria-label="Message Design at UCI">
+            <button class="sendbtn" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <div class="note"><b>Two-pane on desktop</b> (list + thread), collapsing to list &#8594; thread on mobile. Same items work for the club&#8217;s Messages. The active conversation carries the accent left-bar; the thread header links to the club page (or a member&#8217;s profile).</div>
+    </div>
+  </div>
+
+  <!-- PROFILE (view) -->
+  <div class="screen" data-screen="p">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><button class="avbtn"><span class="ava sm" style="--avc:#7A4BE0">JL</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+      </div>
+      <div class="pbody">
+        <div class="phead">
+          <span class="ava xl" style="--avc:#7A4BE0">JL</span>
+          <div class="pinfo">
+            <div class="pname">Jordan Lee</div>
+            <div class="pmeta">Junior &#183; Informatics &#183; she/her</div>
+            <p class="pbio">Design-obsessed. Into editorial layout, risograph, and making zines people actually keep.</p>
+            <div class="ptags"><span class="tag tag-n">Design</span><span class="tag tag-n">Print</span><span class="tag tag-n">Illustration</span></div>
+            <div class="pact"><button class="btn btn-sm" data-go="e">Edit profile</button></div>
+          </div>
+        </div>
+        <div class="psec">
+          <h3>Member of</h3>
+          <div class="memberof">
+            <span class="moc"><span class="ava md org" style="--avc:#C2410C">D</span><span><span class="mn">Design at UCI</span><div class="mm">Print &amp; Zine Committee</div></span></span>
+            <span class="moc"><span class="ava md org" style="--avc:#C0392E">CK</span><span><span class="mn">Circle K</span><div class="mm">Volunteer</div></span></span>
+          </div>
+        </div>
+      </div>
+      <div class="note"><b>Not a nav destination</b> &#8212; you reach your profile from the avatar menu on desktop (shown top-right), inside Activity on mobile (Structure &#167;2). This public view shows identity, bio, interests, and clubs &#8212; never your private application counts.</div>
+    </div>
+  </div>
+
+  <!-- EDIT PROFILE -->
+  <div class="screen" data-screen="e">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><button class="avbtn"><span class="ava sm" style="--avc:#7A4BE0">JL</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+      </div>
+      <div class="pbody">
+        <div style="margin-bottom:16px"><a class="back" href="#" data-go="p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Profile</a></div>
+        <h2 style="font-family:var(--f);font-size:26px;font-weight:500;letter-spacing:-.024em;margin:0 0 4px">Edit profile</h2>
+        <p style="color:var(--ink-3);font-size:14px;margin:0 0 22px">Change anything, anytime &#8212; this isn&#8217;t the setup wizard.</p>
+        <div class="editcard">
+          <div class="editrow">
+            <span class="ava lg" style="--avc:#7A4BE0">JL</span>
+            <div><div class="et">Profile photo</div><button class="btn btn-sm btn-ghost" style="margin-top:5px">Change</button></div>
+          </div>
+          <div class="cols2">
+            <div class="field"><label for="edn">Display name</label><input class="inp" id="edn" value="Jordan Lee"></div>
+            <div class="field"><label for="edp">Pronouns</label><input class="inp" id="edp" value="she/her"></div>
+            <div class="field"><label for="edy">Year</label><select class="inp" id="edy"><option>Freshman</option><option>Sophomore</option><option selected>Junior</option><option>Senior</option><option>Grad student</option></select></div>
+            <div class="field"><label for="edm">Major</label><input class="inp" id="edm" value="Informatics"></div>
+          </div>
+          <div class="field" style="margin-top:16px"><label for="edb">Bio</label><textarea class="inp" id="edb">Design-obsessed. Into editorial layout, risograph, and making zines people actually keep.</textarea></div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px"><button class="btn btn-sm btn-ghost" data-go="p">Cancel</button><button class="btn btn-sm btn-acc" data-go="p">Save changes</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSTINGS (club dashboard) -->
+  <div class="screen" data-screen="po">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Postings</a><a href="#">Responses<span class="ncount">12</span></a><a href="#">Messages</a><a href="#">My Club</a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm org" style="--avc:#C2410C">D</span></div>
+      </div>
+      <div class="pagehead"><h2>Postings</h2><span class="soft"><b>3</b> live &#183; <b>1</b> draft</span><span class="grow"></span><button class="btn btn-sm btn-acc">New posting</button></div>
+      <div class="postlist">
+        <div class="postrow">
+          <span class="post-tile" style="--avc:#C2410C">VP</span>
+          <div class="post-b"><div class="post-t">VP of Design</div><div class="post-m">Leadership &#183; closes in 2 days</div></div>
+          <div class="post-stats"><span class="post-n">18 applicants &#183; <span class="new">12 new</span></span><span class="livepulse">Live</span></div>
+        </div>
+        <div class="postrow">
+          <span class="post-tile" style="--avc:#C2410C">PZ</span>
+          <div class="post-b"><div class="post-t">Print &amp; Zine Committee</div><div class="post-m">Committee &#183; rolling</div></div>
+          <div class="post-stats"><span class="post-n">4 applicants</span><span class="livepulse">Live</span></div>
+        </div>
+        <div class="postrow">
+          <span class="post-tile date"><span class="m">Oct</span><span class="d">02</span></span>
+          <div class="post-b"><div class="post-t">Risograph Workshop</div><div class="post-m">Event &#183; Thu 6:00 PM &#183; Studio 4</div></div>
+          <div class="post-stats"><span class="post-n">22 going</span><span class="livepulse">Live</span></div>
+        </div>
+        <div class="postrow">
+          <span class="post-tile muted">SM</span>
+          <div class="post-b"><div class="post-t">Social Media Lead</div><div class="post-m">Committee &#183; not published</div></div>
+          <div class="post-stats"><span class="post-n">&#8212;</span><span class="badge b-idle"><span class="dot"></span>Draft</span></div>
+        </div>
+        <div class="postrow">
+          <span class="post-tile muted">FA</span>
+          <div class="post-b"><div class="post-t">Fall Case Analyst</div><div class="post-m">Committee &#183; closed Sep 30</div></div>
+          <div class="post-stats"><span class="post-n">41 applicants</span><span class="badge b-idle"><span class="dot"></span>Closed</span></div>
+        </div>
+      </div>
+      <div class="note"><b>Postings = everything you&#8217;ve created</b> (roles + events), with the new-applicant count in accent so the thing that needs you jumps out. Draft and Closed are labelled, not just coloured. Clubs still <i>land</i> on Responses (the work queue) &#8212; Postings is the overview you come here for.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-wrap" id="toasts" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:120"></div>
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('tt'),l=document.getElementById('ttl');
+  function c(){var a=r.getAttribute('data-theme');return(a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function s(t){r.setAttribute('data-theme',t);r.style.colorScheme=t;l.textContent=t==='dark'?'Light':'Dark';}
+  s(c());b.addEventListener('click',function(){s(c()==='dark'?'light':'dark');});})();
+function go(id){[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.setAttribute('aria-pressed',String(x.dataset.screen===id));});[].forEach.call(document.querySelectorAll('.screen'),function(p){p.toggleAttribute('data-active',p.dataset.screen===id);});window.scrollTo({top:0,behavior:'instant'});}
+[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.addEventListener('click',function(){go(x.dataset.screen);});});
+[].forEach.call(document.querySelectorAll('[data-go]'),function(x){x.addEventListener('click',function(e){e.preventDefault();go(x.dataset.go);});});
+// messages: send + switch conversation active state
+(function(){var t=document.querySelector('[data-thread]');if(t){var input=t.querySelector('.inp'),send=t.querySelector('.sendbtn'),body=t.querySelector('.thread-body');
+  function push(){var v=input.value.trim();if(!v)return;var row=document.createElement('div');row.className='bubrow me';var b=document.createElement('span');b.className='bub';b.textContent=v;row.appendChild(b);body.appendChild(row);var m=document.createElement('span');m.className='bubmeta me';m.textContent='Just now';body.appendChild(m);input.value='';body.scrollTop=body.scrollHeight;input.focus();}
+  send.addEventListener('click',push);input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();push();}});}
+  var list=document.querySelector('[data-list]');if(list){list.addEventListener('click',function(e){var a=e.target.closest('.convo');if(!a)return;e.preventDefault();[].forEach.call(list.querySelectorAll('.convo'),function(x){if(x===a){x.setAttribute('aria-current','page');x.classList.remove('unread');}else x.removeAttribute('aria-current');});});}
+})();
+</script>

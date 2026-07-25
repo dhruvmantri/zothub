@@ -1,0 +1,573 @@
+<title>ZotHub &#8212; Direction 11 v4: UCI blue + place</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+
+  /* ===================== LIGHT = SLATE (cool neutrals, to sit inside the blue) ===================== */
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --panel:#14171B; --panel-2:#1E2228; --panel-ink:#F0F2F4; --panel-ink-2:#9AA1A8; --panel-line:#2B3037;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    /* Pacific blue — UCI-adjacent, deliberately deeper/richer than flat corporate blue */
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    /* dark contexts (the club card, the photo hero) carry the lighter blue */
+    --panel-accent:#5AA2E6; --panel-accent-text:#8FBEF2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);
+    --e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);
+    --e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --f-display:"Instrument Sans",var(--sys); --f-ui:"Instrument Sans",var(--sys);
+    --track-d1:-.034em; --track-d2:-.026em; --track-d3:-.018em;
+  }
+
+  /* ===================== DARK = GRAPHITE + BLUE ===================== */
+  :root[data-theme="dark"]{
+    --bg:#0E0F10; --bg-2:#141517; --bg-3:#1B1D1F;
+    --ink:#F0F1F2; --ink-2:#A8ABAF; --ink-3:#85888D;
+    --line:#26282B; --line-2:#37393D; --line-3:#64676C;
+    --panel:#17181A; --panel-2:#1F2124; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2E3033;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    --accent:#5AA2E6; --accent-text:#8FBEF2; --accent-ink:#06182B; --accent-wash:#0E2338; --accent-line:#234A6B;
+    --panel-accent:#5AA2E6; --panel-accent-text:#8FBEF2;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+
+  /* ===================== fixed-register contexts ===================== */
+  .ctx-dark{
+    --bg:var(--panel); --bg-2:var(--panel-2); --bg-3:var(--panel-2);
+    --ink:var(--panel-ink); --ink-2:var(--panel-ink-2); --ink-3:var(--panel-ink-2);
+    --line:var(--panel-line); --line-2:var(--panel-line); --line-3:#4A5058;
+    --accent:var(--panel-accent); --accent-text:var(--panel-accent-text); --accent-ink:#06182B;
+    --accent-wash:#12283F; --accent-line:#274A6B;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    color:var(--ink);
+  }
+  .ctx-light{
+    --bg:#FFFFFF; --bg-2:#F3F7FC; --bg-3:#E9F1FB;
+    --ink:#0C161E; --ink-2:#42505B; --ink-3:#5D6B75;
+    --line:#E1E9F1; --line-2:#C9D6E3; --line-3:#7F8D99;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E4EFFB; --accent-line:#BAD6F2;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    color:var(--ink);
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 13px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+
+  /* primitives */
+  .btn{font:inherit;font-family:var(--f-ui);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  .btn:where(:hover){background:var(--bg-3)}  /* :where keeps base-hover at 0,1,0 so filled variants keep their fill */
+  .btn:active{transform:translateY(1px)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .b-idle{background:var(--bg-3);color:var(--ink-3)}
+
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}
+  .state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .page{display:none;margin-top:var(--s5)}
+  .page[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2);position:relative}
+
+  /* wordmark: italic hub */
+  .wm{font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:-.045em;line-height:1;white-space:nowrap;color:var(--ink)}
+  .wm i{font-style:italic;color:var(--accent-text);margin-left:.015em}
+  .ctx-photo .wm{color:#fff}
+  .ctx-photo .wm i{color:var(--panel-accent-text)}
+
+  .topbar{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) var(--s5);flex-wrap:wrap}
+  .topbar nav{display:flex;gap:var(--s5)}
+  .topbar nav a{font-size:14px;text-decoration:none;font-weight:450}
+  .topbar.on-photo{position:absolute;top:0;left:0;right:0;z-index:5}
+  .topbar.on-photo nav a{color:rgba(255,255,255,.82)}
+  .topbar.on-photo nav a[aria-current]{color:#fff;font-weight:600}
+  .topbar.solid{border-bottom:1px solid var(--line)}
+  .topbar.solid nav a{color:var(--ink-2)}
+  .topbar.solid nav a[aria-current]{color:var(--ink);font-weight:600}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}
+  .soft b{color:var(--ink);font-weight:650}
+
+  /* ===================== HERO with campus image ===================== */
+  .hero{position:relative;overflow:hidden;isolation:isolate}
+  /* warm campus-toned fallback — only shows if the photo is missing, so the hero never breaks */
+  .hero-fallback{position:absolute;inset:0;z-index:-3;background:linear-gradient(160deg,#8FB8D8 0%,#E8B98A 46%,#C88CA0 74%,#6E6E9E 100%)}
+  .hero-photo{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:50% 44%;z-index:-2}
+  /* scrim tuned for a BRIGHT, symmetric campus photo: heavy on the left/bottom where text + cards sit,
+     clearing on the right so the statue / buildings / sky read through */
+  .hero-scrim{position:absolute;inset:0;z-index:-1;
+    background:
+      linear-gradient(90deg, rgba(6,13,22,.90) 0%, rgba(6,13,22,.74) 40%, rgba(6,13,22,.40) 70%, rgba(6,13,22,.12) 100%),
+      linear-gradient(0deg, rgba(6,13,22,.90) 0%, rgba(6,13,22,.54) 30%, rgba(6,13,22,.12) 60%);}
+  :root[data-theme="dark"] .hero-scrim{background:
+      linear-gradient(90deg, rgba(3,7,12,.93) 0%, rgba(3,7,12,.8) 40%, rgba(3,7,12,.52) 72%, rgba(3,7,12,.26) 100%),
+      linear-gradient(0deg, rgba(3,7,12,.9) 0%, rgba(3,7,12,.4) 38%, rgba(3,7,12,.08) 66%);}
+  .hero-in{max-width:1140px;margin:0 auto;padding:112px var(--s5) 150px}
+  .hero h1{font-family:var(--f-display);font-size:clamp(38px,6vw,64px);font-weight:500;letter-spacing:var(--track-d1);line-height:1.0;margin:0 0 var(--s4);max-width:15ch;color:#fff;text-shadow:0 1px 30px rgba(0,0,0,.25)}
+  .hero h1 .sig{font-style:italic;color:#AFCDF3}
+  .hero .sub{color:#E4EAF1;font-size:18px;max-width:44ch;margin:0 0 var(--s5);text-shadow:0 1px 20px rgba(0,0,0,.3)}
+  .hero .cta{display:flex;gap:var(--s3);flex-wrap:wrap}
+  .hero .btn{min-height:48px;padding:12px 22px;font-size:15px}
+  .hero .btn-line{border-color:rgba(255,255,255,.7);color:#fff;background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .hero .btn-line:hover{background:rgba(255,255,255,.16)}
+  .hero .counts{margin-top:var(--s5);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:#E6ECF2;letter-spacing:.01em}
+  .hero .counts b{color:#fff;font-weight:650}
+  .livedot{display:inline-flex;align-items:center;gap:6px;color:#8FE0B4;font-weight:600}
+  .livedot::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor;animation:live 2.4s var(--ease) infinite}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(143,224,180,.5)}70%,100%{box-shadow:0 0 0 7px rgba(143,224,180,0)}}
+  .photo-note{position:absolute;left:var(--s5);bottom:8px;z-index:6;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+
+  /* two-sided cards, bridging the photo edge */
+  .sides{max-width:1140px;margin:-96px auto 0;position:relative;z-index:3;display:grid;grid-template-columns:1fr;gap:var(--s4);padding:0 var(--s5) var(--s6)}
+  @media(min-width:880px){.sides{grid-template-columns:1fr 1fr}}
+  .side{border-radius:var(--r4);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s3);box-shadow:var(--e4)}
+  .side-club{background:var(--panel)}
+  .side-student{background:var(--bg);border:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent-text)}
+  .side h3{margin:0;font-family:var(--f-display);font-size:26px;font-weight:500;letter-spacing:var(--track-d2);line-height:1.1}
+  .side h3 .sig{font-style:italic;color:var(--accent-text)}
+  .side p{margin:0;font-size:14.5px;color:var(--ink-2)}
+  .side .btn{align-self:flex-start}
+  .peek{margin-top:var(--s2);border-radius:var(--r2);overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+  .peek-h{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;padding:9px 13px;color:var(--ink-3);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .peek-r{display:flex;align-items:center;gap:10px;padding:10px 13px;font-size:13px;color:var(--ink)}
+  .peek-r+.peek-r{border-top:1px solid var(--line)}
+  .peek-r .who{min-width:0;flex:1}
+  .av{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-style:normal}
+  .av i{font-style:italic}
+  .mini{font-size:11.5px;color:var(--ink-3)}
+
+  .props{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:0 var(--s7);padding:var(--s4) var(--s5) var(--s7)}
+  @media(min-width:820px){.props{grid-template-columns:1fr 1fr}}
+  .prop{display:grid;grid-template-columns:28px 1fr;gap:var(--s3);padding:var(--s5) 0;border-bottom:1px solid var(--line)}
+  .prop .n{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:600;padding-top:3px}
+  .prop h4{margin:0 0 5px;font-size:17.5px;font-weight:600;letter-spacing:-.02em}
+  .prop p{margin:0;font-size:14.5px;color:var(--ink-2)}
+
+  /* ===================== discover ===================== */
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-family:var(--f-display);font-size:32px;font-weight:500;letter-spacing:var(--track-d2)}
+  .toolrow{display:flex;gap:var(--s2);padding:0 var(--s5) var(--s4);flex-wrap:wrap;align-items:center}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:44px}
+  .inp:focus{border-color:var(--accent)}
+  .inp::placeholder{color:var(--ink-3)}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .grp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1);margin:0 var(--s5) var(--s3)}
+  .grpbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pdot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .gtags{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jrow:hover{background:var(--bg-2)}
+  .jl{display:flex;gap:var(--s3);align-items:center;min-width:0}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2);flex-shrink:0}
+  .datechip .m{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--accent-text);text-transform:uppercase}
+  .datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  @media(max-width:640px){.gtags{display:none}.jr .no-m{display:none}.jr .btn{min-height:44px}}
+  @media(min-width:641px){.jr .only-m{display:none}}
+
+  /* view toggle (cards <-> list) */
+  .segview{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .segview button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 12px;border-radius:var(--rp);cursor:pointer;min-height:34px;display:inline-flex;align-items:center;gap:6px}
+  .segview button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .segview svg{width:15px;height:15px;display:block}
+  .view[hidden]{display:none}
+
+  /* opportunity CARD — one anatomy for every type so roles and events read as siblings:
+     leading TILE (club logo for roles, calendar for events) + title/club/meta + two-button footer. */
+  .oppgrid{display:grid;grid-template-columns:1fr;gap:var(--s4);padding:0 var(--s5) var(--s6)}
+  @media(min-width:620px){.oppgrid{grid-template-columns:1fr 1fr}}
+  @media(min-width:960px){.oppgrid{grid-template-columns:1fr 1fr 1fr}}
+  /* avatar-card layout: tile is its own left column; title / club / meta / tags / footer
+     all live in ONE aligned right column, so every left edge matches. */
+  .opp{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:var(--s4);display:flex;gap:var(--s3);transition:box-shadow var(--t-base) var(--ease),transform var(--t-base) var(--ease),border-color var(--t-base) var(--ease)}
+  .opp:hover{box-shadow:var(--e3);transform:translateY(-2px);border-color:var(--line-2)}
+  .opp-tile{width:46px;height:46px;border-radius:11px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;overflow:hidden}
+  .opp-tile.date{background:var(--bg-2);border:1px solid var(--line-2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .opp-tile.date .m{font-size:9px;letter-spacing:.1em;font-weight:700;color:var(--accent-text);text-transform:uppercase;line-height:1}
+  .opp-tile.date .d{font-size:18px;font-weight:600;color:var(--ink);line-height:1.2}
+  .opp-body{flex:1;min-width:0;display:flex;flex-direction:column}
+  .opp-title{font-family:var(--f-display);font-size:18px;font-weight:600;letter-spacing:var(--track-d3);line-height:1.18}
+  .opp-club{font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .opp-meta{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  /* dedicated tag slot — tags never share the title's line, so tagged & untagged cards stay identical */
+  .opp-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--s2)}
+  .opp-foot{display:flex;gap:var(--s2);margin-top:auto;padding-top:var(--s4)}
+  .opp-foot .btn{flex:1;justify-content:center}
+
+  /* ===================== review ===================== */
+  .rhead{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s5) var(--s5) 0}
+  .rhead h2{margin:0;font-family:var(--f-display);font-size:28px;font-weight:500;letter-spacing:var(--track-d2)}
+  .heads{margin:var(--s4) var(--s5) 0;border-radius:var(--r2);background:var(--warn-wash);padding:var(--s3) var(--s4);display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;font-size:14px}
+  .heads p{margin:0}
+  /* fixed grid tracks so columns align across every row regardless of the action shown */
+  .q{display:grid;grid-template-columns:minmax(160px,1fr) 168px 60px 112px 168px;gap:var(--s4);align-items:center;padding:var(--s3) var(--s5)}
+  .q+.q{border-top:1px solid var(--line)}
+  .q:hover{background:var(--bg-2)}
+  .qmain{min-width:0}
+  .qn{font-weight:650;font-size:15px}
+  .qs{font-size:13px;color:var(--ink-3)}
+  .qc{font-size:13.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qd{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .q .badge{justify-self:start}
+  .qa{display:flex;gap:var(--s2);justify-content:flex-end}
+  @media(max-width:720px){
+    .q{grid-template-columns:1fr auto;gap:var(--s2) var(--s3)}
+    .qc,.qd{display:none}
+    .qmain{grid-column:1;grid-row:1}.q .badge{grid-column:1;grid-row:2}
+    .qa{grid-column:2;grid-row:1/3;align-self:center}.qa .btn{min-height:44px}
+  }
+
+  .tabbar{display:none;position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line)}
+  .tabbar a{flex:1;text-align:center;padding:12px 4px 14px;font-size:11px;font-weight:600;color:var(--ink-3);text-decoration:none;letter-spacing:.02em;min-height:44px}
+  .tabbar a[aria-current]{color:var(--accent-text);box-shadow:inset 0 2px 0 var(--accent)}
+  @media(max-width:640px){.topbar.solid nav{display:none}.tabbar{display:flex}}
+
+  .note{margin:var(--s5) 0 0;border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px;color:var(--ink-2)}
+  .note b{color:var(--accent-text)}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">D11 v4 &#183; UCI</span>
+    <span class="seg" role="group" aria-label="Page">
+      <button data-page="landing" aria-pressed="true">Landing</button>
+      <button data-page="discover" aria-pressed="false">Discover</button>
+      <button data-page="review" aria-pressed="false">Review</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Pacific blue &#183; slate light / graphite dark &#183; Instrument</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ==================== LANDING ==================== -->
+  <div class="page" data-page="landing" data-active>
+    <div class="frame">
+      <div class="hero ctx-photo">
+        <!-- Hero art: real UCI Student Center photo. Drop the file at ./assets/hero-campus.jpg
+             (see assets/README.md). The warm gradient below is a graceful fallback if it's absent.
+             For production: export WebP/AVIF at ~1600px, lazy-decode, keep this scrim for AA. -->
+        <div class="hero-fallback" aria-hidden="true"></div>
+        <img class="hero-photo" src="assets/hero-campus.jpg" alt="" aria-hidden="true" decoding="async" />
+        <div class="hero-scrim" aria-hidden="true"></div>
+
+        <div class="topbar on-photo">
+          <span class="wm">zot<i>hub</i></span>
+          <nav><a href="#">For clubs</a><a href="#">For students</a><a href="#">Discover</a></nav>
+          <span class="grow"></span>
+          <button class="btn btn-sm btn-line">Log in</button>
+          <button class="btn btn-sm btn-acc">Sign up</button>
+        </div>
+
+        <div class="hero-in">
+          <h1>Where good clubs <span class="sig">meet good people.</span></h1>
+          <p class="sub">Every open role at UCI &#8212; and a real answer either way.</p>
+          <div class="cta">
+            <button class="btn btn-acc">Browse opportunities</button>
+            <button class="btn btn-line">I run a club</button>
+          </div>
+          <div class="counts">
+            <span class="livedot">Live</span>
+            <span><b>61</b> open opportunities</span><span>&#183;</span>
+            <span><b>12</b> events this week</span><span>&#183;</span>
+            <span><b>34</b> clubs</span>
+          </div>
+        </div>
+        <span class="photo-note">UCI Student Center &#8212; confirm licensing before public launch</span>
+      </div>
+
+      <div class="sides">
+        <section class="side side-club ctx-dark">
+          <span class="eyebrow">For clubs</span>
+          <h3>Recruit without <span class="sig">the spreadsheet.</span></h3>
+          <p>Post a role in minutes, or link the Google Form you already use. Review, decide, and nobody gets left on read.</p>
+          <button class="btn btn-sm btn-acc">Start recruiting</button>
+          <div class="peek">
+            <div class="peek-h">VP of Design &#183; 18 applicants<span class="grow" style="flex:1"></span></div>
+            <div class="peek-r"><span class="av" style="background:#7A4BE0">PR</span><span class="who"><b>Priya Raman</b><div class="mini">Junior &#183; Informatics</div></span><span class="badge b-new"><span class="dot"></span>New</span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">MV</span><span class="who"><b>Marcus Vela</b><div class="mini">Sophomore &#183; Studio Art</div></span><span class="badge b-warn"><span class="dot"></span>Reviewed</span></div>
+            <div class="peek-r"><span class="av" style="background:#10794D">AO</span><span class="who"><b>Amara Osei</b><div class="mini">Senior &#183; Computer Science</div></span><span class="badge b-ok"><span class="dot"></span>Accepted</span></div>
+          </div>
+        </section>
+
+        <section class="side side-student ctx-light">
+          <span class="eyebrow">For students</span>
+          <h3>Find the thing <span class="sig">you&#8217;ll stick with.</span></h3>
+          <p>Apply to UCI clubs in one place, track every application, and always hear back &#8212; even when it&#8217;s a no.</p>
+          <button class="btn btn-sm btn-acc">Explore opportunities</button>
+          <div class="peek">
+            <div class="peek-h">Happening now at UCI</div>
+            <div class="peek-r"><span class="av" style="background:#0F5FA8"><i>H</i></span><span class="who"><b>Hack at UCI &#183; Info Night</b><div class="mini">Wed 7:00 PM &#183; DBH 1100</div></span><span class="badge b-new"><span class="dot"></span>2 days</span></div>
+            <div class="peek-r"><span class="av" style="background:#C0392E">CK</span><span class="who"><b>Circle K &#183; Beach Cleanup</b><div class="mini">Sat 9:00 AM &#183; Newport</div></span><span class="badge b-idle"><span class="dot"></span>Sat</span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">AR</span><span class="who"><b>Embedded Systems Lead</b><div class="mini">Anteater Robotics</div></span><span class="badge b-ok"><span class="dot"></span>Accepted</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="props">
+        <div class="prop"><span class="n">01</span><div><h4>Real roles, not a directory listing.</h4><p>Officer boards, project teams, committees &#8212; the things clubs actually need filled this quarter.</p></div></div>
+        <div class="prop"><span class="n">02</span><div><h4>Bring the form you already have.</h4><p>Link an existing Google Form in one step, or build the application here. Your choice, not ours.</p></div></div>
+        <div class="prop"><span class="n">03</span><div><h4>Nobody gets ghosted.</h4><p>Close a posting and undecided applicants are declined automatically &#8212; after we tell you exactly who.</p></div></div>
+        <div class="prop"><span class="n">04</span><div><h4>Talk to the people actually deciding.</h4><p>Message the officers running recruitment, not a form inbox nobody reads.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DISCOVER ==================== -->
+  <div class="page" data-page="discover">
+    <div class="frame">
+      <div class="topbar solid">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+        <span class="grow"></span>
+        <span class="soft"><b>34</b> clubs &#183; <b>61</b> open roles</span>
+      </div>
+      <div class="pagehead">
+        <h2>Discover</h2><span class="soft"><b>8</b> open right now</span>
+        <span class="grow"></span>
+        <span class="segview" role="group" aria-label="View">
+          <button data-view="cards" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.2"/></svg>Cards</button>
+          <button data-view="list" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>List</button>
+        </span>
+      </div>
+      <div class="toolrow">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Search roles, events, clubs&#8230;" aria-label="Search" />
+        <button class="chip" aria-pressed="true">All</button>
+        <button class="chip" aria-pressed="false">Roles</button>
+        <button class="chip" aria-pressed="false">Events</button>
+        <button class="chip" aria-pressed="false">Following</button>
+      </div>
+
+      <!-- CARDS — the default browsing view: one self-contained card per opportunity, scannable -->
+      <div class="view view-cards">
+        <div class="oppgrid">
+          <article class="opp">
+            <span class="opp-tile" style="background:#C2410C">D</span>
+            <div class="opp-body">
+              <div class="opp-title">VP of Design</div>
+              <div class="opp-club">Design at UCI</div>
+              <div class="opp-meta">Leadership &#183; closes in 2 days &#183; 18 applied</div>
+              <div class="opp-tags"><span class="tag">Closing soon</span></div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+            </div>
+          </article>
+          <article class="opp">
+            <span class="opp-tile" style="background:#C2410C">D</span>
+            <div class="opp-body">
+              <div class="opp-title">Print &amp; Zine Committee</div>
+              <div class="opp-club">Design at UCI</div>
+              <div class="opp-meta">Committee &#183; rolling &#183; 4 applied</div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+            </div>
+          </article>
+          <article class="opp">
+            <span class="opp-tile" style="background:#1D6FA3">AR</span>
+            <div class="opp-body">
+              <div class="opp-title">Embedded Systems Lead</div>
+              <div class="opp-club">Anteater Robotics</div>
+              <div class="opp-meta">Project &#183; closes in 4 days &#183; 7 applied</div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+            </div>
+          </article>
+          <article class="opp">
+            <span class="opp-tile date"><span class="m">Sep</span><span class="d">29</span></span>
+            <div class="opp-body">
+              <div class="opp-title">Shop Day &amp; Open Build</div>
+              <div class="opp-club">Anteater Robotics</div>
+              <div class="opp-meta">Tue 7:00 PM &#183; Engineering Tower &#183; 18 of 30 going</div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">RSVP</button></div>
+            </div>
+          </article>
+          <article class="opp">
+            <span class="opp-tile date"><span class="m">Oct</span><span class="d">03</span></span>
+            <div class="opp-body">
+              <div class="opp-title">Beach Cleanup Volunteer Drive</div>
+              <div class="opp-club">Circle K</div>
+              <div class="opp-meta">Sat 9:00 AM &#183; Newport &#183; 54 of 80 going</div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">RSVP</button></div>
+            </div>
+          </article>
+          <article class="opp">
+            <span class="opp-tile" style="background:#7A3E9D">ZC</span>
+            <div class="opp-body">
+              <div class="opp-title">Fall Case Team Analyst</div>
+              <div class="opp-club">Zot Consulting</div>
+              <div class="opp-meta">Committee &#183; closes in 6 days &#183; 41 applied</div>
+              <div class="opp-tags"><span class="tag tag-n">External</span></div>
+              <div class="opp-foot"><button class="btn btn-sm">Save</button><button class="btn btn-sm">Apply externally</button></div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- LIST — the denser, club-grouped power view -->
+      <div class="view view-list" hidden>
+        <div class="grp">
+          <div class="grpbar">
+            <span class="clogo" style="background:#C2410C">D</span><span class="cn">Design at UCI</span>
+            <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+            <span class="gtags"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag tag-n">Replies fast</span></span>
+          </div>
+          <div class="jrow">
+            <div class="jl"><div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div></div>
+            <div class="jr"><span class="tag no-m">Closing soon</span><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save VP of Design">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+          </div>
+          <div class="jrow">
+            <div class="jl"><div><div class="jt">Print &amp; Zine Committee</div><div class="jm">Committee &#183; rolling &#183; 4 applied</div></div></div>
+            <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Print and Zine Committee">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+          </div>
+        </div>
+        <div class="grp">
+          <div class="grpbar">
+            <span class="clogo" style="background:#1D6FA3">AR</span><span class="cn">Anteater Robotics</span>
+            <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+            <span class="gtags"><span class="tag tag-n">Engineering</span><span class="tag tag-n">62 members</span></span>
+          </div>
+          <div class="jrow">
+            <div class="jl"><div><div class="jt">Embedded Systems Lead</div><div class="jm">Project &#183; closes in 4 days &#183; 7 applied</div></div></div>
+            <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Embedded Systems Lead">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+          </div>
+          <div class="jrow">
+            <div class="jl">
+              <span class="datechip"><span class="m">Sep</span><span class="d">29</span></span>
+              <div><div class="jt">Shop Day &amp; Open Build</div><div class="jm">Tue 7:00 PM &#183; Engineering Tower &#183; 18 of 30 going</div></div>
+            </div>
+            <div class="jr"><button class="btn btn-sm btn-ink">RSVP</button></div>
+          </div>
+        </div>
+        <div class="grp">
+          <div class="grpbar">
+            <span class="clogo" style="background:#7A3E9D">ZC</span><span class="cn">Zot Consulting Group</span>
+            <span class="gtags"><span class="tag tag-n">Business</span><span class="tag tag-n">Applies externally</span></span>
+          </div>
+          <div class="jrow">
+            <div class="jl"><div><div class="jt">Fall Case Team Analyst</div><div class="jm">Committee &#183; closes in 6 days &#183; 41 applied</div></div></div>
+            <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Fall Case Team Analyst">Save</button><button class="btn btn-sm">Apply externally</button></div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tabbar" aria-label="Primary"><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+    </div>
+  </div>
+
+  <!-- ==================== REVIEW ==================== -->
+  <div class="page" data-page="review">
+    <div class="frame">
+      <div class="topbar solid">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      </div>
+      <div class="rhead">
+        <h2>VP of Design</h2>
+        <span class="soft"><b>18</b> applicants &#183; <b>6</b> decided &#183; closes in <b>2</b> days</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm">Export</button>
+        <button class="btn btn-sm">Close posting</button>
+      </div>
+      <div class="heads">
+        <p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically.</p>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-acc">Review them</button>
+      </div>
+      <div style="padding:var(--s4) 0 var(--s6)" id="queue">
+        <div class="q" data-orig="New"><div class="qmain"><div class="qn">Priya Raman</div><div class="qs">Portfolio attached</div></div><span class="qc">Junior &#183; Informatics</span><span class="qd">Sep 18</span><span class="badge b-new"><span class="dot"></span><span class="lbl">New</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Marcus Vela</div><div class="qs">R&#233;sum&#233; attached</div></div><span class="qc">Sophomore &#183; Studio Art</span><span class="qd">Sep 18</span><span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Amara Osei</div><div class="qs">Portfolio attached</div></div><span class="qc">Senior &#183; Computer Science</span><span class="qd">Sep 17</span><span class="badge b-ok"><span class="dot"></span><span class="lbl">Accepted</span></span><div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div></div>
+        <div class="q" data-orig="New"><div class="qmain"><div class="qn">Ben Okafor</div><div class="qs">No attachment</div></div><span class="qc">Freshman &#183; Undeclared</span><span class="qd">Sep 17</span><span class="badge b-bad"><span class="dot"></span><span class="lbl">Declined</span></span><div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Sofia Lindqvist</div><div class="qs">Applied externally</div></div><span class="qc">Junior &#183; Business Admin</span><span class="qd">Sep 16</span><span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+      </div>
+      <nav class="tabbar" aria-label="Primary"><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+    </div>
+  </div>
+
+  <div class="note"><b>What changed in v4:</b> accent is now UCI-adjacent <b>Pacific blue</b> (not the neon pink), neutrals moved to <b>cool slate</b> to sit with it, and the landing leads with a <b>campus image</b> (placeholder art, real scrim). Everything else is the locked system carried over &#8212; italic-hub wordmark, italic signature, Instrument, pills, the date chip, the two-sided cards (dark club / light student, now bridging the photo), motion v2 (live on Review). The hero counts are <b>honest live counts</b>, never a fabricated &#8220;students applied&#8221; figure.</div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  $$('.seg [data-page]').forEach(function(x){x.addEventListener('click',function(){
+    $$('.seg [data-page]').forEach(function(y){y.setAttribute('aria-pressed',String(y===x));});
+    $$('.page').forEach(function(p){p.toggleAttribute('data-active',p.dataset.page===x.dataset.page);});
+    window.scrollTo({top:0,behavior:'instant'});
+  });});
+})();
+(function(){
+  var vbtns=[].slice.call(document.querySelectorAll('.segview [data-view]'));
+  vbtns.forEach(function(b){b.addEventListener('click',function(){
+    vbtns.forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+    document.querySelectorAll('.view-cards').forEach(function(v){v.toggleAttribute('hidden',b.dataset.view!=='cards');});
+    document.querySelectorAll('.view-list').forEach(function(v){v.toggleAttribute('hidden',b.dataset.view!=='list');});
+  });});
+})();
+(function(){
+  var queue=document.getElementById('queue');
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  function setBadge(row,cls,text){var b=row.querySelector('.badge');b.className='badge '+cls;b.querySelector('.lbl').textContent=text;fire(b);}
+  function setActs(row,html){row.querySelector('.qa').innerHTML=html;}
+  queue.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-act]');if(!btn)return;
+    var row=btn.closest('.q'),act=btn.dataset.act;
+    if(act==='accept'){setBadge(row,'b-ok','Accepted');setActs(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(act==='decline'){setBadge(row,'b-bad','Declined');setActs(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(act==='undo'){var orig=row.dataset.orig||'Reviewed';setBadge(row,orig==='New'?'b-new':'b-warn',orig);setActs(row,'<button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button>');}
+  });
+})();
+</script>

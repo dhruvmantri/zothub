@@ -1,0 +1,538 @@
+<title>ZotHub &#8212; Direction 11 Identity Lab</title>
+
+<style>
+  /* Webfont exception: this file (alone) loads real typefaces, because the typeface IS the
+     decision under test. Stacks degrade gracefully to system fonts when offline. */
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+  :root{
+    /* ---- neutral spine: COOL (current Direction 11) ---- */
+    --bg:#FFFFFF; --bg-2:#F7F9F9; --bg-3:#EFF3F3;
+    --ink:#071417; --ink-2:#3F4E52; --ink-3:#616E72;
+    --line:#E4E8E9; --line-2:#CDD5D7; --line-3:#849095; /* line-3: NEW — control boundaries; 3.28:1 on card, 3.08:1 on bg-2 */
+    --panel:#0B1316; --panel-2:#131D21; --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#233034;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+    /* NEW: the panel is always a dark context, so it carries theme-independent accent aliases */
+    --panel-accent:#FF4C86; --panel-accent-text:#FF87AE;
+
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--rp:999px;
+    --e1:0 1px 2px rgba(7,20,23,.05);
+    --e2:0 2px 8px rgba(7,20,23,.07),0 1px 2px rgba(7,20,23,.04);
+    --e3:0 12px 32px rgba(7,20,23,.10),0 2px 6px rgba(7,20,23,.05);
+
+    /* ---- motion tokens ---- */
+    --t-fast:150ms; --t-base:200ms; --t-slow:250ms;
+    --ease:cubic-bezier(.2,.7,.3,1);
+
+    /* ---- type: resolved by [data-type] below ---- */
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --serif-sig:"Instrument Serif","Iowan Old Style",Georgia,serif;
+    --f-display:var(--sys); --f-ui:var(--sys);
+    --track-d1:-.042em; --track-d2:-.032em; --track-d3:-.022em; --w-d1:500;
+  }
+  :root[data-type="instrument"]{
+    --f-display:"Instrument Sans",var(--sys); --f-ui:"Instrument Sans",var(--sys);
+    --track-d1:-.034em; --track-d2:-.026em; --track-d3:-.018em;
+  }
+  :root[data-type="schibsted"]{
+    --f-display:"Schibsted Grotesk",var(--sys); --f-ui:"Inter",var(--sys);
+    --track-d1:-.028em; --track-d2:-.022em; --track-d3:-.014em;
+  }
+
+  /* ---- neutral spine: PAPER (warm test) ---- */
+  :root[data-warm="paper"]{
+    --bg:#FFFFFF; --bg-2:#F9F7F3; --bg-3:#F1EDE6;
+    --ink:#141109; --ink-2:#48443B; --ink-3:#676257;
+    --line:#E9E4DC; --line-2:#D6D0C5; --line-3:#8D8779; /* 3.57:1 card, 3.34:1 paper */
+    --panel:#14100B; --panel-2:#1D1812; --panel-ink:#F5F2EC; --panel-ink-2:#A39C8F; --panel-line:#332C22;
+    --e1:0 1px 2px rgba(20,17,9,.05);
+    --e2:0 2px 8px rgba(20,17,9,.07),0 1px 2px rgba(20,17,9,.04);
+    --e3:0 12px 32px rgba(20,17,9,.10),0 2px 6px rgba(20,17,9,.05);
+  }
+
+  :root[data-theme="dark"]{
+    --bg:#080F11; --bg-2:#0D1618; --bg-3:#131F22;
+    --ink:#EEF3F4; --ink-2:#A7B6BA; --ink-3:#839297;
+    --line:#1D282B; --line-2:#2E3D41; --line-3:#5B6C71; /* 3.34:1 on bg-2 */
+    --panel:#111B1F; --panel-2:#17242A; --panel-ink:#F2F6F7; --panel-ink-2:#93A3A7; --panel-line:#27343A;
+    --ok:#4FCB92; --ok-wash:#0F2A20; --warn:#DCA85A; --warn-wash:#2A2211; --bad:#E98A7C; --bad-wash:#2C1714;
+    --accent:#FF4C86; --accent-text:#FF87AE; --accent-ink:#1B0410; --accent-wash:#2A101C; --accent-line:#4A1C31;
+    --panel-accent:#FF4C86; --panel-accent-text:#FF87AE;
+    --e1:0 1px 2px rgba(0,0,0,.4); --e2:0 2px 10px rgba(0,0,0,.45); --e3:0 14px 36px rgba(0,0,0,.55);
+  }
+  :root[data-theme="dark"][data-warm="paper"]{
+    --bg:#0F0D0A; --bg-2:#14110D; --bg-3:#1C1812;
+    --ink:#F2EFE9; --ink-2:#ADA598; --ink-3:#8B8375;
+    --line:#28221B; --line-2:#3B342A; --line-3:#6B6255; /* 3.13:1 on bg-2 */
+    --panel:#171310; --panel-2:#1F1A15; --panel-ink:#F5F2EC; --panel-ink-2:#A39C8F; --panel-line:#332C22;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* ============ studio chrome ============ */
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 13px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+
+  h2.sec{font-size:13px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:var(--s8) 0 var(--s4);padding-bottom:var(--s2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+  .why{font-family:var(--f-ui);font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-3);font-weight:400;max-width:52ch}
+  .demo{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center;padding:var(--s5);border:1px solid var(--line);border-radius:var(--r3);background:var(--bg)}
+  .demo.col{flex-direction:column;align-items:stretch}
+  .stack{display:flex;flex-direction:column;gap:var(--s4)}
+  .cols2{display:grid;grid-template-columns:1fr;gap:var(--s4)}
+  @media(min-width:840px){.cols2{grid-template-columns:1fr 1fr}}
+  .lb{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .sm{font-size:13.5px;color:var(--ink-3)}
+  .sm b{color:var(--ink);font-weight:650}
+  .bd{font-size:15px;line-height:1.55;color:var(--ink-2)}
+  .verdict{border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px;margin-top:var(--s4)}
+  .verdict b{color:var(--accent-text)}
+
+  /* ============ primitives ============ */
+  .btn{font:inherit;font-family:var(--f-ui);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease)}
+  .btn:hover{background:var(--bg-3)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .btn-sq{border-radius:var(--r2)}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp)}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .b-idle{background:var(--bg-3);color:var(--ink-3)}
+
+  /* ============ 01 wordmark ============ */
+  .wm{font-family:var(--f-display);font-weight:700;letter-spacing:-.045em;line-height:1}
+  .wm .dot{display:inline-block;width:.17em;height:.17em;border-radius:50%;background:var(--accent);margin-left:.05em;transform:translateY(-.02em)}
+  .wm .mid{display:inline-block;width:.14em;height:.14em;border-radius:50%;background:var(--accent);margin:0 .06em;transform:translateY(-.22em)}
+  .wm b{color:var(--accent);font-weight:700}
+  .wmrow{display:grid;grid-template-columns:110px 1fr;gap:var(--s3) var(--s5);align-items:center;padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+  .wmrow:last-child{border-bottom:0}
+  .wmctx{display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap}
+  .tabsim{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid var(--line);border-bottom:2px solid var(--accent);border-radius:9px 9px 0 0;background:var(--bg);font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .fav{width:16px;height:16px;border-radius:4px;background:var(--ink);color:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:-.05em;line-height:1;position:relative}
+  .fav i{font-style:normal}
+  .fav .fd{position:absolute;right:2px;bottom:2.5px;width:3px;height:3px;border-radius:50%;background:var(--accent)}
+  .fav32{width:32px;height:32px;border-radius:8px;font-size:21px}
+  .fav32 .fd{right:4px;bottom:5px;width:6px;height:6px}
+
+  /* ============ 02 signature ============ */
+  .heroX{background:linear-gradient(180deg,var(--accent-wash) 0%,var(--bg) 62%);padding:var(--s7) var(--s5);text-align:center;border:1px solid var(--line);border-radius:var(--r3)}
+  .heroX h1{font-family:var(--f-display);font-size:clamp(34px,5.2vw,56px);font-weight:var(--w-d1);letter-spacing:var(--track-d1);line-height:1.02;margin:0 auto var(--s4);max-width:17ch}
+  .heroX p{color:var(--ink-2);font-size:16.5px;max-width:46ch;margin:0 auto}
+  [data-sig="weight"] .sig{font-weight:300;color:var(--accent)}
+  [data-sig="italic"] .sig{font-style:italic;font-weight:var(--w-d1);color:var(--accent)}
+  [data-sig="serif"] .sig{font-family:var(--serif-sig);font-style:italic;font-weight:400;color:var(--accent);font-size:1.04em;letter-spacing:-.012em}
+  [data-sig="rule"] .sig{font-weight:var(--w-d1);color:var(--ink);background-image:linear-gradient(var(--accent),var(--accent));background-repeat:no-repeat;background-size:100% .09em;background-position:0 100%;border-radius:2px;padding-bottom:.12em}
+
+  /* ============ 03 type ============ */
+  .spec{display:grid;grid-template-columns:88px 1fr;gap:var(--s3) var(--s5);align-items:baseline}
+  .spec .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .d1{font-family:var(--f-display);font-size:clamp(38px,5.6vw,58px);font-weight:var(--w-d1);letter-spacing:var(--track-d1);line-height:.99}
+  .d2{font-family:var(--f-display);font-size:32px;font-weight:500;letter-spacing:var(--track-d2);line-height:1.08}
+  .d3{font-family:var(--f-display);font-size:22px;font-weight:600;letter-spacing:var(--track-d3);line-height:1.2}
+  .t1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .meta{font-size:13.5px;color:var(--ink-3)}
+  .dense{width:100%;border-collapse:collapse;font-size:12.5px}
+  .dense th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line-2)}
+  .dense td{padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .dense td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px}
+  .dense .nm{font-weight:600}
+
+  /* ============ 04/05 rows ============ */
+  .grp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1)}
+  .grpbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pdot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jl{display:flex;gap:var(--s3);align-items:center;min-width:0}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2);flex-shrink:0}
+  .datechip .m{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--accent-text);text-transform:uppercase}
+  .datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  .count{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-3)}
+  .count b{color:var(--ink);font-weight:650}
+
+  /* ============ 06 inputs ============ */
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp-fix{border-color:var(--line-3)}
+  .inp:focus{border-color:var(--accent)}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;font-weight:600}
+  .panelbox{background:var(--panel);color:var(--panel-ink);border-radius:var(--r3);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s2)}
+  .eyebrow-old{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+  .eyebrow-new{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--panel-accent)}
+
+  /* ============ 07 motion ============ */
+  @keyframes dotpulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 45%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+  .pulse-once .dot,.pulse-once.pdot{animation:dotpulse .6s var(--ease) 1}
+  .mrow{display:grid;grid-template-columns:1fr auto;gap:var(--s3);align-items:center;padding:var(--s3) var(--s4);border:1px solid var(--line);border-radius:var(--r2);background:var(--bg)}
+  .fadeup{animation:fadeup var(--t-base) var(--ease) 1}
+  @keyframes fadeup{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.8;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Identity lab</span>
+    <span class="lab" style="color:var(--ink-2)">Type</span>
+    <span class="seg" role="group" aria-label="Typeface">
+      <button data-type="system" aria-pressed="true">System</button>
+      <button data-type="instrument" aria-pressed="false">Instrument</button>
+      <button data-type="schibsted" aria-pressed="false">Schibsted+Inter</button>
+    </span>
+    <span class="lab" style="color:var(--ink-2)">Signature</span>
+    <span class="seg" role="group" aria-label="Signature">
+      <button data-sig="weight" aria-pressed="true">Weight</button>
+      <button data-sig="italic" aria-pressed="false">Italic</button>
+      <button data-sig="serif" aria-pressed="false">Serif</button>
+      <button data-sig="rule" aria-pressed="false">Rule</button>
+    </span>
+    <span class="lab" style="color:var(--ink-2)">Neutrals</span>
+    <span class="seg" role="group" aria-label="Neutrals">
+      <button data-warm="cool" aria-pressed="true">Cool</button>
+      <button data-warm="paper" aria-pressed="false">Paper</button>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div style="padding:var(--s5) 0 0">
+    <p class="bd" style="max-width:72ch;margin:0">Four decisions stand between Direction 11 and an ownable identity: the <b>wordmark device</b>, the <b>signature</b>, the <b>typeface</b>, and the <b>neutral temperature</b>. Each is switchable above and every section below re-renders live &#8212; judge combinations, not swatches. Two proposed system behaviours (the data voice, the dot) and the component fixes from the critique follow. <b>Convention exception:</b> this file loads webfonts (the typeface is the thing under test); offline it degrades to system stacks.</p>
+  </div>
+
+  <!-- ================= 01 WORDMARK ================= -->
+  <h2 class="sec"><span>01 &#183; The wordmark device</span><span class="why">The colon is Wellfound&#8217;s &#8212; the last borrowed piece. Candidates below are devices, not logos: each must survive the topbar at 19px, a browser tab at 16px, and mean something.</span></h2>
+
+  <div class="demo col">
+    <div class="wmrow">
+      <span class="lb">Colon &#183; borrowed</span>
+      <span class="wmctx">
+        <span class="wm" style="font-size:44px">zothub<b>:</b></span>
+        <span class="wm" style="font-size:19px">zothub<b>:</b></span>
+        <span class="tabsim"><span class="fav"><i>z</i></span>zothub &#8212; Discover</span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Period &#183; &#8220;an answer, either way&#8221;</span>
+      <span class="wmctx">
+        <span class="wm" style="font-size:44px">zothub<span class="dot"></span></span>
+        <span class="wm" style="font-size:19px">zothub<span class="dot"></span></span>
+        <span class="tabsim"><span class="fav"><i>z</i><span class="fd"></span></span>zothub &#8212; Discover</span>
+        <span class="fav fav32"><i>z</i><span class="fd"></span></span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Middot &#183; two sides, one place</span>
+      <span class="wmctx">
+        <span class="wm" style="font-size:44px">zot<span class="mid"></span>hub</span>
+        <span class="wm" style="font-size:19px">zot<span class="mid"></span>hub</span>
+        <span class="tabsim"><span class="fav"><i>z</i></span>zot&#183;hub &#8212; Discover</span>
+      </span>
+    </div>
+    <div class="wmrow">
+      <span class="lb">Bare &#183; type only</span>
+      <span class="wmctx">
+        <span class="wm" style="font-size:44px">zothub</span>
+        <span class="wm" style="font-size:19px">zothub</span>
+        <span class="tabsim"><span class="fav"><i>z</i></span>zothub &#8212; Discover</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">Tradeoffs</span>
+      <div class="sm"><b>Period.</b> The dot is drawn (a circle, not a glyph), sized to the wordmark, in accent. Reads as a decision: <i>a real answer, period</i> &#8212; the product&#8217;s one promise. Scales to a 3px favicon dot. Risk: lowercase-name-with-period is a known startup register; the drawn dot and the dot-system below (05, 07) are what keep it ours.</div>
+      <div class="sm"><b>Middot.</b> Names the two sides (zot &#183; hub) with the same separator the UI already uses for meta text &#8212; the system&#8217;s own punctuation promoted to the mark. Risks: reads as hyphenation, invites &#8220;zot-dot-hub&#8221; pronunciation, and the device disappears at 16px.</div>
+      <div class="sm"><b>Bare.</b> Quietest, nothing to defend &#8212; but nothing to recognize either, and the favicon loses its device.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Why a dot at all</span>
+      <div class="sm">Direction 11 already speaks in dots: status badges carry one, &#8220;actively recruiting&#8221; pulses one, live counts sit behind one. The wordmark dot makes that latent system official &#8212; <b>the dot carries the state</b> &#8212; and gives favicon, badge, pulse and mark one shared element. No UCI clich&#233; (no anteater, no blue/gold), but quietly native: the dot is the ant.</div>
+    </div>
+  </div>
+  <div class="verdict"><b>Recommendation: the period.</b> It is the only candidate that is simultaneously a device (survives 16px), a meaning (the answer, delivered), and a system (the same dot the UI already uses for state). The middot is cleverer than it is legible; bare is safe but forgettable.</div>
+
+  <!-- ================= 02 SIGNATURE ================= -->
+  <h2 class="sec"><span>02 &#183; The signature</span><span class="why">Weight / Rule / Colour were all single-family emphasis moves &#8212; anonymous. Two new candidates use a true italic: the active family&#8217;s own, or the designed sibling serif. Flip Signature and Type together.</span></h2>
+
+  <div class="heroX">
+    <h1>Where good clubs <span class="sig">meet good people.</span></h1>
+    <p>Every open role at UCI, and a real answer either way.</p>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">What changed since v2</span>
+      <div class="sm"><b>Italic (new).</b> The active family&#8217;s true italic in accent. One family, two voices &#8212; the contrast is structural but nothing mismatches, because it is the same design slanted by its designer, not by CSS.</div>
+      <div class="sm"><b>Serif (revived).</b> Instrument Serif italic against the grotesque. The v1 rejection (&#8220;old-style serif against a neo-grotesque&#8221;) applied to Iowan/Georgia stand-ins; Instrument Serif is drawn as Instrument Sans&#8217;s sibling &#8212; same proportions, same era. Judge it with Type=Instrument, where the pairing is native.</div>
+      <div class="sm"><b>Rule (tuned).</b> Thicker, dropped fully below the descenders, rounded. Still reads adjacent to a hyperlink when it wraps &#8212; kept for honest comparison, expected to lose.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">At app sizes</span>
+      <div class="d3" style="margin:0">Find the thing <span class="sig">you&#8217;ll stick with.</span></div>
+      <div style="height:var(--s2)"></div>
+      <div class="d2" style="margin:0">No design roles open <span class="sig">right now.</span></div>
+      <div style="height:var(--s2)"></div>
+      <div class="sm">The signature must survive 22&#8211;32px (empty states, section heads) &#8212; not only the 56px hero. Weight-300 goes thin and grey here; the italics hold.</div>
+    </div>
+  </div>
+
+  <!-- ================= 03 TYPE ================= -->
+  <h2 class="sec"><span>03 &#183; Typeface</span><span class="why">The foundation locked &#8220;display face + workhorse text face&#8221; and v2 shipped one system stack &#8212; unresolved. Three stacks, each tested where type actually breaks: 12.5px tables and form labels.</span></h2>
+
+  <div class="cols2">
+    <div class="demo col">
+      <span class="lb">Character</span>
+      <div class="sm"><b>System.</b> The current stand-in. Free, instant, and platform-dependent: SF Pro&#8217;s tight display reads &#8220;Apple keynote&#8221; on a Mac and turns into Segoe UI on the Windows laptops most officers carry. A brand that changes voice per OS is not yet a brand.</div>
+      <div class="sm"><b>Instrument Sans (+ Serif for the signature).</b> One superfamily, two voices, designed together. Slightly narrow, warm, geometric-humanist; the only option where the serif-italic signature is native rather than imported. ~55KB total, self-hostable.</div>
+      <div class="sm"><b>Schibsted Grotesk display + Inter text.</b> The literal &#8220;display + workhorse&#8221; model. Schibsted has real personality at 56px (angled terminals, tight apertures); Inter is the safest dense-UI face alive &#8212; and already in production, so migration is display-only. Most conventional of the three.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Scale &#8212; re-renders with the Type switch</span>
+      <div class="spec">
+        <span class="k">Display</span><span class="d1">Good clubs start here</span>
+        <span class="k">Section</span><span class="d2">Recruit without the spreadsheet</span>
+        <span class="k">Card</span><span class="d3">Embedded Systems Lead</span>
+        <span class="k">UI title</span><span class="t1">VP of Design</span>
+        <span class="k">Body</span><span class="bd">Post a role free, or link the Google Form you already use.</span>
+        <span class="k">Meta</span><span class="meta">Leadership &#183; closes in 2 days &#183; 18 applied</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo col" style="margin-top:var(--s4)">
+    <span class="lb">The dense test &#8212; 12.5px review table, tabular numerals</span>
+    <div style="overflow-x:auto">
+      <table class="dense">
+        <tr><th>Applicant</th><th>Standing</th><th>Applied</th><th>Answered</th><th>Status</th></tr>
+        <tr><td class="nm">Priya Raman</td><td>Junior &#183; Informatics</td><td class="num">Sep 18, 4:12 PM</td><td class="num">3 of 3</td><td><span class="badge b-new" style="font-size:11px"><span class="dot"></span>New</span></td></tr>
+        <tr><td class="nm">Marcus Vela</td><td>Sophomore &#183; Studio Art</td><td class="num">Sep 18, 1:03 PM</td><td class="num">3 of 3</td><td><span class="badge b-warn" style="font-size:11px"><span class="dot"></span>Reviewed</span></td></tr>
+        <tr><td class="nm">Amara Osei</td><td>Senior &#183; Computer Science</td><td class="num">Sep 17, 9:41 AM</td><td class="num">2 of 3</td><td><span class="badge b-ok" style="font-size:11px"><span class="dot"></span>Accepted</span></td></tr>
+        <tr><td class="nm">Ben Okafor</td><td>Freshman &#183; Undeclared</td><td class="num">Sep 17, 8:15 AM</td><td class="num">1 of 3</td><td><span class="badge b-bad" style="font-size:11px"><span class="dot"></span>Declined</span></td></tr>
+      </table>
+    </div>
+    <div class="sm" style="margin-top:var(--s2)">Watch the lowercase &#8220;a g e&#8221; and the numerals. Inter stays open at this size; Instrument narrows but holds; the system stack depends on whose system.</div>
+  </div>
+  <div class="verdict"><b>Recommendation: Instrument Sans + Instrument Serif.</b> It is the only stack where display, UI, and signature are one designed family &#8212; ownable without a second vendor, consistent on every OS, and it retires the SF-Pro-only tracking rules. Schibsted+Inter is the strong second: safer tables, louder display, but two unrelated voices to reconcile forever. Decide here, not at implementation &#8212; the tracking, weights, and the signature all depend on it.</div>
+
+  <!-- ================= 04 NEUTRALS ================= -->
+  <h2 class="sec"><span>04 &#183; Neutral temperature</span><span class="why">The foundation says &#8220;warm neutrals&#8221;; Direction 11 shipped cool blue-green greys. One of them is wrong. Flip Neutrals &#8212; the whole lab re-tints, including dark mode.</span></h2>
+
+  <div class="grp">
+    <div class="grpbar">
+      <span class="clogo" style="background:#C2410C">D</span><span class="cn">Design at UCI</span>
+      <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag">Closing soon</span></span>
+    </div>
+    <div class="jrow">
+      <div class="jl"><div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div></div>
+      <div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+    <div class="jrow">
+      <div class="jl"><div><div class="jt">Print &amp; Zine Committee</div><div class="jm">Committee &#183; rolling &#183; 4 applied</div></div></div>
+      <div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">Cool &#8212; the current spine</span>
+      <div class="sm">Greys derived from ink <b>#071417</b>. Precise, technical, closest to Wellfound&#8217;s own translucent greys. Against the pink accent washes it runs slightly clinical &#8212; the &#8220;wants to open it in a park&#8221; half of the brief gets no help from the surfaces.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Paper &#8212; the foundation&#8217;s spec</span>
+      <div class="sm">Warm ivory page (<b>#F9F7F3</b>), white cards, warm ink <b>#141109</b>. Cards separate from the page tonally &#8212; which is the grouping fix from the studio, strengthened. Crimson reads warmer against it. Risk: drifts toward Direction 09&#8217;s territory and can read &#8220;stationery&#8221; if the washes pile up. All ramp pairs re-measured AA in both themes.</div>
+    </div>
+  </div>
+  <div class="verdict"><b>Recommendation: Paper.</b> It delivers what the foundation already promised, gives card-grouping tonal support, and is the single cheapest move away from &#8220;generic ATS&#8221; &#8212; one variable set, no layout change. Keep ink-derived cool <i>only</i> if we amend the foundation doc to say so deliberately.</div>
+
+  <!-- ================= 05 DATA VOICE ================= -->
+  <h2 class="sec"><span>05 &#183; The data voice</span><span class="why">Dates in review are already mono; prop numbers are mono; eyebrows are mono. Half-committed. The rule: numbers the system knows &#8212; counts, dates, deadlines &#8212; speak mono. Words people wrote speak the UI face.</span></h2>
+
+  <div class="grp">
+    <div class="grpbar">
+      <span class="clogo" style="background:#1D6FA3">AR</span><span class="cn">Anteater Robotics</span>
+      <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+      <span style="margin-left:auto"><span class="count"><b>2</b> open &#183; <b>62</b> members</span></span>
+    </div>
+    <div class="jrow">
+      <div class="jl"><div><div class="jt">Embedded Systems Lead</div><div class="jm">Project &#183; closes in 4 days &#183; 7 applied</div></div></div>
+      <div class="jr"><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+    </div>
+    <div class="jrow">
+      <div class="jl">
+        <span class="datechip"><span class="m">Sep</span><span class="d">29</span></span>
+        <div><div class="jt">Shop Day &amp; Open Build</div><div class="jm">Tue 7:00 PM &#183; Engineering Tower &#183; 18 of 30 going</div></div>
+      </div>
+      <div class="jr"><button class="btn btn-sm btn-ink">RSVP</button></div>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">What this settles</span>
+      <div class="sm"><b>Events stop impersonating roles.</b> A role is a countdown (deadline in the meta line); an event is a date (the mono chip). Different time semantics now <i>look</i> different &#8212; structure decision &#167;1, delivered with typography instead of a second hue.</div>
+      <div class="sm"><b>The secondary colour question closes.</b> With the chip carrying &#8220;event-ness,&#8221; the teal/blue slot has no remaining job. Recommendation: <b>no secondary colour</b>. If events ever need more, the chip can take the accent &#8212; not a new hue.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Accent semantics &#8212; making the overlap a rule</span>
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center">
+        <span class="badge b-new"><span class="dot"></span>New</span>
+        <span class="tag">Closing soon</span>
+        <button class="btn btn-sm btn-acc">Review them</button>
+        <span class="badge b-idle"><span class="dot"></span>Applied</span>
+        <span class="badge b-warn"><span class="dot"></span>Reviewed</span>
+        <span class="badge b-ok"><span class="dot"></span>Accepted</span>
+        <span class="badge b-bad"><span class="dot"></span>Declined</span>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">Crimson currently marks brand <i>and</i> &#8220;New&#8221; <i>and</i> &#8220;Closing soon&#8221; &#8212; drift, unless stated: <b>the accent marks exactly one thing &#8212; demands action now.</b> New, closing, review-these. Everything decided or waiting is a calm semantic. (Also new: &#8220;Applied&#8221; gets the idle wash it was missing.)</div>
+    </div>
+  </div>
+
+  <!-- ================= 06 COMPONENT FIXES ================= -->
+  <h2 class="sec"><span>06 &#183; Component fixes from the critique</span><span class="why">Three measured failures, each with its systemic fix &#8212; not a patch. Plus the one shape question worth asking before the system is derived.</span></h2>
+
+  <div class="cols2">
+    <div class="demo col">
+      <span class="lb">W1 &#183; The panel gets its own accent aliases</span>
+      <div class="panelbox">
+        <span class="eyebrow-old">For clubs &#8212; old: accent on panel, 3.80:1 &#10007;</span>
+        <span class="eyebrow-new">For clubs &#8212; new: panel-accent, 5.9:1 &#10003;</span>
+        <div style="font-size:22px;font-weight:500;letter-spacing:var(--track-d3);font-family:var(--f-display)">Recruit without the spreadsheet.</div>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">The dark card is a dark context <i>in both themes</i>, so it carries theme-independent tokens: <b>--panel-accent / --panel-accent-text</b> (the dark theme&#8217;s accent pair). Rule: every surface owns a full alias set; nothing inherits accent across a register boundary.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">W2 &#183; Inputs get a compliant boundary</span>
+      <div class="field"><label for="i1">Old &#8212; line-2, 1.49:1 &#10007;</label><input class="inp" id="i1" placeholder="Role title" /></div>
+      <div class="field"><label for="i2">New &#8212; line-3, 3.28:1 &#10003;</label><input class="inp inp-fix" id="i2" placeholder="Role title" /></div>
+      <div class="sm">A third line weight (<b>--line-3</b>, per-ramp values in the tokens) exists only for control boundaries &#8212; inputs, checkboxes, selects &#8212; and holds 3:1 on every surface inputs sit on, in all four ramps. Hairlines stay decorative; boundaries carry 3:1. Focus stays accent.</div>
+    </div>
+  </div>
+
+  <div class="cols2" style="margin-top:var(--s4)">
+    <div class="demo col">
+      <span class="lb">W3 &#183; The 375px rule, actually applied</span>
+      <div class="mrow" style="max-width:340px">
+        <div><div class="jt" style="font-size:15px">VP of Design</div><div class="jm">2 days left &#183; 18 applied</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+          <button class="btn" style="min-height:44px;padding:8px 18px">Apply</button>
+          <button class="btn btn-ghost btn-sm" aria-label="More actions">Save &#8230;</button>
+        </div>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">Below 480px the primary keeps 44px and the secondary demotes to ghost/overflow &#8212; the studio&#8217;s own rule, now expressed as a component variant instead of a footnote. No 34px targets on touch.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Shape &#8212; pills vs. set squares</span>
+      <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+        <button class="btn btn-sm btn-ink">Apply</button>
+        <button class="btn btn-sm">Save</button>
+        <button class="btn btn-sm btn-ink btn-sq">Apply</button>
+        <button class="btn btn-sm btn-sq">Save</button>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">Pills (current) read friendly and are Wellfound&#8217;s shape; 10px squares read more instrument-like and match the input radius. Tradeoff: pills + drawn-dot wordmark keep the round family consistent; squares differentiate harder from the source material. <b>Lean: keep pills</b> &#8212; the dot system is round, and shape-switching buys less than type + neutrals already did.</div>
+    </div>
+  </div>
+
+  <!-- ================= 07 MOTION ================= -->
+  <h2 class="sec"><span>07 &#183; Motion &#8212; the dot carries the state</span><span class="why">Tokens: 150 / 200 / 250ms on one ease. One signature: when state changes, the dot pulses once. Never loops, never decorative. Click the buttons.</span></h2>
+
+  <div class="cols2">
+    <div class="demo col">
+      <span class="lb">State change &#8212; decision demo</span>
+      <div class="mrow" id="mdemo">
+        <div><div class="jt" style="font-size:15px">Priya Raman</div><div class="jm">Junior &#183; Informatics &#183; portfolio attached</div></div>
+        <div style="display:flex;gap:var(--s2);align-items:center">
+          <span class="badge b-new" id="mbadge"><span class="dot"></span><span id="mlabel">New</span></span>
+          <button class="btn btn-sm btn-ink" id="maccept">Accept</button>
+          <button class="btn btn-sm btn-ghost" id="mundo" hidden>Undo</button>
+        </div>
+      </div>
+      <div class="sm" style="margin-top:var(--s2)">Accept &#8594; badge swaps to Accepted and its dot pulses once (600ms, then still). Undo restores. The pulse is the confirmation &#8212; no toast needed for the common case.</div>
+    </div>
+    <div class="demo col">
+      <span class="lb">Rules</span>
+      <div class="sm"><b>--t-fast 150ms</b> hover, press, focus &#183; <b>--t-base 200ms</b> reveal, swap, fade-up &#183; <b>--t-slow 250ms</b> panels, sheets. One ease: cubic-bezier(.2,.7,.3,1).</div>
+      <div class="sm"><b>The dot pulses once on state change</b> &#8212; application submitted, decision made, posting went live. It never loops (the old 30s-polling spinner anxiety is the anti-pattern), and it dies under prefers-reduced-motion.</div>
+      <div class="sm"><b>Earned moments only:</b> first posting published and application submitted may compose dot-pulse + fade-up. Everything else uses the plain tokens.</div>
+      <button class="btn btn-sm" id="mreplay" style="align-self:flex-start">Replay pulse on the recruiting dot</button>
+      <div class="pulse" style="margin-top:2px"><span class="pdot" id="livedot"></span>Actively recruiting</div>
+    </div>
+  </div>
+
+  <!-- ================= 08 RECOMMENDATION ================= -->
+  <h2 class="sec"><span>08 &#183; The recommended bundle</span><span class="why">Set the switches to: Instrument &#183; Serif &#183; Paper. That combination is the candidate identity.</span></h2>
+  <div class="demo col">
+    <div class="sm"><b>zothub&#8201;&#9679;</b> (drawn period, accent) &#183; <b>Instrument Sans</b> everywhere with <b>Instrument Serif italic</b> as the signature voice &#183; <b>paper neutrals</b>, crimson unchanged &#183; <b>mono data voice</b> with the event date chip and no secondary colour &#183; <b>accent = demands action</b> &#183; <b>the dot pulses once on state change</b>. Pills stay. Every failure from the critique (W1&#8211;W3) is fixed systemically above.</div>
+    <div class="sm">What this buys over v2: platform-independent voice, a device that is ours at every size from 3px to 56px, warmth the foundation promised, event/role distinction without new colour, and a motion signature that is also a status system. What it costs: one webfont family (~55KB, self-hosted), and letting go of the SF-Pro-tuned tracking table.</div>
+  </div>
+
+  <footer style="margin-top:var(--s7);border-top:1px solid var(--line);padding:var(--s4) 0 var(--s6);font-size:13px;color:var(--ink-3)">
+    Identity lab &#183; builds on <b>direction-11-v2-pages.html</b> (structure unchanged there). Critique and measurements: <b>docs/design/01-direction-11-critique.md</b>. Both palettes designed in both temperatures; use the switches.
+  </footer>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  function group(sel,attr){var b=$$(sel);b.forEach(function(x){x.addEventListener('click',function(){b.forEach(function(y){y.setAttribute('aria-pressed',String(y===x));});document.documentElement.setAttribute(attr,x.dataset[attr.replace('data-','')]);});});}
+  group('.seg [data-type]','data-type');
+  group('.seg [data-sig]','data-sig');
+  group('.seg [data-warm]','data-warm');
+  document.documentElement.setAttribute('data-type','system');
+  document.documentElement.setAttribute('data-sig','weight');
+  document.documentElement.setAttribute('data-warm','cool');
+})();
+(function(){
+  var badge=document.getElementById('mbadge'),label=document.getElementById('mlabel'),
+      accept=document.getElementById('maccept'),undo=document.getElementById('mundo');
+  function pulse(el){el.classList.remove('pulse-once');void el.offsetWidth;el.classList.add('pulse-once');}
+  accept.addEventListener('click',function(){
+    badge.className='badge b-ok';label.textContent='Accepted';
+    accept.hidden=true;undo.hidden=false;pulse(badge);
+  });
+  undo.addEventListener('click',function(){
+    badge.className='badge b-new';label.textContent='New';
+    accept.hidden=false;undo.hidden=true;pulse(badge);
+  });
+  var replay=document.getElementById('mreplay'),live=document.getElementById('livedot');
+  replay.addEventListener('click',function(){live.classList.remove('pulse-once');void live.offsetWidth;live.classList.add('pulse-once');});
+})();
+</script>

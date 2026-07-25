@@ -1,0 +1,483 @@
+<title>ZotHub &#8212; Design System &amp; Brand Kit</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+
+  /* =========================================================================
+     ZOTHUB DESIGN TOKENS — source of truth, derived from direction-11-v4-uci.html
+     Light = cool Slate · Dark = Graphite · Accent = Pacific blue (UCI-adjacent)
+     Every colour pair below is AA-verified by measurement (ratios annotated in-page).
+     ========================================================================= */
+  :root{
+    /* --- neutrals: SLATE (light) --- */
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;   /* line-3 = control boundaries, >=3:1 */
+    --panel:#14171B; --panel-2:#1E2228; --panel-ink:#F0F2F4; --panel-ink-2:#9AA1A8; --panel-line:#2B3037;
+
+    /* --- accent: PACIFIC BLUE --- */
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --panel-accent:#5AA2E6; --panel-accent-text:#8FBEF2;   /* accent for dark contexts */
+
+    /* --- status: fixed semantics, never brand --- */
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+
+    /* --- spacing: 4pt ramp --- */
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    /* --- radii: inputs 10 · cards 14 · large 20 · pills 999 --- */
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    /* --- elevation: ink-tinted, 4 steps --- */
+    --e1:0 1px 2px rgba(13,21,25,.05);
+    --e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);
+    --e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    /* --- motion --- */
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    /* --- type --- */
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --f-display:"Instrument Sans",var(--sys); --f-ui:"Instrument Sans",var(--sys);
+    --track-d1:-.034em; --track-d2:-.026em; --track-d3:-.018em;
+
+    --ok-badge:var(--ok);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10; --bg-2:#141517; --bg-3:#1B1D1F;
+    --ink:#F0F1F2; --ink-2:#A8ABAF; --ink-3:#85888D;
+    --line:#26282B; --line-2:#37393D; --line-3:#64676C;
+    --panel:#17181A; --panel-2:#1F2124; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2E3033;
+    --accent:#5AA2E6; --accent-text:#8FBEF2; --accent-ink:#06182B; --accent-wash:#0E2338; --accent-line:#234A6B;
+    --panel-accent:#5AA2E6; --panel-accent-text:#8FBEF2;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  .ctx-dark{
+    --bg:var(--panel);--bg-2:var(--panel-2);--bg-3:var(--panel-2);
+    --ink:var(--panel-ink);--ink-2:var(--panel-ink-2);--ink-3:var(--panel-ink-2);
+    --line:var(--panel-line);--line-2:var(--panel-line);--line-3:#4A5058;
+    --accent:var(--panel-accent);--accent-text:var(--panel-accent-text);--accent-ink:#06182B;
+    --accent-wash:#12283F;--accent-line:#274A6B;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;color:var(--ink);
+  }
+  .ctx-light{
+    --bg:#FFFFFF;--bg-2:#F3F7FC;--bg-3:#E9F1FB;
+    --ink:#0C161E;--ink-2:#42505B;--ink-3:#5D6B75;--line:#E1E9F1;--line-2:#C9D6E3;--line-3:#7F8D99;
+    --accent:#0F5FA8;--accent-text:#0B4E8C;--accent-ink:#FFFFFF;--accent-wash:#E4EFFB;--accent-line:#BAD6F2;
+    --ok:#10794D;--ok-wash:#E7F4EE;--warn:#8A5A0B;--warn-wash:#FCF3E4;--bad:#B32B1D;--bad-wash:#FBEBE9;color:var(--ink);
+  }
+
+  /* ============ page chrome ============ */
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;margin:0}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .topbar{position:sticky;top:0;z-index:600;background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-in{max-width:1180px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap}
+  .wm{font-family:var(--f-display);font-size:20px;font-weight:700;letter-spacing:-.045em;line-height:1}
+  .wm i{font-style:italic;color:var(--accent-text);margin-left:.015em}
+  .topnav{display:flex;gap:var(--s3);flex-wrap:wrap}
+  .topnav a{font-size:12.5px;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);text-decoration:none;padding:4px 0}
+  .topnav a:hover{color:var(--ink)}
+  .grow{flex:1}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  .hero-band{padding:var(--s8) 0 var(--s6)}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-text);font-weight:700}
+  h1.title{font-family:var(--f-display);font-size:clamp(34px,5vw,52px);font-weight:500;letter-spacing:var(--track-d1);line-height:1.02;margin:var(--s3) 0 var(--s3);max-width:20ch}
+  h1.title .sig{font-style:italic;color:var(--accent-text)}
+  .lede{font-size:17px;color:var(--ink-2);max-width:64ch;margin:0}
+
+  section{padding:var(--s7) 0;border-top:1px solid var(--line)}
+  .sec-h{display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap;margin:0 0 var(--s5)}
+  .sec-n{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:700}
+  h2{font-family:var(--f-display);font-size:28px;font-weight:500;letter-spacing:var(--track-d2);margin:0}
+  .sec-note{font-size:13.5px;color:var(--ink-3);max-width:56ch}
+  h3.sub{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:var(--s6) 0 var(--s3)}
+  .card{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:var(--s5)}
+  .rule{font-size:14px;color:var(--ink-2);border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;margin:var(--s4) 0 0}
+  .rule b{color:var(--accent-text)}
+  .grid{display:grid;gap:var(--s3)}
+  .g2{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+
+  /* swatches */
+  .sw{border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--bg)}
+  .sw .chip{height:60px}
+  .sw .meta{padding:9px 11px;display:flex;flex-direction:column;gap:2px}
+  .sw .nm{font-size:13px;font-weight:650}
+  .sw .hex{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase}
+  .sw .role{font-size:11.5px;color:var(--ink-3)}
+  .aa{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:var(--rp);width:fit-content;margin-top:3px}
+  .aa::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+  .aa-ok{background:var(--ok-wash);color:var(--ok)}
+
+  /* primitives (mirror v4 exactly) */
+  .btn{font:inherit;font-family:var(--f-ui);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  /* base hover uses :where() so it stays specificity 0,1,0 — filled variants below always win
+     by source order and never lose their fill (fixes text-invisible-on-hover). */
+  .btn:where(:hover){background:var(--bg-3)} .btn:active{transform:translateY(1px)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-ink:hover{filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-acc:hover{filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)} .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)} .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .b-idle{background:var(--bg-3);color:var(--ink-3)}
+  .chip2{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip2[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:44px;width:100%}
+  .inp:focus{border-color:var(--accent)} .inp::placeholder{color:var(--ink-3)}
+  .field{display:flex;flex-direction:column;gap:6px} .field label{font-size:13px;font-weight:600}
+  .row{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2)}
+  .datechip .m{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--accent-text);text-transform:uppercase}
+  .datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  .av{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pdot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  /* type specimen */
+  .spec{display:grid;grid-template-columns:120px 1fr;gap:var(--s3) var(--s5);align-items:baseline}
+  .spec .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .d1{font-family:var(--f-display);font-size:52px;font-weight:500;letter-spacing:var(--track-d1);line-height:1}
+  .d2{font-family:var(--f-display);font-size:32px;font-weight:500;letter-spacing:var(--track-d2);line-height:1.08}
+  .d3{font-family:var(--f-display);font-size:22px;font-weight:600;letter-spacing:var(--track-d3);line-height:1.2}
+  .t1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .bd{font-size:16px;line-height:1.55;color:var(--ink-2)}
+  .mt{font-size:13.5px;color:var(--ink-3)}
+  .lb{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .sig-i{font-style:italic;color:var(--accent-text)}
+  .datavoice{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-3)} .datavoice b{color:var(--ink);font-weight:650}
+
+  /* spacing viz */
+  .sp{display:flex;align-items:center;gap:var(--s3);margin-bottom:6px}
+  .sp .bar{height:16px;background:var(--accent);border-radius:3px}
+  .sp .lab2{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:120px}
+  .radii{display:flex;gap:var(--s4);flex-wrap:wrap}
+  .radbox{width:84px;height:60px;border:1.5px solid var(--accent);background:var(--accent-wash)}
+  .elev{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s4)}
+  .elbox{background:var(--bg);border:1px solid var(--line);border-radius:var(--r3);padding:var(--s4);min-height:78px}
+
+  /* marks */
+  .markwrap{display:flex;gap:var(--s6);flex-wrap:wrap;align-items:flex-end}
+  .stk{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;border-radius:24%;background:#101112;font-family:var(--f-display);font-weight:700;line-height:.86;letter-spacing:-.035em}
+  .stk .t{color:#F5F5F6} .stk .h{font-style:italic;color:#5AA2E6;margin-right:.06em}
+  .stk-disc{border-radius:50%} .stk-lite{background:#fff;box-shadow:inset 0 0 0 1px var(--line-2)} .stk-lite .t{color:#14171B} .stk-lite .h{color:#0F5FA8}
+  .s96{width:96px;height:96px;font-size:30px} .s48{width:48px;height:48px;font-size:15px} .s32{width:32px;height:32px;font-size:10px} .s16{width:16px;height:16px;font-size:6px;letter-spacing:-.05em}
+  .markcell{display:flex;flex-direction:column;gap:var(--s2);align-items:center}
+  .do{border-left:3px solid var(--ok);background:var(--ok-wash);color:var(--ok);padding:8px 12px;border-radius:0 8px 8px 0;font-size:13px}
+  .dont{border-left:3px solid var(--bad);background:var(--bad-wash);color:var(--bad);padding:8px 12px;border-radius:0 8px 8px 0;font-size:13px}
+
+  /* motion */
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)} .state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="wm">zot<i>hub</i></span>
+    <nav class="topnav">
+      <a href="#brand">Brand</a><a href="#color">Colour</a><a href="#type">Type</a>
+      <a href="#space">Space</a><a href="#elevation">Elevation</a><a href="#components">Components</a>
+      <a href="#motion">Motion</a><a href="#rules">Rules</a>
+    </nav>
+    <span class="grow"></span>
+    <span class="lb">Design System v1</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero-band">
+    <span class="kicker">ZotHub &#183; Design System &amp; Brand Kit</span>
+    <h1 class="title">The tokens, marks, and parts <span class="sig">everything else is built from.</span></h1>
+    <p class="lede">Derived from <b>direction-11-v4-uci.html</b> &#8212; the locked visual identity. This is the source of truth: change a value here and every screen inherits it. Pacific blue on cool-slate light / graphite dark, Instrument Sans, italic-hub wordmark, pill controls. Every colour pair is AA-verified by measurement. Use the toggle &#8212; both themes are designed, not inverted.</p>
+  </div>
+
+  <!-- ===================== BRAND ===================== -->
+  <section id="brand">
+    <div class="sec-h"><span class="sec-n">01</span><h2>Brand marks</h2><span class="sec-note">One gesture &#8212; upright ink tipping into italic accent &#8212; carries the headline signature, the wordmark, and the icon.</span></div>
+
+    <h3 class="sub">Wordmark &#8212; inline (topbar, docs, running text)</h3>
+    <div class="card">
+      <div class="markwrap">
+        <span class="wm" style="font-size:52px">zot<i>hub</i></span>
+        <span class="wm" style="font-size:28px">zot<i>hub</i></span>
+        <span class="wm" style="font-size:19px">zot<i>hub</i></span>
+      </div>
+      <div class="rule"><b>Construction:</b> Instrument Sans 700, <b>zot</b> in <code>--ink</code>, <b>hub</b> in italic <code>--accent-text</code> (light) / <code>--accent</code> (dark). Tracking &#8722;0.045em. Always one line; never stack the inline wordmark.</div>
+    </div>
+
+    <h3 class="sub">Stacked mark &#8212; avatar, app icon, favicon, social</h3>
+    <div class="card">
+      <div class="markwrap">
+        <span class="markcell"><span class="stk stk-disc s96"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">96 &#183; avatar</span></span>
+        <span class="markcell"><span class="stk s48"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">48 &#183; app icon</span></span>
+        <span class="markcell"><span class="stk stk-disc s32"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">32 &#183; favicon</span></span>
+        <span class="markcell"><span class="stk stk-disc s16"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">16 &#183; tab</span></span>
+        <span class="markcell"><span class="stk stk-disc s96 stk-lite"><span class="t">zot</span><span class="h">hub</span></span><span class="lb">on light</span></span>
+      </div>
+      <div class="grid g2" style="margin-top:var(--s4)">
+        <div class="do"><b>Do</b> &#8212; disc for round contexts, squircle for app icons; keep the italic <b>hub</b> in accent.</div>
+        <div class="dont"><b>Don&#8217;t</b> &#8212; never a lone &#8220;z&#8221;; never put the inline wordmark inside a disc; never re-colour <b>zot</b>.</div>
+      </div>
+      <div class="rule"><b>Production note:</b> these are font-rendered lockups. For shipped assets (favicon .ico/.png set, social), outline the glyphs from the licensed Instrument Sans &#8212; a mechanical step once the font is licensed. Disc fill <code>#101112</code>, letters <code>#F5F5F6</code> / italic <code>#5AA2E6</code>.</div>
+    </div>
+  </section>
+
+  <!-- ===================== COLOUR ===================== -->
+  <section id="color">
+    <div class="sec-h"><span class="sec-n">02</span><h2>Colour</h2><span class="sec-note">Neutrals carry ~95% of the UI. One accent marks action. A disciplined status set means status only. Ratios are measured; AA badge = &#8805;4.5:1 text (or &#8805;3:1 for boundaries).</span></div>
+
+    <h3 class="sub">Neutrals &#8212; Slate (light) / Graphite (dark). Toggle to see both.</h3>
+    <div class="grid g2">
+      <div class="sw"><div class="chip" style="background:var(--bg)"></div><div class="meta"><span class="nm">bg</span><span class="hex">#FFFFFF / #0E0F10</span><span class="role">page base, cards</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--bg-2)"></div><div class="meta"><span class="nm">bg-2</span><span class="hex">#F5F7FA / #141517</span><span class="role">grouped surfaces, hover</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--bg-3)"></div><div class="meta"><span class="nm">bg-3</span><span class="hex">#EBEFF4 / #1B1D1F</span><span class="role">sunken, tag-neutral</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="meta"><span class="nm">ink</span><span class="hex">#0D1519 / #F0F1F2</span><span class="role">primary text</span><span class="aa aa-ok">18.5:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink-2)"></div><div class="meta"><span class="nm">ink-2</span><span class="hex">#44515A / #A8ABAF</span><span class="role">body, secondary</span><span class="aa aa-ok">8.2:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink-3)"></div><div class="meta"><span class="nm">ink-3</span><span class="hex">#5F6B74 / #85888D</span><span class="role">meta, captions</span><span class="aa aa-ok">5.5:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--line)"></div><div class="meta"><span class="nm">line</span><span class="hex">#E4E9EE / #26282B</span><span class="role">hairlines (decorative)</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--line-3)"></div><div class="meta"><span class="nm">line-3</span><span class="hex">#828E97 / #64676C</span><span class="role">control boundaries</span><span class="aa aa-ok">3.3:1</span></div></div>
+    </div>
+
+    <h3 class="sub">Accent &#8212; Pacific blue (UCI-adjacent; no seal, no gold)</h3>
+    <div class="grid g2">
+      <div class="sw"><div class="chip" style="background:var(--accent)"></div><div class="meta"><span class="nm">accent</span><span class="hex">#0F5FA8 / #5AA2E6</span><span class="role">fills, primary CTA</span><span class="aa aa-ok">white 6.5:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--accent-text)"></div><div class="meta"><span class="nm">accent-text</span><span class="hex">#0B4E8C / #8FBEF2</span><span class="role">accent AS text</span><span class="aa aa-ok">8.5:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--accent-wash)"></div><div class="meta"><span class="nm">accent-wash</span><span class="hex">#E9F1FB / #0E2338</span><span class="role">badge / chip fill</span><span class="aa aa-ok">7.4:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--accent-line)"></div><div class="meta"><span class="nm">accent-line</span><span class="hex">#BAD6F2 / #234A6B</span><span class="role">accent borders</span></div></div>
+    </div>
+
+    <h3 class="sub">Status &#8212; fixed semantics, never used as brand</h3>
+    <div class="grid g2">
+      <div class="sw"><div class="chip" style="background:var(--ok)"></div><div class="meta"><span class="nm">ok</span><span class="hex">accepted / going</span><span class="role">#10794D / #4FCB92</span><span class="aa aa-ok">on wash 4.8:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--warn)"></div><div class="meta"><span class="nm">warn</span><span class="hex">reviewed / waiting</span><span class="role">#8A5A0B / #DCA85A</span><span class="aa aa-ok">on wash 5.4:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--bad)"></div><div class="meta"><span class="nm">bad</span><span class="hex">declined / closed</span><span class="role">#B32B1D / #E98A7C</span><span class="aa aa-ok">on wash 5.5:1</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--bg-3)"></div><div class="meta"><span class="nm">idle</span><span class="hex">applied / neutral</span><span class="role">bg-3 + ink-3</span></div></div>
+    </div>
+
+    <h3 class="sub">Fixed-register contexts &#8212; same in both themes</h3>
+    <div class="grid g2">
+      <div class="card ctx-dark" style="box-shadow:var(--e2)">
+        <span class="lb" style="color:var(--accent-text)">ctx-dark</span>
+        <div class="t1" style="margin:6px 0">Club card &#8212; always dark</div>
+        <p class="mt" style="margin:0 0 10px">The two-sided split; blue reads as <code>--panel-accent #5AA2E6</code>.</p>
+        <span class="row"><button class="btn btn-sm btn-acc">Start recruiting</button><span class="badge b-ok"><span class="dot"></span>Accepted</span></span>
+      </div>
+      <div class="card ctx-light" style="box-shadow:var(--e2)">
+        <span class="lb" style="color:var(--accent-text)">ctx-light</span>
+        <div class="t1" style="margin:6px 0">Student card &#8212; always light</div>
+        <p class="mt" style="margin:0 0 10px">Holds a light register even inside dark theme.</p>
+        <span class="row"><button class="btn btn-sm btn-acc">Explore</button><span class="badge b-new"><span class="dot"></span>New</span></span>
+      </div>
+    </div>
+    <div class="rule"><b>Accent semantics:</b> the accent marks exactly one thing &#8212; <b>demands action now</b> (New, Closing soon, Review them) and primary CTAs. Everything decided or waiting is a calm status colour. If the accent is everywhere, status stops meaning anything.</div>
+  </section>
+
+  <!-- ===================== TYPE ===================== -->
+  <section id="type">
+    <div class="sec-h"><span class="sec-n">03</span><h2>Typography</h2><span class="sec-note">Instrument Sans, one superfamily. The italic is load-bearing &#8212; it is the signature and the wordmark. Numbers the system knows speak mono.</span></div>
+    <div class="card">
+      <div class="spec">
+        <span class="k">Display &#183; 500</span><span class="d1">Good clubs start here</span>
+        <span class="k">Section &#183; 500</span><span class="d2">Recruit without the spreadsheet</span>
+        <span class="k">Card &#183; 600</span><span class="d3">Embedded Systems Lead</span>
+        <span class="k">UI title &#183; 600</span><span class="t1">VP of Design</span>
+        <span class="k">Body &#183; 400</span><span class="bd">Post a role free, or link the Google Form you already use.</span>
+        <span class="k">Meta &#183; 400</span><span class="mt">Leadership &#183; closes in 2 days &#183; 18 applied</span>
+        <span class="k">Label &#183; mono</span><span class="lb">For students</span>
+        <span class="k">Signature</span><span class="d3">Find the thing <span class="sig-i">you&#8217;ll stick with.</span></span>
+        <span class="k">Data voice</span><span class="datavoice"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events</span>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:var(--s4)">
+      <div class="rule" style="margin:0"><b>Tracking scales with size:</b> &#8722;0.034em display, &#8722;0.026em section, &#8722;0.018em card, near-0 at body. Tight tracking on big type, relaxed on small.</div>
+      <div class="rule" style="margin:0"><b>Two jobs for italic:</b> the accent signature (one phrase per view) and the wordmark&#8217;s <b>hub</b>. Never italicise body copy for emphasis &#8212; use weight.</div>
+    </div>
+  </section>
+
+  <!-- ===================== SPACE ===================== -->
+  <section id="space">
+    <div class="sec-h"><span class="sec-n">04</span><h2>Spacing &amp; radii</h2><span class="sec-note">A 4pt ramp, named so spacing stops being ad-hoc. Radii separate inputs from cards so inputs never read as nested cards.</span></div>
+    <div class="grid g2">
+      <div class="card">
+        <h3 class="sub" style="margin-top:0">Spacing &#8212; 4pt base</h3>
+        <div class="sp"><span class="lab2">s1 &#183; 4</span><span class="bar" style="width:4px"></span></div>
+        <div class="sp"><span class="lab2">s2 &#183; 8</span><span class="bar" style="width:8px"></span></div>
+        <div class="sp"><span class="lab2">s3 &#183; 12</span><span class="bar" style="width:12px"></span></div>
+        <div class="sp"><span class="lab2">s4 &#183; 16</span><span class="bar" style="width:16px"></span></div>
+        <div class="sp"><span class="lab2">s5 &#183; 24</span><span class="bar" style="width:24px"></span></div>
+        <div class="sp"><span class="lab2">s6 &#183; 32</span><span class="bar" style="width:32px"></span></div>
+        <div class="sp"><span class="lab2">s7 &#183; 48</span><span class="bar" style="width:48px"></span></div>
+        <div class="sp"><span class="lab2">s8 &#183; 64</span><span class="bar" style="width:64px"></span></div>
+      </div>
+      <div class="card">
+        <h3 class="sub" style="margin-top:0">Radii</h3>
+        <div class="radii">
+          <span class="markcell"><span class="radbox" style="border-radius:6px"></span><span class="lb">r1 &#183; 6</span></span>
+          <span class="markcell"><span class="radbox" style="border-radius:10px"></span><span class="lb">r2 &#183; 10 inputs</span></span>
+          <span class="markcell"><span class="radbox" style="border-radius:14px"></span><span class="lb">r3 &#183; 14 cards</span></span>
+          <span class="markcell"><span class="radbox" style="border-radius:20px"></span><span class="lb">r4 &#183; 20 hero</span></span>
+          <span class="markcell"><span class="radbox" style="border-radius:999px;width:60px"></span><span class="lb">rp &#183; pills</span></span>
+        </div>
+        <div class="rule">Inputs (10) must not share the card radius (14), or they read as nested cards. Pills for all buttons and chips.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ELEVATION ===================== -->
+  <section id="elevation">
+    <div class="sec-h"><span class="sec-n">05</span><h2>Elevation</h2><span class="sec-note">Four ink-tinted steps &#8212; not pure black. Shadow signals interactivity and layering, never decoration.</span></div>
+    <div class="elev">
+      <div class="elbox" style="box-shadow:var(--e1)"><span class="lb">e1</span><div class="mt" style="margin-top:6px">resting cards, rows</div></div>
+      <div class="elbox" style="box-shadow:var(--e2)"><span class="lb">e2</span><div class="mt" style="margin-top:6px">hover, active buttons</div></div>
+      <div class="elbox" style="box-shadow:var(--e3)"><span class="lb">e3</span><div class="mt" style="margin-top:6px">popovers, menus</div></div>
+      <div class="elbox" style="box-shadow:var(--e4)"><span class="lb">e4</span><div class="mt" style="margin-top:6px">modals, the bridging hero cards</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== COMPONENTS ===================== -->
+  <section id="components">
+    <div class="sec-h"><span class="sec-n">06</span><h2>Components</h2><span class="sec-note">The inventory the screens are assembled from &#8212; re-tokened shadcn/Radix, not replaced. Compact variant, never a different component.</span></div>
+
+    <h3 class="sub">Buttons</h3>
+    <div class="card"><div class="row">
+      <button class="btn btn-acc">Primary</button>
+      <button class="btn btn-ink">Ink</button>
+      <button class="btn">Default</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn" disabled>Disabled</button>
+      <button class="btn btn-acc btn-sm">Small</button>
+      <button class="btn btn-ink btn-sm">Small ink</button>
+    </div>
+    <div class="rule"><b>Hierarchy:</b> <code>btn-acc</code> (blue) for the one action that demands it &#8212; marketing CTAs, &#8220;Review them.&#8221; <code>btn-ink</code> for the primary in-app verb in dense lists (Apply, RSVP) so blue stays scarce and status stays legible.</div></div>
+
+    <h3 class="sub">Tags, badges, chips</h3>
+    <div class="card"><div class="row" style="gap:var(--s4)">
+      <span class="tag">Closing soon</span><span class="tag tag-n">Arts &amp; Culture</span>
+      <span class="badge b-new"><span class="dot"></span>New</span>
+      <span class="badge b-warn"><span class="dot"></span>Reviewed</span>
+      <span class="badge b-ok"><span class="dot"></span>Accepted</span>
+      <span class="badge b-bad"><span class="dot"></span>Declined</span>
+      <span class="badge b-idle"><span class="dot"></span>Applied</span>
+      <button class="chip2" aria-pressed="true">All</button>
+      <button class="chip2" aria-pressed="false">Roles</button>
+    </div></div>
+
+    <h3 class="sub">Inputs</h3>
+    <div class="card"><div class="grid g2">
+      <div class="field"><label for="d1">Role title</label><input class="inp" id="d1" placeholder="VP of Design"></div>
+      <div class="field"><label for="d2">Search</label><input class="inp" id="d2" placeholder="Search roles, events, clubs&#8230;"></div>
+    </div></div>
+
+    <h3 class="sub">Data &amp; identity bits</h3>
+    <div class="card"><div class="row" style="gap:var(--s5)">
+      <span class="markcell"><span class="datechip"><span class="m">Sep</span><span class="d">29</span></span><span class="lb">event date</span></span>
+      <span class="markcell"><span class="av" style="background:#0F5FA8">D</span><span class="lb">club logo</span></span>
+      <span class="markcell"><span class="av" style="background:#7A4BE0">PR</span><span class="lb">avatar</span></span>
+      <span class="markcell"><span class="pulse"><span class="pdot"></span>Actively recruiting</span><span class="lb">live pulse</span></span>
+    </div></div>
+
+    <h3 class="sub">Opportunity &#8212; two views (card default, list toggle)</h3>
+    <p class="mt" style="margin:-6px 0 12px">Density follows the task. <b>Cards</b> is the default for browsing (scannable, one self-contained card per item); <b>List</b> is the denser club-grouped power view. View choice persists per surface. Both live on the v4 Discover page. The card is a <b>polymorphic renderer</b> &#8212; a role shows a deadline countdown, an event shows the mono date chip.</p>
+    <div class="grid g2">
+      <div style="border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:16px;display:flex;gap:12px">
+        <span style="width:46px;height:46px;border-radius:11px;background:#C2410C;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0">D</span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div class="d3" style="font-size:18px;margin:0">VP of Design</div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:3px">Design at UCI</div>
+          <div class="mt" style="margin-top:2px">Leadership &#183; closes in 2 days &#183; 18 applied</div>
+          <div style="margin-top:8px"><span class="tag">Closing soon</span></div>
+          <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm" style="flex:1;justify-content:center">Save</button><button class="btn btn-sm btn-ink" style="flex:1;justify-content:center">Apply</button></div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:16px;display:flex;gap:12px">
+        <span style="width:46px;height:46px;border-radius:11px;background:var(--bg-2);border:1px solid var(--line-2);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-variant-numeric:tabular-nums"><span style="font-size:9px;letter-spacing:.1em;font-weight:700;color:var(--accent-text);text-transform:uppercase;line-height:1">Sep</span><span style="font-size:18px;font-weight:600;color:var(--ink);line-height:1.2">29</span></span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div class="d3" style="font-size:18px;margin:0">Shop Day &amp; Open Build</div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:3px">Anteater Robotics</div>
+          <div class="mt" style="margin-top:2px">Tue 7:00 PM &#183; 18 of 30 going</div>
+          <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm" style="flex:1;justify-content:center">Save</button><button class="btn btn-sm btn-ink" style="flex:1;justify-content:center">RSVP</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-top:var(--s3)">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap">
+        <span class="av" style="background:#C2410C;width:28px;height:28px;border-radius:8px">D</span>
+        <span style="font-weight:650;font-size:15px">Design at UCI</span>
+        <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+        <span class="lb" style="margin-left:auto">list view</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;padding:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px"><div class="t1">VP of Design</div><div class="mt">Leadership &#183; closes in 2 days &#183; 18 applied</div></div>
+        <span class="tag">Closing soon</span><button class="btn btn-sm">Save</button><button class="btn btn-sm btn-ink">Apply</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MOTION ===================== -->
+  <section id="motion">
+    <div class="sec-h"><span class="sec-n">07</span><h2>Motion</h2><span class="sec-note">150 / 200 / 250ms on one ease. Functional, plus one signature: the dot pulses once on a state change. Never loops, dies under reduced-motion.</span></div>
+    <div class="card"><div class="row" style="gap:var(--s5)">
+      <div class="row" style="gap:var(--s3)">
+        <span class="badge b-new" id="mbadge"><span class="dot"></span><span id="mlabel">New</span></span>
+        <button class="btn btn-sm btn-ink" id="maccept">Accept</button>
+        <button class="btn btn-sm btn-ghost" id="mundo" hidden>Undo</button>
+      </div>
+      <span class="mt">&#8592; click Accept: badge swaps to Accepted and its dot pulses once. The confirmation <em>is</em> the motion.</span>
+    </div>
+    <div class="grid g3" style="margin-top:var(--s4)">
+      <div class="mt"><b style="color:var(--ink)">t-fast 150ms</b><br>hover, press, focus</div>
+      <div class="mt"><b style="color:var(--ink)">t-base 200ms</b><br>reveal, swap, fade-up</div>
+      <div class="mt"><b style="color:var(--ink)">t-slow 250ms</b><br>panels, sheets</div>
+    </div></div>
+  </section>
+
+  <!-- ===================== RULES ===================== -->
+  <section id="rules">
+    <div class="sec-h"><span class="sec-n">08</span><h2>Operating rules</h2><span class="sec-note">The non-negotiables every screen inherits. From the strategy foundation, carried into tokens.</span></div>
+    <div class="grid g2">
+      <div class="card"><div class="t1">Never a dead end</div><p class="mt" style="margin:6px 0 0">Every state offers the next action. No message names a problem without a remedy; no empty result ends the journey. When principles conflict, this wins.</p></div>
+      <div class="card"><div class="t1">Honest about state</div><p class="mt" style="margin:6px 0 0">Live counts only &#8212; data describing the product&#8217;s <em>state</em>, never copy describing its <em>stage</em>. No fabricated stats, ever.</p></div>
+      <div class="card"><div class="t1">Accent = demands action</div><p class="mt" style="margin:6px 0 0">Blue marks the thing to act on now, and primary CTAs. Status colours stay reserved for status. Colour is never the sole carrier of meaning.</p></div>
+      <div class="card"><div class="t1">Density follows the task</div><p class="mt" style="margin:6px 0 0">Cards &#8596; list &#8596; table is first-class on any collection. Same components at both densities &#8212; a compact variant, never a different component.</p></div>
+      <div class="card"><div class="t1">AA is a merge gate</div><p class="mt" style="margin:6px 0 0">Every pair contrast-verified by measurement (1.4.3 text <em>and</em> 1.4.11 boundaries). Visible focus everywhere. 44&#215;44 touch targets. Every icon-only control labelled.</p></div>
+      <div class="card"><div class="t1">Not UCI-official</div><p class="mt" style="margin:6px 0 0">Campus-adjacent, not impersonating: the blue and the photo say &#8220;built for UCI,&#8221; never a seal, gold, or endorsement. Identity lives in tokens, so a rebrand is a token swap.</p></div>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid var(--line);padding:var(--s5) 0 var(--s7);color:var(--ink-3);font-size:13px">
+    ZotHub Design System v1 &#183; source of truth = <b>direction-11-v4-uci.html</b> &#183; written spec: <b>docs/design/design-system.md</b> &#183; next: component library &#8594; screens. Webfonts degrade to system offline.
+  </footer>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var badge=document.getElementById('mbadge'),label=document.getElementById('mlabel'),accept=document.getElementById('maccept'),undo=document.getElementById('mundo');
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  accept.addEventListener('click',function(){badge.className='badge b-ok';label.textContent='Accepted';accept.hidden=true;undo.hidden=false;fire(badge);});
+  undo.addEventListener('click',function(){badge.className='badge b-new';label.textContent='New';accept.hidden=false;undo.hidden=true;fire(badge);});
+})();
+</script>

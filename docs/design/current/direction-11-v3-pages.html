@@ -1,0 +1,499 @@
+<title>ZotHub &#8212; Direction 11 v3, the pages in practice</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+  /* ===================== RAMP: ROSE (default) ===================== */
+  :root{
+    --bg:#FFFFFF; --bg-2:#FAF6F5; --bg-3:#F3ECEA;
+    --ink:#170F12; --ink-2:#4C4144; --ink-3:#6D6064;
+    --line:#ECE2E1; --line-2:#D8CCCB; --line-3:#8F7E82;
+    --panel:#160F13; --panel-2:#20161B; --panel-ink:#F4EEF0; --panel-ink-2:#9A8C93; --panel-line:#332630;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+    --panel-accent:#FF4C86; --panel-accent-text:#FF87AE;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--rp:999px;
+    --e1:0 1px 2px rgba(23,15,18,.05);
+    --e2:0 2px 8px rgba(23,15,18,.07),0 1px 2px rgba(23,15,18,.04);
+    --e3:0 12px 32px rgba(23,15,18,.10),0 2px 6px rgba(23,15,18,.05);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    /* Typeface LOCKED 2026-07-24: Instrument Sans — the italic is load-bearing (signature + wordmark),
+       and Instrument's true italic is the best of the tested stacks. */
+    --f-display:"Instrument Sans",var(--sys); --f-ui:"Instrument Sans",var(--sys);
+    --track-d1:-.034em; --track-d2:-.026em; --track-d3:-.018em;
+  }
+
+  /* DEFAULT DARK = GRAPHITE. The locked ramp is the hybrid: rose light + graphite dark —
+     light leans warm toward the accent; dark stays neutral so the accent does the talking. */
+  :root[data-theme="dark"]{
+    --bg:#0E0F10; --bg-2:#141517; --bg-3:#1B1D1F;
+    --ink:#F0F1F2; --ink-2:#A8ABAF; --ink-3:#85888D;
+    --line:#26282B; --line-2:#37393D; --line-3:#64676C;
+    --panel:#17181A; --panel-2:#1F2124; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2E3033;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    --accent:#FF4C86; --accent-text:#FF87AE; --accent-ink:#1B0410; --accent-wash:#2E1220; --accent-line:#4E1F35;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);
+  }
+
+  /* ===================== PURE RAMPS, kept for comparison ===================== */
+  :root[data-ramp="rose"][data-theme="dark"]{
+    --bg:#120D10; --bg-2:#171114; --bg-3:#1F171B;
+    --ink:#F3EEF0; --ink-2:#B2A5AB; --ink-3:#8C7E85;
+    --line:#2B2127; --line-2:#3E3038; --line-3:#6F5D66;
+    --panel:#1A1318; --panel-2:#221A1F; --panel-ink:#F3EEF0; --panel-ink-2:#9A8C93; --panel-line:#33272E;
+  }
+  :root[data-ramp="graphite"]{
+    --bg:#FFFFFF; --bg-2:#F7F7F8; --bg-3:#EEEFF1;
+    --ink:#101113; --ink-2:#43474B; --ink-3:#66696E;
+    --line:#E6E7E9; --line-2:#D2D4D7; --line-3:#85888D;
+    --panel:#101112; --panel-2:#191A1C; --panel-ink:#F0F1F2; --panel-ink-2:#95989D; --panel-line:#2A2C2F;
+  }
+
+  /* ===================== FIXED CONTEXTS (the W4 fix) =====================
+     The two brand cards are surfaces with a fixed register, in BOTH themes:
+     the club side is always dark, the student side is always light.
+     Each pins a complete alias set — nothing inside needs special-casing. */
+  .ctx-dark{
+    --bg:var(--panel); --bg-2:var(--panel-2); --bg-3:var(--panel-2);
+    --ink:var(--panel-ink); --ink-2:var(--panel-ink-2); --ink-3:var(--panel-ink-2);
+    --line:var(--panel-line); --line-2:var(--panel-line); --line-3:var(--panel-line);
+    --accent:var(--panel-accent); --accent-text:var(--panel-accent-text); --accent-ink:#1B0410;
+    --accent-wash:#2E1220; --accent-line:#4E1F35;
+    --ok:#4FCB92; --ok-wash:#102A1F; --warn:#DCA85A; --warn-wash:#2B2210; --bad:#E98A7C; --bad-wash:#2D1613;
+    color:var(--ink);
+  }
+  .ctx-light{
+    --bg:#FFFFFF; --bg-2:#FBF4F7; --bg-3:#F5EAEF;
+    --ink:#140A0F; --ink-2:#4E3F47; --ink-3:#6E5C65;
+    --line:#EBDCE2; --line-2:#D9C4CD; --line-3:#8F7E82;
+    --accent:#D81E5B; --accent-text:#B01048; --accent-ink:#FFFFFF; --accent-wash:#FDEAF1; --accent-line:#F6C3D5;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    color:var(--ink);
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* ============ studio ============ */
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px}
+  .seg button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 13px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+
+  /* ============ primitives ============ */
+  .btn{font:inherit;font-family:var(--f-ui);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease)}
+  .btn:hover{background:var(--bg-3)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+  .btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}
+  .b-ok{background:var(--ok-wash);color:var(--ok)}
+  .b-warn{background:var(--warn-wash);color:var(--warn)}
+  .b-bad{background:var(--bad-wash);color:var(--bad)}
+  .b-idle{background:var(--bg-3);color:var(--ink-3)}
+
+  /* motion v2 */
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}
+  .state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ============ frame + topbar ============ */
+  .page{display:none;margin-top:var(--s5)}
+  .page[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2);position:relative}
+  .topbar{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) var(--s5);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  /* Wordmark LOCKED 2026-07-24: italic hub — zot upright ink, hub in the signature italic accent */
+  .wm{font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:-.045em;line-height:1;white-space:nowrap}
+  .wm i{font-style:italic;color:var(--accent);margin-left:.015em}
+  .topbar nav{display:flex;gap:var(--s5)}
+  .topbar nav a{font-size:14px;color:var(--ink-2);text-decoration:none;font-weight:450}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:600}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}
+  .soft b{color:var(--ink);font-weight:650}
+
+  /* mobile tab bar */
+  .tabbar{display:none;position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line)}
+  .tabbar a{flex:1;text-align:center;padding:12px 4px 14px;font-size:11px;font-weight:600;color:var(--ink-3);text-decoration:none;letter-spacing:.02em;min-height:44px}
+  .tabbar a[aria-current]{color:var(--accent-text);box-shadow:inset 0 2px 0 var(--accent)}
+  @media(max-width:640px){
+    .topbar nav{display:none}
+    .tabbar{display:flex}
+    .topbar{gap:var(--s3)}
+  }
+
+  /* ============ landing ============ */
+  .hero{background:linear-gradient(180deg,var(--accent-wash) 0%,var(--bg) 62%);padding:var(--s8) var(--s5) var(--s7);text-align:center}
+  .hero h1{font-family:var(--f-display);font-size:clamp(34px,5.6vw,58px);font-weight:500;letter-spacing:var(--track-d1);line-height:1.02;margin:0 auto var(--s4);max-width:17ch}
+  .sig{font-style:italic;color:var(--accent)}
+  .hero p{color:var(--ink-2);font-size:17px;max-width:46ch;margin:0 auto var(--s5)}
+  .hero .cta{display:flex;gap:var(--s3);justify-content:center;flex-wrap:wrap}
+  .counts{margin-top:var(--s5);font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}
+  .counts b{color:var(--ink);font-weight:650}
+
+  .sides{display:grid;grid-template-columns:1fr;gap:var(--s4);padding:0 var(--s5) var(--s6)}
+  @media(min-width:880px){.sides{grid-template-columns:1fr 1fr}}
+  .side{border-radius:var(--r3);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s3)}
+  .side-club{background:var(--panel);box-shadow:var(--e2)}
+  .side-student{background:var(--accent-wash);border:1px solid var(--accent-line)}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent-text)}
+  .side h3{margin:0;font-family:var(--f-display);font-size:27px;font-weight:500;letter-spacing:var(--track-d2);line-height:1.1}
+  .side p{margin:0;font-size:14.5px;color:var(--ink-2)}
+  .peek{margin-top:var(--s2);border-radius:var(--r2);overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+  .peek-h{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;padding:9px 13px;color:var(--ink-3);border-bottom:1px solid var(--line)}
+  .peek-r{display:flex;align-items:center;gap:10px;padding:10px 13px;font-size:13px;color:var(--ink)}
+  .peek-r+.peek-r{border-top:1px solid var(--line)}
+  .peek-r .who{min-width:0}
+  .av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff}
+  .mini{font-size:11.5px;color:var(--ink-3)}
+  .peek-r .badge{margin-left:auto}
+
+  .props{display:grid;grid-template-columns:1fr;gap:0 var(--s7);padding:0 var(--s5) var(--s6)}
+  @media(min-width:820px){.props{grid-template-columns:1fr 1fr}}
+  .prop{display:grid;grid-template-columns:28px 1fr;gap:var(--s3);padding:var(--s5) 0;border-bottom:1px solid var(--line)}
+  .prop .n{font-family:var(--mono);font-size:12px;color:var(--accent-text);font-weight:600;padding-top:3px}
+  .prop h4{margin:0 0 5px;font-size:17.5px;font-weight:600;letter-spacing:-.02em}
+  .prop p{margin:0;font-size:14.5px;color:var(--ink-2)}
+
+  /* ============ discover ============ */
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-family:var(--f-display);font-size:32px;font-weight:500;letter-spacing:var(--track-d2)}
+  .toolrow{display:flex;gap:var(--s2);padding:0 var(--s5) var(--s4);flex-wrap:wrap;align-items:center}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:44px}
+  .inp:focus{border-color:var(--accent)}
+  .inp::placeholder{color:var(--ink-3)}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+
+  .grp{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e1);margin:0 var(--s5) var(--s3)}
+  .grpbar{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--bg-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .clogo{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0}
+  .cn{font-weight:650;font-size:15px;letter-spacing:-.01em}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:550}
+  .pdot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .gtags{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .jrow{display:grid;grid-template-columns:1fr;gap:var(--s2);padding:var(--s4)}
+  @media(min-width:780px){.jrow{grid-template-columns:1fr auto;align-items:center}}
+  .jrow+.jrow{border-top:1px solid var(--line)}
+  .jrow:hover{background:var(--bg-2)}
+  .jl{display:flex;gap:var(--s3);align-items:center;min-width:0}
+  .jt{font-size:16px;font-weight:650;letter-spacing:-.012em}
+  .jm{font-size:13.5px;color:var(--ink-3);margin-top:2px}
+  .jr{display:flex;align-items:center;gap:var(--s2)}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2);flex-shrink:0}
+  .datechip .m{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--accent-text);text-transform:uppercase}
+  .datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  @media(max-width:640px){
+    .gtags{display:none}
+    .jr .no-m{display:none}
+    .jr .btn{min-height:44px}
+  }
+  @media(min-width:641px){.jr .only-m{display:none}}
+
+  .emptyX{margin:var(--s5) var(--s5) var(--s6);border:1px dashed var(--line-2);border-radius:var(--r3);padding:var(--s6) var(--s5);text-align:center}
+  .emptyX h4{margin:0 0 8px;font-family:var(--f-display);font-size:26px;font-weight:500;letter-spacing:var(--track-d3)}
+  .emptyX p{margin:0 auto var(--s4);color:var(--ink-2);font-size:14.5px;max-width:42ch}
+  .empty-acts{display:flex;gap:var(--s2);justify-content:center;flex-wrap:wrap}
+
+  /* ============ review ============ */
+  .rhead{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s5) var(--s5) 0}
+  .rhead h2{margin:0;font-family:var(--f-display);font-size:28px;font-weight:500;letter-spacing:var(--track-d2)}
+  .heads{margin:var(--s4) var(--s5) 0;border-radius:var(--r2);background:var(--warn-wash);padding:var(--s3) var(--s4);display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap;font-size:14px}
+  .heads p{margin:0}
+  .q{display:flex;gap:var(--s3);align-items:center;padding:var(--s3) var(--s5);flex-wrap:wrap}
+  .q+.q{border-top:1px solid var(--line)}
+  .q:hover{background:var(--bg-2)}
+  .qmain{flex:1;min-width:180px}
+  .qn{font-weight:650;font-size:15px}
+  .qs{font-size:13px;color:var(--ink-3)}
+  .qc{width:168px;font-size:13.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qd{width:64px;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .q .badge{width:106px;justify-content:flex-start}
+  .qa{display:flex;gap:var(--s2);justify-content:flex-end;margin-left:auto}
+  @media(max-width:720px){
+    .qc,.qd{display:none}
+    .qmain{flex:1 1 100%}
+    .q .badge{width:auto}
+    .qa .btn{min-height:44px}
+  }
+
+  .note{margin:var(--s5) 0 0;border-left:3px solid var(--accent);background:var(--accent-wash);padding:var(--s3) var(--s4);border-radius:0 var(--r2) var(--r2) 0;font-size:14px}
+  .note b{color:var(--accent-text)}
+
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.8;box-shadow:var(--e2)}
+  .themetoggle:hover{opacity:1}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+  :root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">D11 v3</span>
+    <span class="seg" role="group" aria-label="Page">
+      <button data-page="landing" aria-pressed="true">Landing</button>
+      <button data-page="discover" aria-pressed="false">Discover</button>
+      <button data-page="review" aria-pressed="false">Review</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Neutrals</span>
+    <span class="seg" role="group" aria-label="Neutral ramp">
+      <button data-ramp="hybrid" aria-pressed="true">Hybrid&#10003;</button>
+      <button data-ramp="rose" aria-pressed="false">Rose</button>
+      <button data-ramp="graphite" aria-pressed="false">Graphite</button>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ==================== LANDING ==================== -->
+  <div class="page" data-page="landing" data-active>
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">For clubs</a><a href="#">For students</a><a href="#">Discover</a></nav>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-ghost">Log in</button>
+        <button class="btn btn-sm btn-ink">Sign up</button>
+      </div>
+
+      <div class="hero">
+        <h1>Where good clubs <span class="sig">meet good people.</span></h1>
+        <p>Every open role at UCI, and a real answer either way.</p>
+        <div class="cta">
+          <button class="btn btn-acc">Browse open roles</button>
+          <button class="btn">I run a club</button>
+        </div>
+        <div class="counts"><b>34</b> clubs &#183; <b>61</b> open roles &#183; <b>12</b> events this week</div>
+      </div>
+
+      <div class="sides">
+        <section class="side side-club ctx-dark">
+          <span class="eyebrow">For clubs</span>
+          <h3>Recruit without the spreadsheet.</h3>
+          <p>Post a role free, or link the Google Form you already use. Review, decide, and nobody gets left on read.</p>
+          <div><button class="btn btn-sm btn-acc">Start recruiting</button></div>
+          <div class="peek">
+            <div class="peek-h">VP of Design &#183; 18 applicants</div>
+            <div class="peek-r"><span class="av" style="background:#7A4BE0">PR</span><span class="who"><b>Priya Raman</b><div class="mini">Junior &#183; Informatics</div></span><span class="badge b-new"><span class="dot"></span>New</span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">MV</span><span class="who"><b>Marcus Vela</b><div class="mini">Sophomore &#183; Studio Art</div></span><span class="badge b-warn"><span class="dot"></span>Reviewed</span></div>
+            <div class="peek-r"><span class="av" style="background:#10794D">AO</span><span class="who"><b>Amara Osei</b><div class="mini">Senior &#183; Computer Science</div></span><span class="badge b-ok"><span class="dot"></span>Accepted</span></div>
+          </div>
+        </section>
+
+        <section class="side side-student ctx-light">
+          <span class="eyebrow">For students</span>
+          <h3>Find the thing <span class="sig">you&#8217;ll stick with.</span></h3>
+          <p>Apply to 34 UCI clubs in one place, track every application, and always hear back &#8212; even when it&#8217;s a no.</p>
+          <div><button class="btn btn-sm btn-acc">Browse open roles</button></div>
+          <div class="peek">
+            <div class="peek-h">Your applications</div>
+            <div class="peek-r"><span class="av" style="background:#C2410C">D</span><span class="who"><b>VP of Design</b><div class="mini">Design at UCI</div></span><span class="badge b-warn"><span class="dot"></span>In review</span></div>
+            <div class="peek-r"><span class="av" style="background:#1D6FA3">AR</span><span class="who"><b>Embedded Systems Lead</b><div class="mini">Anteater Robotics</div></span><span class="badge b-ok"><span class="dot"></span>Accepted</span></div>
+            <div class="peek-r"><span class="av" style="background:#7A3E9D">ZC</span><span class="who"><b>Fall Case Team Analyst</b><div class="mini">Zot Consulting &#183; external</div></span><span class="badge b-idle"><span class="dot"></span>Applied</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="props">
+        <div class="prop"><span class="n">01</span><div><h4>Real roles, not a directory listing.</h4><p>Officer boards, project teams, committees &#8212; the things clubs actually need filled this quarter.</p></div></div>
+        <div class="prop"><span class="n">02</span><div><h4>Bring the form you already have.</h4><p>Link an existing Google Form in one step, or build the application here. Your choice, not ours.</p></div></div>
+        <div class="prop"><span class="n">03</span><div><h4>Nobody gets ghosted.</h4><p>Close a posting and undecided applicants are declined automatically &#8212; after we tell you exactly who.</p></div></div>
+        <div class="prop"><span class="n">04</span><div><h4>Talk to the people actually deciding.</h4><p>Message the officers running recruitment, not a form inbox nobody reads.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DISCOVER ==================== -->
+  <div class="page" data-page="discover">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a></nav>
+        <span class="grow"></span>
+        <span class="soft"><b>34</b> clubs &#183; <b>61</b> open roles</span>
+      </div>
+
+      <div class="pagehead"><h2>Discover</h2><span class="soft"><b>8</b> open right now</span></div>
+      <div class="toolrow">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Search roles, events, clubs&#8230;" aria-label="Search" />
+        <button class="chip" aria-pressed="true">All</button>
+        <button class="chip" aria-pressed="false">Roles</button>
+        <button class="chip" aria-pressed="false">Events</button>
+        <button class="chip" aria-pressed="false">Following</button>
+      </div>
+
+      <div class="grp">
+        <div class="grpbar">
+          <span class="clogo" style="background:#C2410C">D</span><span class="cn">Design at UCI</span>
+          <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+          <span class="gtags"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag tag-n">Replies fast</span></span>
+        </div>
+        <div class="jrow">
+          <div class="jl"><div><div class="jt">VP of Design</div><div class="jm">Leadership &#183; closes in 2 days &#183; 18 applied</div></div></div>
+          <div class="jr"><span class="tag no-m">Closing soon</span><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save VP of Design">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+        </div>
+        <div class="jrow">
+          <div class="jl"><div><div class="jt">Print &amp; Zine Committee</div><div class="jm">Committee &#183; rolling &#183; 4 applied</div></div></div>
+          <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Print and Zine Committee">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grpbar">
+          <span class="clogo" style="background:#1D6FA3">AR</span><span class="cn">Anteater Robotics</span>
+          <span class="pulse"><span class="pdot"></span>Actively recruiting</span>
+          <span class="gtags"><span class="tag tag-n">Engineering</span><span class="tag tag-n">62 members</span></span>
+        </div>
+        <div class="jrow">
+          <div class="jl"><div><div class="jt">Embedded Systems Lead</div><div class="jm">Project &#183; closes in 4 days &#183; 7 applied</div></div></div>
+          <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Embedded Systems Lead">Save</button><button class="btn btn-sm btn-ink">Apply</button></div>
+        </div>
+        <div class="jrow">
+          <div class="jl">
+            <span class="datechip"><span class="m">Sep</span><span class="d">29</span></span>
+            <div><div class="jt">Shop Day &amp; Open Build</div><div class="jm">Tue 7:00 PM &#183; Engineering Tower &#183; 18 of 30 going</div></div>
+          </div>
+          <div class="jr"><button class="btn btn-sm btn-ink">RSVP</button></div>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grpbar">
+          <span class="clogo" style="background:#7A3E9D">ZC</span><span class="cn">Zot Consulting Group</span>
+          <span class="gtags"><span class="tag tag-n">Business</span><span class="tag tag-n">Applies externally</span></span>
+        </div>
+        <div class="jrow">
+          <div class="jl"><div><div class="jt">Fall Case Team Analyst</div><div class="jm">Committee &#183; closes in 6 days &#183; 41 applied</div></div></div>
+          <div class="jr"><button class="btn btn-sm no-m">Save</button><button class="btn btn-sm btn-ghost only-m" aria-label="Save Fall Case Team Analyst">Save</button><button class="btn btn-sm">Apply externally</button></div>
+        </div>
+      </div>
+
+      <div class="emptyX">
+        <h4>No design roles open <span class="sig">right now.</span></h4>
+        <p>Three clubs recruit for design most quarters. We can tell you the day one posts.</p>
+        <div class="empty-acts">
+          <button class="btn btn-sm btn-acc">Notify me</button>
+          <button class="btn btn-sm">See those clubs</button>
+        </div>
+      </div>
+
+      <nav class="tabbar" aria-label="Primary">
+        <a href="#" aria-current="page">Discover</a><a href="#">Clubs</a><a href="#">Activity</a><a href="#">Messages</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ==================== REVIEW ==================== -->
+  <div class="page" data-page="review">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+      </div>
+      <div class="rhead">
+        <h2>VP of Design</h2>
+        <span class="soft"><b>18</b> applicants &#183; <b>6</b> decided &#183; closes in <b>2</b> days</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm">Export</button>
+        <button class="btn btn-sm">Close posting</button>
+      </div>
+      <div class="heads">
+        <p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically.</p>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-acc">Review them</button>
+      </div>
+      <div style="padding:var(--s4) 0 var(--s6)" id="queue">
+        <div class="q" data-orig="New">
+          <div class="qmain"><div class="qn">Priya Raman</div><div class="qs">Portfolio attached</div></div>
+          <span class="qc">Junior &#183; Informatics</span><span class="qd">Sep 18</span>
+          <span class="badge b-new"><span class="dot"></span><span class="lbl">New</span></span>
+          <div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div>
+        </div>
+        <div class="q" data-orig="Reviewed">
+          <div class="qmain"><div class="qn">Marcus Vela</div><div class="qs">R&#233;sum&#233; attached</div></div>
+          <span class="qc">Sophomore &#183; Studio Art</span><span class="qd">Sep 18</span>
+          <span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span>
+          <div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div>
+        </div>
+        <div class="q" data-orig="Reviewed" data-decided="1">
+          <div class="qmain"><div class="qn">Amara Osei</div><div class="qs">Portfolio attached</div></div>
+          <span class="qc">Senior &#183; Computer Science</span><span class="qd">Sep 17</span>
+          <span class="badge b-ok"><span class="dot"></span><span class="lbl">Accepted</span></span>
+          <div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div>
+        </div>
+        <div class="q" data-orig="New" data-decided="1">
+          <div class="qmain"><div class="qn">Ben Okafor</div><div class="qs">No attachment</div></div>
+          <span class="qc">Freshman &#183; Undeclared</span><span class="qd">Sep 17</span>
+          <span class="badge b-bad"><span class="dot"></span><span class="lbl">Declined</span></span>
+          <div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div>
+        </div>
+        <div class="q" data-orig="Reviewed">
+          <div class="qmain"><div class="qn">Sofia Lindqvist</div><div class="qs">Applied externally</div></div>
+          <span class="qc">Junior &#183; Business Admin</span><span class="qd">Sep 16</span>
+          <span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span>
+          <div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div>
+        </div>
+      </div>
+
+      <nav class="tabbar" aria-label="Primary">
+        <a href="#">Postings</a><a href="#" aria-current="page">Responses</a><a href="#">Messages</a><a href="#">My Club</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="note"><b>State of the identity:</b> everything on these pages is now a locked decision &#8212; Instrument, italic signature, italic-hub wordmark, pills, motion v2 (live on Review), and the <b>Hybrid</b> ramp: rose light, graphite dark. The pure ramps stay switchable for comparison. Still open: the stacked mark&#8217;s 16px cut, in <em>identity-lab-2 &#167;01b</em>.</div>
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('tt'),lbl=document.getElementById('ttl');
+  function cur(){var a=root.getAttribute('data-theme');return (a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function set(t){root.setAttribute('data-theme',t);root.style.colorScheme=t;lbl.textContent=t==='dark'?'Light':'Dark';btn.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' mode');}
+  set(cur());btn.addEventListener('click',function(){set(cur()==='dark'?'light':'dark');});
+})();
+(function(){
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+  function group(sel,fn){var b=$$(sel);b.forEach(function(x){x.addEventListener('click',function(){b.forEach(function(y){y.setAttribute('aria-pressed',String(y===x));});fn(x);});});}
+  group('.seg [data-page]',function(x){$$('.page').forEach(function(p){p.toggleAttribute('data-active',p.dataset.page===x.dataset.page);});window.scrollTo({top:0,behavior:'instant'});});
+  group('.seg [data-ramp]',function(x){document.documentElement.setAttribute('data-ramp',x.dataset.ramp);});
+  document.documentElement.setAttribute('data-ramp','hybrid');
+})();
+(function(){
+  var queue=document.getElementById('queue');
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  function setBadge(row,cls,text){var b=row.querySelector('.badge');b.className='badge '+cls;b.querySelector('.lbl').textContent=text;fire(b);}
+  function setActs(row,html){row.querySelector('.qa').innerHTML=html;}
+  queue.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-act]');if(!btn)return;
+    var row=btn.closest('.q'),act=btn.dataset.act;
+    if(act==='accept'){setBadge(row,'b-ok','Accepted');setActs(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(act==='decline'){setBadge(row,'b-bad','Declined');setActs(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(act==='undo'){
+      var orig=row.dataset.orig||'Reviewed';
+      setBadge(row,orig==='New'?'b-new':'b-warn',orig);
+      setActs(row,'<button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button>');
+    }
+  });
+})();
+</script>

@@ -1,0 +1,270 @@
+<title>ZotHub &#8212; Clubs directory + club pages</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);--e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;
+    --line:#26282B;--line-2:#37393D;--line-3:#64676C;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;
+    --accent:#5AA2E6;--accent-text:#8FBEF2;--accent-ink:#06182B;--accent-wash:#0E2338;--accent-line:#234A6B;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px;flex-wrap:wrap}
+  .seg button{font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 12px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+  .screen{display:none;margin-top:var(--s5)}.screen[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2)}
+
+  .btn{font:inherit;font-family:var(--f);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  .btn:where(:hover){background:var(--bg-3)}.btn:active{transform:translateY(1px)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}.btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)}.btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px}.btn-lg{min-height:50px;padding:13px 26px;font-size:15px}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}.soft b{color:var(--ink);font-weight:650}
+  .chip{font:inherit;font-size:13px;font-weight:550;border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);border-radius:var(--rp);padding:7px 14px;cursor:pointer;min-height:36px}
+  .chip[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-text);font-weight:650}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--ink-3)}
+
+  .ava{--sz:40px;width:var(--sz);height:var(--sz);flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--avc,#475569);color:#fff;font-weight:700;font-style:normal;line-height:1;overflow:hidden}
+  .ava.org{border-radius:calc(var(--sz)*.26)}
+  .ava.sm{--sz:32px;font-size:12.5px}.ava.md{--sz:40px;font-size:15px}.ava.lg{--sz:48px;font-size:17.5px}.ava.xl{--sz:72px;font-size:26px}
+  .ava.ph{background:var(--bg-3);color:var(--ink-3)}.ava.ph svg{width:52%;height:52%;stroke-width:1.7}
+  .ava.unclaimed{background:var(--bg-2);color:var(--ink-3);border:1.5px dashed var(--line-3)}
+
+  .wm{font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:-.045em;line-height:1;color:var(--ink)}.wm i{font-style:italic;color:var(--accent-text)}
+  .topbar{display:flex;align-items:stretch;gap:22px;padding:0 22px;min-height:60px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .topbar>.wm,.topbar>.grow,.topbar>.nvright{align-self:center}
+  .topbar nav{display:flex;gap:22px}
+  .topbar nav a{position:relative;display:inline-flex;align-items:center;font-size:14px;font-weight:500;text-decoration:none;color:var(--ink-2);white-space:nowrap}
+  .topbar nav a:hover{color:var(--ink)}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--accent)}
+  .ncount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .nvright{display:flex;align-items:center;gap:12px}
+  .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2);text-decoration:none}.back:hover{color:var(--ink)}.back svg{width:15px;height:15px}
+
+  .pagehead{padding:var(--s5) var(--s5) var(--s4);display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+  .pagehead h2{margin:0;font-family:var(--f);font-size:32px;font-weight:500;letter-spacing:-.026em}
+  .toolrow{display:flex;gap:var(--s2);padding:0 var(--s5) var(--s4);flex-wrap:wrap;align-items:center}
+  .pulse{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ok);font-weight:600}
+  .pulse::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  /* directory */
+  .clubgrid{display:grid;grid-template-columns:1fr;gap:14px;padding:0 var(--s5) var(--s6)}
+  @media(min-width:640px){.clubgrid{grid-template-columns:1fr 1fr}}
+  @media(min-width:980px){.clubgrid{grid-template-columns:1fr 1fr 1fr}}
+  .clubcard{border:1px solid var(--line);border-radius:var(--r3);background:var(--bg);box-shadow:var(--e1);padding:18px;display:flex;flex-direction:column;gap:12px;transition:box-shadow var(--t-base) var(--ease),transform var(--t-base) var(--ease),border-color var(--t-base) var(--ease);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%;min-height:150px}
+  .clubcard:hover{box-shadow:var(--e3);transform:translateY(-2px);border-color:var(--line-2)}
+  .cc-top{display:flex;gap:12px;align-items:center}
+  .cc-b{min-width:0;flex:1}
+  .cc-n{font-family:var(--f);font-size:16.5px;font-weight:600;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cc-m{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .cc-foot{display:flex;align-items:center;gap:8px;margin-top:auto;flex-wrap:wrap}
+  .clubcard.unclaimed{background:var(--bg-2);border-style:dashed;border-color:var(--line-2);box-shadow:none}
+  .utag{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--ink-3);background:var(--bg-3);padding:3px 8px;border-radius:var(--rp)}
+  .src{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+
+  /* club page */
+  .clubhead{padding:26px var(--s5);display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+  .ch-b{flex:1;min-width:0}
+  .ch-name{font-family:var(--f);font-size:30px;font-weight:500;letter-spacing:-.026em;line-height:1.05;margin:0}
+  .ch-meta{font-size:13.5px;color:var(--ink-3);margin-top:9px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .ch-meta .num{font-family:var(--mono);color:var(--ink-2)}.ch-meta .num b{color:var(--ink);font-weight:650}
+  .ch-tags{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+  .ch-act{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .clubsec{padding:22px var(--s5);border-top:1px solid var(--line)}
+  .clubsec h3{font-family:var(--f);font-size:16px;font-weight:600;letter-spacing:-.01em;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+  .clubsec h3 .cnt{font-family:var(--mono);font-size:12px;color:var(--ink-3);font-weight:400}
+  .clubsec p{margin:0;color:var(--ink-2);font-size:14.5px}
+  .oprow{display:flex;align-items:center;gap:14px;padding:13px 0}
+  .oprow+.oprow{border-top:1px solid var(--line)}
+  .oprow .op-b{flex:1;min-width:0}.oprow .op-t{font-weight:650;font-size:15px}.oprow .op-m{font-size:13px;color:var(--ink-3);margin-top:1px}
+  .datechip{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--line-2);border-radius:var(--r2);background:var(--bg-2);flex-shrink:0}
+  .datechip .m{font-size:9px;letter-spacing:.1em;font-weight:700;color:var(--accent-text);text-transform:uppercase}.datechip .d{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.1}
+  .members{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .mrow{display:flex}.mrow .ava{margin-left:-8px;box-shadow:0 0 0 2px var(--bg)}.mrow .ava:first-child{margin-left:0}
+  .lnk{font:inherit;font-family:var(--f);font-size:14px;font-weight:600;color:var(--accent-text);background:none;border:0;cursor:pointer;padding:0;text-decoration:none}
+  .emptybox{border:1px dashed var(--line-2);border-radius:var(--r3);padding:22px;text-align:center;color:var(--ink-2);font-size:14px}
+  .emptybox b{color:var(--ink)}
+
+  /* claim banner (unclaimed page) */
+  .claimbanner{padding:18px var(--s5);background:var(--accent-wash);border-bottom:1px solid var(--accent-line);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .claimbanner .cb-b{flex:1;min-width:220px}
+  .claimbanner .cb-t{font-size:15px;font-weight:650;color:var(--ink)}
+  .claimbanner .cb-h{font-size:13px;color:var(--ink-2);margin-top:2px}
+  .claimbanner .cb-act{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .imported{margin:0 var(--s5);padding:12px 0;font-family:var(--mono);font-size:11px;color:var(--ink-3);border-top:1px solid var(--line)}
+
+  .note{margin:0 var(--s5) 24px;border-left:3px solid var(--accent);background:var(--accent-wash);padding:12px 16px;border-radius:0 var(--r2) var(--r2) 0;font-size:14px;color:var(--ink-2)}.note b{color:var(--accent-text)}
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Clubs</span>
+    <span class="seg" role="group" aria-label="Screen">
+      <button data-screen="c1" aria-pressed="true">1 &#183; Directory</button>
+      <button data-screen="c2" aria-pressed="false">2 &#183; Claimed page</button>
+      <button data-screen="c3" aria-pressed="false">3 &#183; Unclaimed page</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Cold start: seed &#8594; claim (Positioning &#167;2, Structure &#167;7)</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1 · DIRECTORY -->
+  <div class="screen" data-screen="c1" data-active>
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#" aria-current="page">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="pagehead"><h2>Clubs</h2><span class="soft"><b>312</b> clubs &#183; <b>9</b> recruiting right now</span></div>
+      <div class="toolrow">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Search clubs&#8230;" aria-label="Search clubs">
+        <button class="chip" aria-pressed="true">All</button><button class="chip" aria-pressed="false">Recruiting now</button><button class="chip" aria-pressed="false">Arts &amp; Culture</button><button class="chip" aria-pressed="false">Service</button><button class="chip" aria-pressed="false">Technology</button>
+      </div>
+      <div class="clubgrid">
+        <button class="clubcard" data-go="c2">
+          <div class="cc-top"><span class="ava lg org" style="--avc:#C2410C">D</span><div class="cc-b"><div class="cc-n">Design at UCI</div><div class="cc-m">Arts &amp; Culture &#183; 62 members</div></div></div>
+          <div class="cc-foot"><span class="pulse">2 open roles</span><span class="grow"></span><span class="btn btn-sm">Follow</span></div>
+        </button>
+        <button class="clubcard" data-go="c2">
+          <div class="cc-top"><span class="ava lg org" style="--avc:#1D6FA3">AR</span><div class="cc-b"><div class="cc-n">Anteater Robotics</div><div class="cc-m">Technology &#183; 128 members</div></div></div>
+          <div class="cc-foot"><span class="pulse">1 open role</span><span class="grow"></span><span class="btn btn-sm">Follow</span></div>
+        </button>
+        <button class="clubcard" data-go="c2">
+          <div class="cc-top"><span class="ava lg org" style="--avc:#7A3E9D">ZC</span><div class="cc-b"><div class="cc-n">Zot Consulting</div><div class="cc-m">Career &amp; Professional &#183; 40 members</div></div></div>
+          <div class="cc-foot"><span class="soft">Not recruiting now</span><span class="grow"></span><span class="btn btn-sm">Follow</span></div>
+        </button>
+        <button class="clubcard unclaimed" data-go="c3">
+          <div class="cc-top"><span class="ava lg org unclaimed">CS</span><div class="cc-b"><div class="cc-n">Cognitive Science Club</div><div class="cc-m">Academics &amp; Honors</div></div></div>
+          <div class="cc-foot"><span class="utag">Unclaimed</span><span class="grow"></span><span class="btn btn-sm btn-acc">Claim</span></div>
+        </button>
+        <button class="clubcard unclaimed" data-go="c3">
+          <div class="cc-top"><span class="ava lg org unclaimed">CG</span><div class="cc-b"><div class="cc-n">Ceramics Guild</div><div class="cc-m">Arts &amp; Culture</div></div></div>
+          <div class="cc-foot"><span class="utag">Unclaimed</span><span class="grow"></span><span class="btn btn-sm btn-acc">Claim</span></div>
+        </button>
+        <button class="clubcard unclaimed" data-go="c3">
+          <div class="cc-top"><span class="ava lg org unclaimed">AC</span><div class="cc-b"><div class="cc-n">Astronomy Club</div><div class="cc-m">Academics &amp; Honors</div></div></div>
+          <div class="cc-foot"><span class="utag">Unclaimed</span><span class="grow"></span><span class="btn btn-sm btn-acc">Claim</span></div>
+        </button>
+      </div>
+      <div class="note"><b>The honest asymmetry, designed on purpose.</b> Seeded from UCI&#8217;s public directory, Clubs looks full (<b>312</b>) while only <b>9</b> are recruiting today &#8212; which reads as &#8220;lots of clubs, few openings right now,&#8221; not &#8220;broken.&#8221; Unclaimed pages are unmistakably marked (dashed, muted, no fabricated activity) with a one-tap <b>Claim</b>. That&#8217;s the outreach opener: every officer has a page already.</div>
+    </div>
+  </div>
+
+  <!-- 2 · CLAIMED CLUB PAGE -->
+  <div class="screen" data-screen="c2">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#" aria-current="page">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div style="padding:16px 22px 0"><a class="back" href="#" data-go="c1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Clubs</a></div>
+      <div class="clubhead">
+        <span class="ava xl org" style="--avc:#C2410C">D</span>
+        <div class="ch-b">
+          <h1 class="ch-name">Design at UCI</h1>
+          <div class="ch-meta"><span class="num"><b>62</b> members</span><span class="pulse">Actively recruiting</span><span>&#183; usually replies within a day</span></div>
+          <div class="ch-tags"><span class="tag tag-n">Arts &amp; Culture</span><span class="tag tag-n">Design</span><span class="tag tag-n">Zine</span></div>
+        </div>
+        <div class="ch-act"><button class="btn btn-acc">Follow</button><button class="btn">Message</button></div>
+      </div>
+      <div class="clubsec"><h3>About</h3><p>The design community at UCI &#8212; workshops, the quarterly zine, and client work for campus orgs. We take beginners who care and give them real briefs.</p></div>
+      <div class="clubsec">
+        <h3>Open roles <span class="cnt">2 open</span></h3>
+        <div class="oprow"><div class="op-b"><div class="op-t">VP of Design</div><div class="op-m">Leadership &#183; closes in 2 days &#183; 18 applied</div></div><span class="tag">Closing soon</span><button class="btn btn-sm btn-ink">Apply</button></div>
+        <div class="oprow"><div class="op-b"><div class="op-t">Print &amp; Zine Committee</div><div class="op-m">Committee &#183; rolling &#183; 4 applied</div></div><button class="btn btn-sm btn-ink">Apply</button></div>
+      </div>
+      <div class="clubsec">
+        <h3>Upcoming</h3>
+        <div class="oprow"><span class="datechip"><span class="m">Oct</span><span class="d">02</span></span><div class="op-b"><div class="op-t">Risograph Workshop</div><div class="op-m">Thu 6:00 PM &#183; Studio 4 &#183; 22 going</div></div><button class="btn btn-sm btn-ink">RSVP</button></div>
+      </div>
+      <div class="clubsec">
+        <h3>Members <span class="cnt">62</span></h3>
+        <div class="members">
+          <span class="mrow"><span class="ava md" style="--avc:#1C6699">MV</span><span class="ava md" style="--avc:#B23227">AO</span><span class="ava md" style="--avc:#0C6E77">JL</span><span class="ava md" style="--avc:#9C4A0C">BK</span><span class="ava md" style="--avc:#5B3FB0">RS</span><span class="ava md" style="--avc:#7A3E9D">TN</span></span>
+          <a class="lnk" href="#">See all 62 &#8212; message anyone about joining &#8594;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · UNCLAIMED CLUB PAGE -->
+  <div class="screen" data-screen="c3">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Discover</a><a href="#" aria-current="page">Clubs</a><a href="#">Activity</a><a href="#">Messages<span class="ncount">2</span></a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm" style="--avc:#7A4BE0">JL</span></div>
+      </div>
+      <div class="claimbanner">
+        <div class="cb-b"><div class="cb-t">Is this your club?</div><div class="cb-h">This page was imported from UCI&#8217;s public club directory so students can find you. Claim it to post roles, review applicants, and edit everything here.</div></div>
+        <div class="cb-act"><button class="btn btn-acc" data-go="c2">Claim this page</button><a class="lnk" href="#">Request removal</a></div>
+      </div>
+      <div style="padding:16px 22px 0"><a class="back" href="#" data-go="c1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Clubs</a></div>
+      <div class="clubhead">
+        <span class="ava xl org unclaimed">CS</span>
+        <div class="ch-b">
+          <h1 class="ch-name">Cognitive Science Club</h1>
+          <div class="ch-meta"><span class="utag">Unclaimed</span><span>Imported public listing &#8212; not yet on ZotHub</span></div>
+          <div class="ch-tags"><span class="tag tag-n">Academics &amp; Honors</span></div>
+        </div>
+      </div>
+      <div class="clubsec"><h3>About</h3><p>A community for students interested in the mind, brain, and behaviour &#8212; talks, study jams, and research connections. <span style="color:var(--ink-3)">(Imported from the public directory.)</span></p></div>
+      <div class="clubsec">
+        <h3>Open roles</h3>
+        <div class="emptybox">No openings on ZotHub yet. <b>Are you an officer?</b> Claim this page to post roles and start reviewing applications &#8212; or link a Google Form you already use.</div>
+      </div>
+      <div class="imported">Source: ZotSpot public directory &#183; imported Jul 2026 &#183; public data only, no activity fabricated</div>
+      <div class="note"><b>Unmistakably unclaimed (Structure &#167;7).</b> Imported public data only &#8212; dashed/muted mark, no member count, no fake activity, source shown, one-tap claim and a removal request. It gives students density on day one and hands outreach a concrete opener, without misrepresenting a real org.</div>
+    </div>
+  </div>
+
+</div>
+
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('tt'),l=document.getElementById('ttl');
+  function c(){var a=r.getAttribute('data-theme');return(a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function s(t){r.setAttribute('data-theme',t);r.style.colorScheme=t;l.textContent=t==='dark'?'Light':'Dark';}
+  s(c());b.addEventListener('click',function(){s(c()==='dark'?'light':'dark');});})();
+function go(id){[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.setAttribute('aria-pressed',String(x.dataset.screen===id));});[].forEach.call(document.querySelectorAll('.screen'),function(p){p.toggleAttribute('data-active',p.dataset.screen===id);});window.scrollTo({top:0,behavior:'instant'});}
+[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.addEventListener('click',function(){go(x.dataset.screen);});});
+[].forEach.call(document.querySelectorAll('[data-go]'),function(x){x.addEventListener('click',function(e){e.preventDefault();go(x.dataset.go);});});
+[].forEach.call(document.querySelectorAll('.toolrow'),function(g){g.addEventListener('click',function(e){var ch=e.target.closest('.chip');if(!ch)return;[].forEach.call(g.querySelectorAll('.chip'),function(x){x.setAttribute('aria-pressed',String(x===ch));});});});
+</script>

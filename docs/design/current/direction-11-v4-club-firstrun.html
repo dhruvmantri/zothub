@@ -1,0 +1,409 @@
+<title>ZotHub &#8212; Club first-run journey</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+  :root{
+    --bg:#FFFFFF; --bg-2:#F5F7FA; --bg-3:#EBEFF4;
+    --ink:#0D1519; --ink-2:#44515A; --ink-3:#5F6B74;
+    --line:#E4E9EE; --line-2:#CDD6DD; --line-3:#828E97;
+    --ok:#10794D; --ok-wash:#E7F4EE; --warn:#8A5A0B; --warn-wash:#FCF3E4; --bad:#B32B1D; --bad-wash:#FBEBE9;
+    --accent:#0F5FA8; --accent-text:#0B4E8C; --accent-ink:#FFFFFF; --accent-wash:#E9F1FB; --accent-line:#BAD6F2;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+    --r1:6px;--r2:10px;--r3:14px;--r4:20px;--rp:999px;
+    --e1:0 1px 2px rgba(13,21,25,.05);--e2:0 2px 8px rgba(13,21,25,.07),0 1px 2px rgba(13,21,25,.04);
+    --e3:0 12px 32px rgba(13,21,25,.12),0 2px 6px rgba(13,21,25,.06);--e4:0 24px 60px rgba(13,21,25,.20),0 6px 16px rgba(13,21,25,.10);
+    --t-fast:150ms;--t-base:200ms;--t-slow:250ms;--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --f:"Instrument Sans",var(--sys);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E0F10;--bg-2:#141517;--bg-3:#1B1D1F;--ink:#F0F1F2;--ink-2:#A8ABAF;--ink-3:#85888D;
+    --line:#26282B;--line-2:#37393D;--line-3:#64676C;
+    --ok:#4FCB92;--ok-wash:#102A1F;--warn:#DCA85A;--warn-wash:#2B2210;--bad:#E98A7C;--bad-wash:#2D1613;
+    --accent:#5AA2E6;--accent-text:#8FBEF2;--accent-ink:#06182B;--accent-wash:#0E2338;--accent-line:#234A6B;
+    --e1:0 1px 2px rgba(0,0,0,.4);--e2:0 2px 10px rgba(0,0,0,.45);--e3:0 14px 36px rgba(0,0,0,.55);--e4:0 28px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-2);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.55;margin:0;-webkit-font-smoothing:antialiased}
+  a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 var(--s5) var(--s8)}
+
+  /* dev step-switcher */
+  .studio{position:sticky;top:0;z-index:600;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:var(--e1)}
+  .studio-in{max-width:1140px;margin:0 auto;padding:var(--s3) var(--s5);display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+  .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .seg{display:inline-flex;background:var(--bg-3);border-radius:var(--rp);padding:3px;flex-wrap:wrap}
+  .seg button{font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--ink-3);padding:6px 12px;border-radius:var(--rp);cursor:pointer;min-height:32px}
+  .seg button[aria-pressed="true"]{background:var(--bg);color:var(--ink);box-shadow:var(--e1)}
+  .grow{flex:1}
+
+  .screen{display:none;margin-top:var(--s5)}
+  .screen[data-active]{display:block}
+  .frame{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--bg);box-shadow:var(--e2)}
+
+  /* primitives */
+  .btn{font:inherit;font-family:var(--f);font-size:14px;font-weight:550;cursor:pointer;min-height:44px;padding:10px 20px;border-radius:var(--rp);border:1.5px solid var(--ink);background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+  .btn:where(:hover){background:var(--bg-3)} .btn:active{transform:translateY(1px)}
+  .btn-acc{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} .btn-acc:hover{background:var(--accent);filter:brightness(1.08);box-shadow:var(--e2)}
+  .btn-ink{background:var(--ink);border-color:var(--ink);color:var(--bg)} .btn-ink:hover{background:var(--ink);filter:brightness(1.5);box-shadow:var(--e2)}
+  .btn-ghost{border-color:transparent;color:var(--ink-2)} .btn-ghost:hover{background:var(--bg-3);color:var(--ink)}
+  .btn-sm{min-height:34px;padding:6px 14px;font-size:13px;border-width:1px} .btn-lg{min-height:50px;padding:13px 26px;font-size:15px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
+  .full{width:100%}
+  .tag{display:inline-flex;align-items:center;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;padding:4px 9px;border-radius:var(--rp);background:var(--accent-wash);color:var(--accent-text);white-space:nowrap}
+  .tag-n{background:var(--bg-3);color:var(--ink-3)}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:var(--rp);white-space:nowrap}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .b-new{background:var(--accent-wash);color:var(--accent-text)}.b-ok{background:var(--ok-wash);color:var(--ok)}.b-warn{background:var(--warn-wash);color:var(--warn)}.b-bad{background:var(--bad-wash);color:var(--bad)}.b-idle{background:var(--bg-3);color:var(--ink-3)}
+  .soft{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-3)}.soft b{color:var(--ink);font-weight:650}
+
+  /* fields */
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;font-weight:600}
+  .field .hint{font-size:12.5px;color:var(--ink-3)}
+  .inp{font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line-3);border-radius:var(--r2);background:var(--bg);color:var(--ink);min-height:46px;width:100%}
+  .inp:focus{border-color:var(--accent)} .inp::placeholder{color:var(--ink-3)}
+  textarea.inp{min-height:92px;resize:vertical;line-height:1.5}
+  .cols2{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:640px){.cols2{grid-template-columns:1fr 1fr}}
+  .check{display:inline-flex;align-items:center;gap:9px;font-size:14px;cursor:pointer}
+  .check input{position:absolute;opacity:0;width:0;height:0}
+  .box{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-3);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .radio .box::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff;opacity:0}
+  .radio input:checked+.box{background:var(--accent);border-color:var(--accent)}.radio input:checked+.box::after{opacity:1}
+
+  /* avatars (shape = kind) */
+  .ava{--sz:40px;width:var(--sz);height:var(--sz);flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--avc,#475569);color:#fff;font-weight:700;font-style:normal;line-height:1;overflow:hidden}
+  .ava.org{border-radius:calc(var(--sz)*.26)}
+  .ava.sm{--sz:32px;font-size:12.5px}.ava.md{--sz:40px;font-size:15px}.ava.xl{--sz:64px;font-size:23px}
+  .ava.ph{background:var(--bg-3);color:var(--ink-3)}.ava.ph svg{width:54%;height:54%;stroke-width:1.7}
+
+  /* wordmark */
+  .wm{font-family:var(--f);font-size:20px;font-weight:700;letter-spacing:-.045em;line-height:1;color:var(--ink)}.wm i{font-style:italic;color:var(--accent-text)}
+
+  /* onboarding chrome */
+  .obtop{display:flex;align-items:center;gap:16px;padding:16px 22px;border-bottom:1px solid var(--line)}
+  .stepper{display:flex;align-items:center;gap:10px;margin:0 auto}
+  .step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-3);font-weight:600;white-space:nowrap}
+  .step .sdot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px}
+  .step.active{color:var(--ink)}.step.active .sdot{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+  .step.done{color:var(--ink-2)}.step.done .sdot{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+  .step.done .sdot svg{width:12px;height:12px}
+  .stepsep{width:22px;height:1.5px;background:var(--line-2);border-radius:2px}
+  @media(max-width:640px){.step .slabel{display:none}}
+
+  /* onboarding content column */
+  .ob{max-width:600px;margin:0 auto;padding:40px 22px 48px}
+  .ob.narrow{max-width:440px}
+  .ob.wide{max-width:660px}
+  .oh1{font-family:var(--f);font-size:29px;font-weight:500;letter-spacing:-.028em;margin:0 0 8px;line-height:1.1}
+  .oh1 .sig{font-style:italic;color:var(--accent-text)}
+  .osub{font-size:15px;color:var(--ink-2);margin:0 0 26px;max-width:52ch}
+  .obform{display:flex;flex-direction:column;gap:16px}
+  .obact{display:flex;gap:10px;margin-top:8px;align-items:center}
+  .reassure{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-3);margin-top:18px}
+  .reassure svg{width:15px;height:15px;flex-shrink:0;color:var(--ok)}
+  .divider{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:12px;margin:6px 0}
+  .divider::before,.divider::after{content:"";height:1px;background:var(--line);flex:1}
+  .avset{display:flex;align-items:center;gap:16px}
+  .lnk{font:inherit;font-family:var(--f);font-size:13px;font-weight:600;color:var(--accent-text);background:none;border:0;cursor:pointer;padding:0;text-decoration:none}
+
+  /* application-method cards */
+  .methods{display:flex;flex-direction:column;gap:10px}
+  .methodcard{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line-2);border-radius:var(--r2);padding:14px;cursor:pointer}
+  .methodcard.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .methodcard .mc-b{flex:1}
+  .methodcard .mc-t{font-size:14.5px;font-weight:650}
+  .methodcard .mc-h{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .methodcard .rec{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--ok);margin-left:8px}
+  .method-panel{display:none;margin-top:12px;padding:14px;border:1px dashed var(--line-2);border-radius:var(--r2);background:var(--bg-2)}
+  .method-panel.on{display:block}
+  .qbuild{display:flex;flex-direction:column;gap:8px}
+  .qb-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px;background:var(--bg)}
+  .qb-item .qn2{flex:1;font-size:14px}
+  .qb-item .gr{font-family:var(--mono);font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+
+  /* app chrome */
+  .topbar{display:flex;align-items:stretch;gap:22px;padding:0 22px;min-height:60px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .topbar>.wm,.topbar>.grow,.topbar>.nvright{align-self:center}
+  .topbar nav{display:flex;gap:22px}
+  .topbar nav a{position:relative;display:inline-flex;align-items:center;font-size:14px;font-weight:500;text-decoration:none;color:var(--ink-2);white-space:nowrap}
+  .topbar nav a:hover{color:var(--ink)}
+  .topbar nav a[aria-current]{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--accent)}
+  .ncount{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:var(--rp);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .nvright{display:flex;align-items:center;gap:10px}
+
+  /* posting header + review */
+  .rhead{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:22px 22px 0}
+  .rhead h2{margin:0;font-family:var(--f);font-size:26px;font-weight:500;letter-spacing:-.024em}
+  .heads{margin:16px 22px 0;border-radius:var(--r2);background:var(--warn-wash);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}.heads p{margin:0}
+  .q{display:grid;grid-template-columns:minmax(160px,1fr) 168px 60px 112px 168px;gap:16px;align-items:center;padding:13px 22px}
+  .q+.q{border-top:1px solid var(--line)}.q:hover{background:var(--bg-2)}
+  .qmain{min-width:0}.qn{font-weight:650;font-size:15px}.qs{font-size:13px;color:var(--ink-3)}
+  .qc{font-size:13.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qd{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .q .badge{justify-self:start}.qa{display:flex;gap:8px;justify-content:flex-end}
+  @media(max-width:720px){.q{grid-template-columns:1fr auto;gap:8px 12px}.qc,.qd{display:none}.qmain{grid-column:1;grid-row:1}.q .badge{grid-column:1;grid-row:2}.qa{grid-column:2;grid-row:1/3;align-self:center}}
+
+  /* empty / live-share */
+  .empty{margin:22px;border:1px dashed var(--line-2);border-radius:var(--r3);padding:40px 28px;text-align:center}
+  .empty .ekick{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ok);font-weight:700;display:inline-flex;align-items:center;gap:7px;margin-bottom:12px}
+  .empty .ekick::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .empty h3{font-family:var(--f);font-size:26px;font-weight:500;letter-spacing:-.022em;margin:0 0 8px}.empty h3 .sig{font-style:italic;color:var(--accent-text)}
+  .empty p{margin:0 auto 20px;color:var(--ink-2);font-size:14.5px;max-width:44ch}
+  .sharebox{display:flex;gap:8px;align-items:center;max-width:460px;margin:0 auto}
+  .sharebox .inp{flex:1;font-family:var(--mono);font-size:13px;color:var(--ink-2);min-height:44px}
+  .emeta{margin-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+
+  /* toast + motion */
+  .toast-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:var(--ink);color:var(--bg);border-radius:var(--rp);padding:11px 18px;box-shadow:var(--e3);font-size:14px;display:inline-flex;align-items:center;gap:10px;animation:tin var(--t-base) var(--ease)}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes ringout{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+  @keyframes dotpop{0%,100%{transform:scale(1)}35%{transform:scale(1.55)}}
+  @keyframes badgepop{0%,100%{transform:scale(1)}30%{transform:scale(1.06)}}
+  .state-change{animation:badgepop .45s var(--ease)}.state-change .dot{animation:dotpop .55s var(--ease),ringout .75s var(--ease)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .note{margin:22px;border-left:3px solid var(--accent);background:var(--accent-wash);padding:12px 16px;border-radius:0 var(--r2) var(--r2) 0;font-size:14px;color:var(--ink-2)}.note b{color:var(--accent-text)}
+  .themetoggle{position:fixed;bottom:18px;right:18px;z-index:9999;font-family:var(--sys);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:var(--rp);cursor:pointer;border:1px solid currentColor;background:rgba(127,127,127,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:inherit;opacity:.85;box-shadow:var(--e2)}
+  .tt-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}:root[data-theme="dark"] .tt-dot{background:currentColor}
+</style>
+
+<div class="studio">
+  <div class="studio-in">
+    <span class="lab">Club first-run</span>
+    <span class="seg" role="group" aria-label="Step">
+      <button data-screen="s1" aria-pressed="true">1 &#183; Sign up</button>
+      <button data-screen="s2" aria-pressed="false">2 &#183; Your club</button>
+      <button data-screen="s3" aria-pressed="false">3 &#183; Post a role</button>
+      <button data-screen="s4" aria-pressed="false">4 &#183; You&#8217;re live</button>
+      <button data-screen="s5" aria-pressed="false">5 &#183; Review</button>
+    </span>
+    <span class="grow"></span>
+    <span class="lab">Positioning &#167;3 &#183; the priority journey</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1 · SIGN UP -->
+  <div class="screen" data-screen="s1" data-active>
+    <div class="frame">
+      <div class="obtop">
+        <span class="wm">zot<i>hub</i></span>
+        <span class="stepper">
+          <span class="step active"><span class="sdot">1</span><span class="slabel">Account</span></span><span class="stepsep"></span>
+          <span class="step"><span class="sdot">2</span><span class="slabel">Your club</span></span><span class="stepsep"></span>
+          <span class="step"><span class="sdot">3</span><span class="slabel">First role</span></span>
+        </span>
+      </div>
+      <div class="ob narrow">
+        <h1 class="oh1">Recruit without <span class="sig">the spreadsheet.</span></h1>
+        <p class="osub">Set up your club in about five minutes &#8212; then post a role, or just link the Google Form you already use.</p>
+        <div class="obform">
+          <div class="field"><label for="em">UCI email</label><input class="inp" id="em" type="email" placeholder="you@uci.edu"><span class="hint">Officers only. We&#8217;ll email you a 6-digit code to verify.</span></div>
+          <button class="btn btn-acc btn-lg full" data-go="s2">Email me a code</button>
+        </div>
+        <div class="divider">or</div>
+        <p style="text-align:center;margin:0"><a class="lnk" href="#">Already on ZotSpot? Find and claim your club &#8594;</a></p>
+        <div class="reassure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Free for clubs. No card, no catch.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 · YOUR CLUB -->
+  <div class="screen" data-screen="s2">
+    <div class="frame">
+      <div class="obtop">
+        <span class="wm">zot<i>hub</i></span>
+        <span class="stepper">
+          <span class="step done"><span class="sdot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="slabel">Account</span></span><span class="stepsep"></span>
+          <span class="step active"><span class="sdot">2</span><span class="slabel">Your club</span></span><span class="stepsep"></span>
+          <span class="step"><span class="sdot">3</span><span class="slabel">First role</span></span>
+        </span>
+      </div>
+      <div class="ob">
+        <h1 class="oh1">Tell students who you are</h1>
+        <p class="osub">This becomes your club&#8217;s page. Just the basics now &#8212; you can polish it anytime from My Club.</p>
+        <div class="obform">
+          <div class="avset">
+            <span class="ava xl org ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/></svg></span>
+            <div><button class="btn btn-sm">Add logo</button><div class="hint" style="margin-top:6px">Square works best. Optional.</div></div>
+          </div>
+          <div class="field"><label for="cn">Club name</label><input class="inp" id="cn" value="Design at UCI"></div>
+          <div class="cols2">
+            <div class="field"><label for="cat">Category</label><select class="inp" id="cat">
+              <option>Academics &amp; Honors</option><option>Career &amp; Professional</option><option>Community Service</option>
+              <option selected>Creative Arts</option><option>Cultural</option><option>Performance</option>
+              <option>Religious &amp; Spiritual</option><option>Club Sports</option><option>Technology</option><option>Other</option></select></div>
+            <div class="field"><label for="one">One-line description</label><input class="inp" id="one" value="The design community at UCI"></div>
+          </div>
+          <div class="obact">
+            <button class="btn btn-ghost" data-go="s3">Skip for now</button>
+            <button class="btn btn-acc" data-go="s3">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · POST A ROLE -->
+  <div class="screen" data-screen="s3">
+    <div class="frame">
+      <div class="obtop">
+        <span class="wm">zot<i>hub</i></span>
+        <span class="stepper">
+          <span class="step done"><span class="sdot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="slabel">Account</span></span><span class="stepsep"></span>
+          <span class="step done"><span class="sdot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="slabel">Your club</span></span><span class="stepsep"></span>
+          <span class="step active"><span class="sdot">3</span><span class="slabel">First role</span></span>
+        </span>
+      </div>
+      <div class="ob wide">
+        <h1 class="oh1">Post your first role</h1>
+        <p class="osub">This is what students see and apply to. Takes two minutes &#8212; or 30 seconds if you already have a form.</p>
+        <div class="obform">
+          <div class="field"><label for="rt">Role title</label><input class="inp" id="rt" placeholder="e.g. VP of Design" value="VP of Design"></div>
+          <div class="cols2">
+            <div class="field"><label for="rtype">Type</label><select class="inp" id="rtype">
+              <option selected>Leadership</option><option>Project</option><option>Committee</option><option>Volunteer</option><option>Internship</option><option>Other</option></select></div>
+            <div class="field"><label for="rclose">Applications close</label><input class="inp" id="rclose" type="date" value="2026-09-25"><span class="hint">Leave blank for rolling.</span></div>
+          </div>
+          <div class="field"><label for="rd">What they&#8217;ll actually do</label><textarea class="inp" id="rd">Lead the visual identity for everything we ship &#8212; event artwork, the quarterly zine, and the site.</textarea></div>
+
+          <div class="field" style="gap:10px">
+            <label style="font-size:13px;font-weight:600">How do people apply?</label>
+            <div class="methods">
+              <label class="methodcard sel" data-method="link">
+                <span class="check radio"><input type="radio" name="method" value="link" checked><span class="box"></span></span>
+                <span class="mc-b"><span class="mc-t">Link a Google Form I already use <span class="rec">Fastest</span></span><span class="mc-h">Keep your form. ZotHub tracks who applied and their status &#8212; so nobody falls through the cracks.</span></span>
+              </label>
+              <label class="methodcard" data-method="build">
+                <span class="check radio"><input type="radio" name="method" value="build"><span class="box"></span></span>
+                <span class="mc-b"><span class="mc-t">Build the application here</span><span class="mc-h">Add your own questions. Applicants apply on ZotHub &#8212; no second tool.</span></span>
+              </label>
+            </div>
+            <div class="method-panel on" data-panel="link">
+              <div class="field"><label for="gf">Google Form link</label><input class="inp" id="gf" placeholder="https://forms.gle/&#8230;" value="https://forms.gle/aX9d2Qh"><span class="hint">We&#8217;ll add applicants here as they come in. You decide accept / decline from your Responses queue.</span></div>
+            </div>
+            <div class="method-panel" data-panel="build">
+              <div class="qbuild">
+                <div class="qb-item"><span class="qn2">Why do you want to join?</span><span class="gr">Long text</span></div>
+                <div class="qb-item"><span class="qn2">Link a portfolio (optional)</span><span class="gr">URL</span></div>
+                <button class="btn btn-sm btn-ghost" style="align-self:flex-start"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add question</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="obact" style="justify-content:flex-end">
+            <button class="btn btn-ghost">Save as draft</button>
+            <button class="btn btn-acc" id="publishBtn">Publish role</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 · YOU'RE LIVE (empty responses + share) -->
+  <div class="screen" data-screen="s4">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#" aria-current="page">Postings</a><a href="#">Responses</a><a href="#">Messages</a><a href="#">My Club</a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm org" style="--avc:#C2410C">D</span></div>
+      </div>
+      <div class="rhead">
+        <h2>VP of Design</h2>
+        <span class="soft"><b>Live</b> &#183; <b>0</b> applicants &#183; closes in <b>21</b> days</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm">View posting</button>
+      </div>
+      <div class="empty">
+        <span class="ekick">Published</span>
+        <h3>Your role is <span class="sig">live.</span></h3>
+        <p>Applications land right here. Share the link so students can find it &#8212; on your Discord, Instagram, or at the Involvement Fair.</p>
+        <div class="sharebox">
+          <input class="inp" id="shareurl" value="zothub.app/r/design-uci/vp-design" readonly aria-label="Shareable link">
+          <button class="btn btn-acc" id="copyBtn">Copy link</button>
+        </div>
+        <div class="emeta">Posted just now &#183; you&#8217;ll get an email on the first application</div>
+      </div>
+      <div class="note"><b>Never a dead end:</b> a brand-new posting has nothing to review yet &#8212; so the empty state hands over the one useful next action (share the link), not a shrug. The copy describes the <i>state</i> (&#8220;live, 0 applicants&#8221;), never the product&#8217;s stage.</div>
+    </div>
+  </div>
+
+  <!-- 5 · REVIEW (populated responses) -->
+  <div class="screen" data-screen="s5">
+    <div class="frame">
+      <div class="topbar">
+        <span class="wm">zot<i>hub</i></span>
+        <nav><a href="#">Postings</a><a href="#" aria-current="page">Responses<span class="ncount">12</span></a><a href="#">Messages</a><a href="#">My Club</a></nav>
+        <span class="grow"></span>
+        <div class="nvright"><span class="ava sm org" style="--avc:#C2410C">D</span></div>
+      </div>
+      <div class="rhead">
+        <h2>VP of Design</h2>
+        <span class="soft"><b>18</b> applicants &#183; <b>6</b> decided &#183; closes in <b>2</b> days</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm">Export</button>
+        <button class="btn btn-sm">Close posting</button>
+      </div>
+      <div class="heads">
+        <p><strong>12 people have been waiting 9 days.</strong> When this closes on Friday they&#8217;ll be declined automatically &#8212; told the same way as everyone else.</p>
+        <span class="grow"></span>
+        <button class="btn btn-sm btn-acc">Review them</button>
+      </div>
+      <div style="padding:8px 0 22px" id="queue">
+        <div class="q" data-orig="New"><div class="qmain"><div class="qn">Priya Raman</div><div class="qs">Portfolio attached</div></div><span class="qc">Junior &#183; Informatics</span><span class="qd">Sep 18</span><span class="badge b-new"><span class="dot"></span><span class="lbl">New</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Marcus Vela</div><div class="qs">R&#233;sum&#233; attached</div></div><span class="qc">Sophomore &#183; Studio Art</span><span class="qd">Sep 18</span><span class="badge b-warn"><span class="dot"></span><span class="lbl">Reviewed</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+        <div class="q" data-orig="Reviewed"><div class="qmain"><div class="qn">Amara Osei</div><div class="qs">Portfolio attached</div></div><span class="qc">Senior &#183; Computer Science</span><span class="qd">Sep 17</span><span class="badge b-ok"><span class="dot"></span><span class="lbl">Accepted</span></span><div class="qa"><button class="btn btn-sm btn-ghost" data-act="undo">Undo</button></div></div>
+        <div class="q" data-orig="New"><div class="qmain"><div class="qn">Ben Okafor</div><div class="qs">No attachment</div></div><span class="qc">Freshman &#183; Undeclared</span><span class="qd">Sep 17</span><span class="badge b-idle"><span class="dot"></span><span class="lbl">Applied</span></span><div class="qa"><button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+<button class="themetoggle" id="tt" type="button" aria-live="polite"><span class="tt-dot" aria-hidden="true"></span><span id="ttl">Dark</span></button>
+
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('tt'),l=document.getElementById('ttl');
+  function c(){var a=r.getAttribute('data-theme');return(a==='dark'||a==='light')?a:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  function s(t){r.setAttribute('data-theme',t);r.style.colorScheme=t;l.textContent=t==='dark'?'Light':'Dark';}
+  s(c());b.addEventListener('click',function(){s(c()==='dark'?'light':'dark');});})();
+// step switcher + in-screen CTAs
+function go(id){
+  [].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.setAttribute('aria-pressed',String(x.dataset.screen===id));});
+  [].forEach.call(document.querySelectorAll('.screen'),function(p){p.toggleAttribute('data-active',p.dataset.screen===id);});
+  window.scrollTo({top:0,behavior:'instant'});
+}
+[].forEach.call(document.querySelectorAll('.seg [data-screen]'),function(x){x.addEventListener('click',function(){go(x.dataset.screen);});});
+[].forEach.call(document.querySelectorAll('[data-go]'),function(x){x.addEventListener('click',function(){go(x.dataset.go);});});
+// application method toggle
+[].forEach.call(document.querySelectorAll('.methodcard'),function(card){
+  card.addEventListener('click',function(){
+    [].forEach.call(document.querySelectorAll('.methodcard'),function(c){c.classList.toggle('sel',c===card);});
+    var m=card.dataset.method;
+    [].forEach.call(document.querySelectorAll('.method-panel'),function(p){p.classList.toggle('on',p.dataset.panel===m);});
+  });
+});
+// enforce the intended default (link = low-floor path) on load; guards against browser form-state restoration desyncing the radio from the .sel class
+(function(){var l=document.querySelector('.methodcard[data-method="link"]'),b=document.querySelector('.methodcard[data-method="build"]');if(!l||!b)return;l.classList.add('sel');b.classList.remove('sel');l.querySelector('input').checked=true;document.querySelector('.method-panel[data-panel="link"]').classList.add('on');document.querySelector('.method-panel[data-panel="build"]').classList.remove('on');})();
+// toast
+function toast(msg){var w=document.getElementById('toasts');var t=document.createElement('div');t.className='toast';t.textContent=msg;w.appendChild(t);setTimeout(function(){t.remove();},3200);}
+// publish -> motion + toast + advance
+document.getElementById('publishBtn').addEventListener('click',function(){toast('Role published');go('s4');});
+// copy link
+document.getElementById('copyBtn').addEventListener('click',function(){var i=document.getElementById('shareurl');i.select&&i.select();toast('Link copied');});
+// review accept/decline/undo (reused component behaviour)
+(function(){var q=document.getElementById('queue');
+  function fire(el){el.classList.remove('state-change');void el.offsetWidth;el.classList.add('state-change');}
+  function setB(row,cls,t){var x=row.querySelector('.badge');x.className='badge '+cls;x.querySelector('.lbl').textContent=t;fire(x);}
+  function acts(row,h){row.querySelector('.qa').innerHTML=h;}
+  q.addEventListener('click',function(e){var btn=e.target.closest('[data-act]');if(!btn)return;var row=btn.closest('.q'),a=btn.dataset.act;
+    if(a==='accept'){setB(row,'b-ok','Accepted');acts(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(a==='decline'){setB(row,'b-bad','Declined');acts(row,'<button class="btn btn-sm btn-ghost" data-act="undo">Undo</button>');}
+    if(a==='undo'){var o=row.dataset.orig||'Reviewed';setB(row,o==='New'?'b-new':'b-warn',o);acts(row,'<button class="btn btn-sm" data-act="decline">Decline</button><button class="btn btn-sm btn-ink" data-act="accept">Accept</button>');}
+  });})();
+</script>
