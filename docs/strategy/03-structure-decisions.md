@@ -60,7 +60,7 @@ Decisions only. Rationale is compressed to the sentence that would stop us relit
 - Placement: secondary, not on a primary work surface.
 - **Empty results describe the query, not the product:** "No roles match 'design'."
 
-**Seeded ZotSpot clubs:** visible in the directory, **unmistakably marked unclaimed**, imported public data only, sourced visibly, with a prominent "Is this your club? Claim it" and a removal request. Density from day one, and every outreach conversation opens with a link to their page.
+**Seeded ZotSpot clubs:** visible in the directory, **unmistakably marked unclaimed**, imported public data only, sourced visibly, with a prominent "Is this your club? Claim it". No self-service removal — an admin can unpublish a seeded page when genuinely needed; concerns go through Help/Contact. Density from day one, and every outreach conversation opens with a link to their page.
 
 *Accepted asymmetry:* post-seeding, Clubs looks full while Discover is thin. That reads honestly as "many clubs, few openings right now" and creates real urgency for clubs to post — but it must be designed deliberately rather than allowed to read as broken.
 

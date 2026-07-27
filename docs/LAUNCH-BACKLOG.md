@@ -57,9 +57,11 @@ Create the test data/logins, then walk N1–N8. Several unblock once D1 is done.
     assets/code. **DP6** club-name placeholder. **N8** reconcile RSVP-email prefs.
     **S4** harden OTP password hashing. **DP7/DP8/DP9** low-priority.
 
-### Phase 4 — ZotPot seeding (item 3) · GATED on Phases 0–1 being clean
-12. **MB5** — the claim/seed flow. Separate plan to be written when we get here
-    (sourcing method + dedupe/verify + claim auth + `claimed`/`source` schema).
+### Phase 4 — ZotSpot seeding · seed SHIPPED (2026-07-27); claim flow remaining
+12. **MB5** — seed + directory + unclaimed profiles are **live**. Remaining: the
+    **admin-reviewed claim flow** (RPC + UX; CTA ships disabled until built) and the
+    logo re-host. **No self-service removal of any kind** — an admin can unpublish a
+    seeded club when needed; concerns route through Help/Contact (MB4).
 
 ---
 
@@ -204,10 +206,23 @@ Create the test data/logins, then walk N1–N8. Several unblock once D1 is done.
 - No `/help` `/faq` `/support` `/contact` `/report` route. `prd.md:155` (WS12) tags
   **launch-blocking**. Only an email exists. Phase 1 step 6.
 
-### ⏸️ MB5 — ZotSpot seed / claim flow (item 3)
-- Mocks `direction-11-v4-clubs.html`; `implementation-audit.md:388,394`. No
-  `claimed`/`source` columns, no scraper, no claim mutation. **Deliberately deferred.**
-  UI must ship marked "not yet live" with no dead buttons — verify that marking. Phase 4.
+### 🔄 MB5 — ZotSpot seed / claim flow
+- **Seed + directory + unclaimed profile — ✅ SHIPPED to prod 2026-07-27:** 724 clubs
+  live & published behind the `published` gate; unclaimed treatment (claim banner +
+  source line + "Not on ZotHub yet" empty state) on each profile. Migration
+  `20260727000100`; scripts `seed_clubs` / `publish_seeded_clubs` / `verify_seeded_clubs`.
+- **Remaining — the claim flow (NOT built; do not deploy yet):** a `claim_club()`
+  SECURITY DEFINER RPC + UX. **Auth = admin-reviewed** — a claim request routes through
+  the existing `/admin` approval queue; on approval, set `user_id` + `claimed_at` and
+  grant `user_roles` 'club'. The "Claim this club" CTA ships **disabled** ("Available
+  soon") until then (correct today — no dead button).
+- **No removal workflow — out of scope entirely:** no removal button/CTA, no
+  removal-request form or DB workflow, no removal email, and nothing implying imported
+  listings can be removed via self-service. Removal = an **admin unpublishing** a seeded
+  club when genuinely necessary (`publish_seeded_clubs.mjs --unpublish`). General or
+  accuracy concerns route through the future **Help/Contact** surface (MB4).
+- **Also remaining:** logo re-host — 589 originals preserved in `source_logo_url` →
+  storage bucket → set `logo_url` (turns initials fallbacks into real logos).
 
 ---
 

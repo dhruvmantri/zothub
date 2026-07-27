@@ -385,7 +385,7 @@ shadcn `ui/*` (48 files) — re-tokened wholesale, not rebuilt.
 | Item | Mock | Backend today | Note |
 |---|---|---|---|
 | **student ↔ member messaging** | `component-library.html` §09 (MEMBER role chip), `direction-11-v4-clubs.html` (message-a-member on the club page), `more-screens` Messages | Partial: `messages` table is generic `sender_id/receiver_id`, and `club_team_members.user_id` exists, so a member DM would **work** — but the only entry point (`ClubDetail.tsx:376`) navigates to `/messages?to=`, **a route that does not exist**, and no page reads a `?to=` param. | Smallest real gap in the whole audit: a route + a `?to=` handler. No schema change. |
-| **ZotSpot seed / claim flow** | `direction-11-v4-clubs.html` — unclaimed cards, claim banner, request-removal, source attribution | **None.** No `claimed`/`source` columns, no scraper, no claim mutation. | Genuinely net-new; needs schema + RLS ⇒ outside "re-skin, don't rebuild". |
+| **ZotSpot seed / claim flow** | `direction-11-v4-clubs.html` — unclaimed cards, claim banner, source attribution | **None.** No `claimed`/`source` columns, no scraper, no claim mutation. | Genuinely net-new; needs schema + RLS ⇒ outside "re-skin, don't rebuild". |
 
 ---
 

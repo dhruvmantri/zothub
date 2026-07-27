@@ -77,7 +77,7 @@ Scrape ZotSpot's public directory of active registered organizations and pre-pop
 **Sequencing:** built after the core redesign ships (see [`02-execution-plan.md`](./02-execution-plan.md)), during the outreach window.
 
 **Flags to handle when we build it, not now** — none is a blocker, all are cheap to get right and expensive to get wrong:
-- **Accuracy and consent.** An unclaimed page must be unmistakably unclaimed — no fabricated activity, no implied endorsement, and a one-click way for a club to request removal. A directory entry that misrepresents a real organization is the same credibility failure as the fabricated landing stats, just aimed at someone else.
+- **Accuracy and consent.** An unclaimed page must be unmistakably unclaimed — no fabricated activity, no implied endorsement. If a club is misrepresented, recourse is admin-side (an admin can unpublish the seeded page), with questions routed through the Help/Contact surface — deliberately **not** a self-service removal control. A directory entry that misrepresents a real organization is the same credibility failure as the fabricated landing stats, just aimed at someone else.
 - **Attribution and terms.** Check ZotSpot/CampusGroups terms before scraping; prefer low-rate, cached, public-page-only collection. Source the data visibly.
 - **Freshness.** Registration status changes annually; stale "active" claims age badly. Plan a refresh, or timestamp the data.
 
