@@ -1,22 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { RoleBasedLayout } from "@/components/RoleBasedLayout";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Search, 
-  Users, 
-  X, 
-  Globe, 
-  Instagram, 
-  Linkedin,
-  Briefcase,
-  Calendar,
-  ArrowUpDown
-} from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { Search, X, Globe, Instagram, Linkedin } from "lucide-react";
+
+import { RoleBasedLayout } from "@/components/RoleBasedLayout";
+import { FilterChip } from "@/components/discover/FilterChip";
+import { EmptyState } from "@/components/discover/EmptyState";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tag } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EntityAvatar } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -24,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { CLUB_CATEGORIES } from "@/lib/constants";
 
 interface Club {
   id: string;
@@ -38,15 +34,13 @@ interface Club {
   event_count: number;
 }
 
-const categories = ["All", "Technology", "Business", "Creative", "Service", "Health", "Academic", "Cultural", "Sports"];
-
 type SortOption = "name-asc" | "name-desc" | "most-active";
 
 export default function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
 
   useEffect(() => {
@@ -55,7 +49,6 @@ export default function ClubsPage() {
 
   const fetchClubs = async () => {
     try {
-      // Get all clubs
       const { data: clubsData, error: clubsError } = await supabase.rpc("get_all_clubs_public");
 
       if (clubsError) {
@@ -64,7 +57,6 @@ export default function ClubsPage() {
         return;
       }
 
-      // Get opportunity counts per club (active and not expired)
       const now = new Date().toISOString();
       const { data: oppCounts, error: oppError } = await supabase
         .from("opportunities")
@@ -72,14 +64,12 @@ export default function ClubsPage() {
         .eq("is_active", true)
         .or(`deadline.is.null,deadline.gte.${now}`);
 
-      // Get event counts per club (upcoming only)
       const { data: eventCounts, error: eventError } = await supabase
         .from("events")
         .select("club_id")
         .eq("is_active", true)
         .gte("event_date", new Date().toISOString());
 
-      // Count opportunities per club
       const oppCountMap: Record<string, number> = {};
       if (!oppError && oppCounts) {
         oppCounts.forEach((opp) => {
@@ -87,7 +77,6 @@ export default function ClubsPage() {
         });
       }
 
-      // Count events per club
       const eventCountMap: Record<string, number> = {};
       if (!eventError && eventCounts) {
         eventCounts.forEach((event) => {
@@ -95,14 +84,13 @@ export default function ClubsPage() {
         });
       }
 
-      // Merge counts into clubs
-      const clubsWithCounts: Club[] = (clubsData || []).map((club) => ({
-        ...club,
-        opportunity_count: oppCountMap[club.id] || 0,
-        event_count: eventCountMap[club.id] || 0,
-      }));
-
-      setClubs(clubsWithCounts);
+      setClubs(
+        (clubsData || []).map((club) => ({
+          ...club,
+          opportunity_count: oppCountMap[club.id] || 0,
+          event_count: eventCountMap[club.id] || 0,
+        })),
+      );
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -110,18 +98,30 @@ export default function ClubsPage() {
     }
   };
 
+  /**
+   * Only offer categories that some club actually uses. The old list hard-coded
+   * nine labels ("Creative", "Service"…) that did not exist in
+   * CLUB_CATEGORIES at all, so most real categories were unfilterable and
+   * several chips could never match anything. Deriving from the data means the
+   * filter bar can never drift from the taxonomy again.
+   */
+  const categories = useMemo(() => {
+    const used = new Set(clubs.map((c) => c.category).filter(Boolean) as string[]);
+    return [
+      { value: "all", label: "All" },
+      ...CLUB_CATEGORIES.filter((c) => used.has(c)).map((c) => ({ value: c, label: c })),
+    ];
+  }, [clubs]);
+
   const filteredAndSortedClubs = useMemo(() => {
     const result = clubs.filter((club) => {
       const matchesSearch =
         club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      const matchesCategory =
-        selectedCategory === "All" ||
-        club.category?.toLowerCase() === selectedCategory.toLowerCase();
+      const matchesCategory = selectedCategory === "all" || club.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
 
-    // Sort
     switch (sortBy) {
       case "name-asc":
         result.sort((a, b) => a.club_name.localeCompare(b.club_name));
@@ -130,235 +130,213 @@ export default function ClubsPage() {
         result.sort((a, b) => b.club_name.localeCompare(a.club_name));
         break;
       case "most-active":
-        result.sort((a, b) => {
-          const aActivity = a.opportunity_count + a.event_count;
-          const bActivity = b.opportunity_count + b.event_count;
-          return bActivity - aActivity;
-        });
+        result.sort(
+          (a, b) =>
+            b.opportunity_count + b.event_count - (a.opportunity_count + a.event_count),
+        );
         break;
     }
 
     return result;
   }, [clubs, searchQuery, selectedCategory, sortBy]);
 
+  const recruitingCount = clubs.filter((c) => c.opportunity_count > 0).length;
+  const hasFilters = searchQuery !== "" || selectedCategory !== "all";
+
   return (
     <RoleBasedLayout>
       <div className="min-h-screen">
-        {/* Header */}
-        <div className="bg-secondary/50 border-b border-border">
-          <div className="container mx-auto px-4 py-12">
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Clubs & Organizations
+        <div className="border-b border-line bg-surface">
+          <div className="container mx-auto px-4 py-9">
+            <h1 className="text-[clamp(30px,4vw,40px)] font-medium tracking-[-0.03em] text-ink">
+              Clubs
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Explore UCI's vibrant club ecosystem and find your community.
+            {/* Honest asymmetry: most clubs are not recruiting at any given
+                moment, and saying so is more useful than implying they all are. */}
+            <p className="mt-2 text-ink-2">
+              <span className="font-data">{clubs.length}</span>{" "}
+              {clubs.length === 1 ? "club" : "clubs"} ·{" "}
+              <span className="font-data">{recruitingCount}</span> recruiting right now
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="sticky top-16 z-40 bg-background border-b border-border">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
+        <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <label htmlFor="clubs-search" className="sr-only">
+                  Search clubs by name or description
+                </label>
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-3"
+                />
                 <Input
-                  type="text"
-                  placeholder="Search clubs..."
+                  id="clubs-search"
+                  type="search"
+                  placeholder="Search clubs…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-11"
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-secondary rounded"
+                    aria-label="Clear search"
+                    className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-pill text-ink-3 hover:bg-surface-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <X className="w-3 h-3 text-muted-foreground" />
+                    <X className="size-4" />
                   </button>
                 )}
               </div>
 
-              {/* Sort dropdown */}
-              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <ArrowUpDown className="w-4 h-4 mr-2" />
+              <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
+                <SelectTrigger className="w-full md:w-[190px]" aria-label="Sort clubs">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name-asc">Name A-Z</SelectItem>
-                  <SelectItem value="name-desc">Name Z-A</SelectItem>
-                  <SelectItem value="most-active">Most Active</SelectItem>
+                  <SelectItem value="name-asc">Name A–Z</SelectItem>
+                  <SelectItem value="name-desc">Name Z–A</SelectItem>
+                  <SelectItem value="most-active">Most active</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
 
-              {/* Category filters */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+            {categories.length > 1 && (
+              <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
                 {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                      selectedCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    }`}
+                  <FilterChip
+                    key={category.value}
+                    active={selectedCategory === category.value}
+                    onClick={() => setSelectedCategory(category.value)}
                   >
-                    {category}
-                  </button>
+                    {category.label}
+                  </FilterChip>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Results */}
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-card border border-border">
-                  <div className="flex items-start gap-4 mb-4">
-                    <Skeleton className="w-14 h-14 rounded-xl" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-3/4" />
-                      <Skeleton className="h-5 w-16" />
-                    </div>
+                <div key={i} className="flex gap-3 rounded-lg border border-line bg-surface p-5">
+                  <Skeleton className="size-[52px] shrink-0 rounded-[13px]" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3.5 w-full" />
                   </div>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
                 </div>
               ))}
             </div>
-          ) : (
-            <>
-              {/* Results count */}
-              <p className="text-sm text-muted-foreground mb-6">
-                Showing {filteredAndSortedClubs.length} clubs
-              </p>
-
-              {/* Grid */}
-              {filteredAndSortedClubs.length > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredAndSortedClubs.map((club) => (
-                    <Link
-                      key={club.id}
-                      to={`/clubs/${club.id}`}
-                      className="group block"
-                    >
-                      <div className="p-6 rounded-2xl bg-card shadow-card hover:shadow-card-hover transition-all duration-300 border border-border h-full">
-                        {/* Club header */}
-                        <div className="flex items-start gap-4 mb-4">
-                          <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {club.logo_url ? (
-                              <img
-                                src={club.logo_url}
-                                alt={club.club_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="font-display text-xl font-bold text-muted-foreground">
-                                {club.club_name.charAt(0)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-display text-lg font-semibold text-foreground truncate group-hover:text-accent transition-colors">
-                              {club.club_name}
-                            </h3>
-                            {club.category && (
-                              <Badge variant="muted" className="mt-1">
-                                {club.category}
-                              </Badge>
-                            )}
-                          </div>
+          ) : filteredAndSortedClubs.length > 0 ? (
+            <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredAndSortedClubs.map((club) => (
+                <article
+                  key={club.id}
+                  className="group relative flex flex-col rounded-lg border border-line bg-surface p-5 shadow-e1 transition-[box-shadow,transform,border-color] duration-base ease-zh hover:-translate-y-0.5 hover:border-line-2 hover:shadow-e3"
+                >
+                  <div className="flex gap-3">
+                    <EntityAvatar
+                      name={club.club_name}
+                      src={club.logo_url}
+                      kind="org"
+                      size="lg"
+                      className="size-[52px] shrink-0 text-[19px]"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-[18px] font-semibold leading-tight tracking-[-0.018em]">
+                        <Link
+                          to={`/clubs/${club.id}`}
+                          className="text-ink after:absolute after:inset-0 after:content-[''] group-hover:text-accent-text focus-visible:underline focus-visible:outline-none"
+                        >
+                          {club.club_name}
+                        </Link>
+                      </h2>
+                      {club.category && (
+                        <div className="mt-1.5">
+                          <Tag variant="neutral">{club.category}</Tag>
                         </div>
-
-                        {/* Description */}
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                          {club.description || "No description available"}
-                        </p>
-
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="w-3.5 h-3.5" />
-                            {club.opportunity_count} {club.opportunity_count === 1 ? "opportunity" : "opportunities"}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {club.event_count} {club.event_count === 1 ? "event" : "events"}
-                          </span>
-                        </div>
-
-                        {/* Footer with links */}
-                        <div className="flex items-center gap-2">
-                          {club.website_url && (
-                            <a
-                              href={club.website_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                            >
-                              <Globe className="w-4 h-4 text-muted-foreground" />
-                            </a>
-                          )}
-                          {club.instagram_url && (
-                            <a
-                              href={club.instagram_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                            >
-                              <Instagram className="w-4 h-4 text-muted-foreground" />
-                            </a>
-                          )}
-                          {club.linkedin_url && (
-                            <a
-                              href={club.linkedin_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                            >
-                              <Linkedin className="w-4 h-4 text-muted-foreground" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-muted-foreground" />
+                      )}
+                    </div>
                   </div>
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                    No clubs found
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    {clubs.length === 0
-                      ? "No clubs have registered yet. Check back later!"
-                      : "Try adjusting your search or filters"}
+
+                  <p className="mt-3 line-clamp-2 text-sm text-ink-2">
+                    {club.description || "No description yet."}
                   </p>
-                  {clubs.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedCategory("All");
-                      }}
-                      className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
-                    >
-                      Clear filters
-                    </button>
+
+                  <p className="mt-3 text-[12.5px] text-ink-3">
+                    {club.opportunity_count > 0 ? (
+                      <span className="font-semibold text-accent-text">
+                        <span className="font-data">{club.opportunity_count}</span> open{" "}
+                        {club.opportunity_count === 1 ? "role" : "roles"}
+                      </span>
+                    ) : (
+                      "Not recruiting"
+                    )}
+                    {" · "}
+                    <span className="font-data">{club.event_count}</span>{" "}
+                    {club.event_count === 1 ? "event" : "events"}
+                  </p>
+
+                  {(club.website_url || club.instagram_url || club.linkedin_url) && (
+                    <div className="relative z-10 mt-auto flex gap-1 pt-4">
+                      {[
+                        { url: club.website_url, Icon: Globe, name: "website" },
+                        { url: club.instagram_url, Icon: Instagram, name: "Instagram" },
+                        { url: club.linkedin_url, Icon: Linkedin, name: "LinkedIn" },
+                      ]
+                        .filter((l) => l.url)
+                        .map(({ url, Icon, name }) => (
+                          <Button
+                            key={name}
+                            variant="ghost"
+                            size="icon-sm"
+                            asChild
+                            aria-label={`${club.club_name} ${name}`}
+                          >
+                            <a href={url!} target="_blank" rel="noopener noreferrer">
+                              <Icon className="size-4" />
+                            </a>
+                          </Button>
+                        ))}
+                    </div>
                   )}
-                </div>
-              )}
-            </>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title={hasFilters ? "No clubs match that —" : "No clubs yet —"}
+              signature={hasFilters ? "try a wider search." : "check back soon."}
+              body={
+                hasFilters
+                  ? "Nothing here matches those filters. Clearing them shows every club."
+                  : "Clubs are being onboarded. Roles and events appear here as they join."
+              }
+              actions={
+                hasFilters ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Button variant="outline" asChild>
+                    <Link to="/opportunities">Browse roles</Link>
+                  </Button>
+                )
+              }
+            />
           )}
         </div>
       </div>

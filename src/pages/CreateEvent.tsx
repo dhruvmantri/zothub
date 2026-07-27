@@ -121,7 +121,7 @@ export default function CreateEvent() {
 
       if (asDraft) {
         toast.success("Event saved as draft");
-        navigate("/club/dashboard");
+        navigate("/club/dashboard/events");
       } else {
         setCreatedEventId(insertedData?.id || null);
         setShowSuccessModal(true);
@@ -136,16 +136,16 @@ export default function CreateEvent() {
 
   return (
     <ClubLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard">
+            <Link to="/club/dashboard/events">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to Postings
             </Link>
           </Button>
-          <h1 className="font-display text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-semibold tracking-[-0.02em] text-ink">
             Create New Event
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -303,6 +303,7 @@ export default function CreateEvent() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Require approval"
                   id="requiresApproval"
                   checked={requiresApproval}
                   onCheckedChange={setRequiresApproval}
@@ -334,6 +335,7 @@ export default function CreateEvent() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Publish immediately"
                   id="isActive"
                   checked={isActive}
                   onCheckedChange={setIsActive}
@@ -345,7 +347,7 @@ export default function CreateEvent() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard">Cancel</Link>
+              <Link to="/club/dashboard/events">Cancel</Link>
             </Button>
             <Button
               type="button"
@@ -377,13 +379,13 @@ export default function CreateEvent() {
           open={showSuccessModal}
           onClose={() => {
             setShowSuccessModal(false);
-            navigate("/club/dashboard");
+            navigate("/club/dashboard/events");
           }}
           title="Event Published!"
           description={`"${title}" is now live and students can RSVP. Share it to reach more attendees!`}
           primaryAction={{
             label: "View Dashboard",
-            onClick: () => navigate("/club/dashboard"),
+            onClick: () => navigate("/club/dashboard/events"),
           }}
           secondaryAction={{
             label: "Create Another",

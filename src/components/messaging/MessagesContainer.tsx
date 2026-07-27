@@ -1,5 +1,9 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, User, ArrowLeft } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+
+import { EntityAvatar } from "@/components/ui/avatar";
+import { Tag } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { MessageThread } from "./MessageThread";
@@ -19,13 +23,30 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
     isLoading,
     isSending,
     selectConversation,
+    startConversation,
     sendMessage,
     deleteMessage,
     user,
   } = useMessages();
 
+  // The ?to=<user_id> entry point (e.g. the "Message a member" button on the
+  // club page). Open/create that thread once, then strip the param so a
+  // refresh or back-navigation doesn't reopen it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledTo = useRef<string | null>(null);
+  useEffect(() => {
+    const to = searchParams.get("to");
+    if (to && handledTo.current !== to) {
+      handledTo.current = to;
+      startConversation(to);
+      const next = new URLSearchParams(searchParams);
+      next.delete("to");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, startConversation, setSearchParams]);
+
   const currentConversation = conversations.find(
-    (c) => c.participantId === selectedConversation
+    (c) => c.participantId === selectedConversation,
   );
 
   const handleSend = async (content: string) => {
@@ -37,17 +58,20 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
     selectConversation("");
   };
 
+  const roleLabel = (isClub: boolean, isMember?: boolean) =>
+    isClub ? "Club" : isMember ? "Club member" : "Student";
+
   return (
-    <div className={cn("flex h-full bg-background rounded-lg border border-border overflow-hidden", className)}>
-      {/* Conversation List - Hidden on mobile when conversation selected */}
+    <div className={cn("flex h-full overflow-hidden rounded-lg border border-line bg-surface", className)}>
+      {/* Conversation list — hidden on mobile once a thread is open */}
       <div
         className={cn(
-          "w-full md:w-80 lg:w-96 border-r border-border flex flex-col",
-          selectedConversation && "hidden md:flex"
+          "flex w-full flex-col border-r border-line md:w-80 lg:w-96",
+          selectedConversation && "hidden md:flex",
         )}
       >
-        <div className="p-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">Messages</h2>
+        <div className="border-b border-line p-4">
+          <h2 className="font-semibold text-ink">Messages</h2>
         </div>
         <ConversationList
           conversations={conversations}
@@ -57,56 +81,56 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
         />
       </div>
 
-      {/* Message Thread */}
-      <div
-        className={cn(
-          "flex-1 flex flex-col",
-          !selectedConversation && "hidden md:flex"
-        )}
-      >
-        {/* Thread Header */}
+      {/* Message thread */}
+      <div className={cn("flex flex-1 flex-col", !selectedConversation && "hidden md:flex")}>
         {currentConversation && (
-          <div className="p-4 border-b border-border flex items-center gap-3 bg-card">
+          <div className="flex items-center gap-3 border-b border-line bg-surface p-4">
             <Button
               variant="ghost"
               size="icon"
               className="md:hidden"
+              aria-label="Back to conversations"
               onClick={handleBack}
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
 
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={currentConversation.participantAvatar} />
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {currentConversation.participantName
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .substring(0, 2)
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <EntityAvatar
+              kind={currentConversation.isClub ? "org" : "person"}
+              name={currentConversation.participantName}
+              src={currentConversation.participantAvatar}
+              size="md"
+            />
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                {currentConversation.isClub ? (
-                  <Building2 className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                {/* The header name links to a club's public page (maintainer
+                    request). Students/members have no public page, so plain. */}
+                {currentConversation.isClub && currentConversation.participantProfileId ? (
+                  <Link
+                    to={`/clubs/${currentConversation.participantProfileId}`}
+                    className="truncate font-medium text-ink transition-colors hover:text-accent-text"
+                  >
+                    {currentConversation.participantName}
+                  </Link>
                 ) : (
-                  <User className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate font-medium text-ink">
+                    {currentConversation.participantName}
+                  </span>
                 )}
-                <span className="font-medium text-foreground truncate">
-                  {currentConversation.participantName}
-                </span>
+                {currentConversation.isMember && (
+                  <Tag variant="neutral" className="shrink-0">
+                    Member
+                  </Tag>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {currentConversation.isClub ? "Club" : "Student"}
+              <p className="text-xs text-ink-2">
+                {roleLabel(currentConversation.isClub, currentConversation.isMember)}
               </p>
             </div>
           </div>
         )}
 
-        {/* Messages */}
         <MessageThread
           messages={messages}
           currentUserId={user?.id || ""}
@@ -114,12 +138,7 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
           onDeleteMessage={deleteMessage}
         />
 
-        {/* Composer */}
-        <MessageComposer
-          onSend={handleSend}
-          isSending={isSending}
-          disabled={!selectedConversation}
-        />
+        <MessageComposer onSend={handleSend} isSending={isSending} disabled={!selectedConversation} />
       </div>
     </div>
   );

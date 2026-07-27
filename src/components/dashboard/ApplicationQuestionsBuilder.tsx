@@ -116,47 +116,47 @@ export function ApplicationQuestionsBuilder({
             const isExpanded = expandedId === question.id;
 
             return (
-              <Card 
+              <Card
                 key={question.id}
                 className={cn(
                   "border transition-all",
-                  isExpanded && "ring-2 ring-primary/20"
+                  isExpanded && "ring-2 ring-accent/40"
                 )}
               >
                 <CardContent className="p-4">
                   {/* Header */}
                   <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      className="mt-1 text-muted-foreground hover:text-foreground cursor-grab"
+                    <span
+                      aria-hidden
+                      className="mt-1 text-ink-3 cursor-grab"
                     >
                       <GripVertical className="w-4 h-4" />
-                    </button>
+                    </span>
 
                     <div className="flex-1 min-w-0">
-                      <div 
+                      <div
                         className="flex items-center gap-2 cursor-pointer"
                         onClick={() => setExpandedId(isExpanded ? null : question.id)}
                       >
-                        <config.icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="font-medium text-foreground truncate">
-                          {question.question || "Untitled Question"}
+                        <config.icon className="w-4 h-4 text-ink-3 shrink-0" />
+                        <span className="font-medium text-ink truncate">
+                          {question.question || "Untitled question"}
                         </span>
                         {question.required && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                             Required
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{config.label}</p>
+                      <p className="text-xs text-ink-3 mt-0.5">{config.label}</p>
                     </div>
 
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
+                        size="icon-sm"
+                        aria-label="Move question up"
                         onClick={() => moveQuestion(index, "up")}
                         disabled={index === 0}
                       >
@@ -165,8 +165,8 @@ export function ApplicationQuestionsBuilder({
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
+                        size="icon-sm"
+                        aria-label="Move question down"
                         onClick={() => moveQuestion(index, "down")}
                         disabled={index === questions.length - 1}
                       >
@@ -175,8 +175,9 @@ export function ApplicationQuestionsBuilder({
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        size="icon-sm"
+                        className="text-bad hover:bg-bad-wash hover:text-bad"
+                        aria-label="Remove question"
                         onClick={() => removeQuestion(question.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -213,6 +214,7 @@ export function ApplicationQuestionsBuilder({
                                   type="button"
                                   variant="ghost"
                                   size="icon"
+                                  aria-label={`Remove option ${optionIndex + 1}`}
                                   onClick={() => removeOption(question.id, optionIndex)}
                                   disabled={question.options && question.options.length <= 2}
                                 >
@@ -247,9 +249,10 @@ export function ApplicationQuestionsBuilder({
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <div className="flex items-center justify-between pt-2 border-t border-line">
                         <div className="flex items-center gap-2">
                           <Switch
+                            aria-label="Mark question as required"
                             id={`required-${question.id}`}
                             checked={question.required}
                             onCheckedChange={(checked) => updateQuestion(question.id, { required: checked })}
@@ -285,10 +288,10 @@ export function ApplicationQuestionsBuilder({
       </div>
 
       {questions.length === 0 && (
-        <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-          <HelpCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground mb-2">No application questions yet</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="rounded-lg border-2 border-dashed border-line py-8 text-center">
+          <HelpCircle className="w-10 h-10 text-ink-3 mx-auto mb-3" />
+          <p className="text-ink-2 mb-2">No application questions yet</p>
+          <p className="text-sm text-ink-3">
             Click the buttons above to add questions applicants will answer
           </p>
         </div>

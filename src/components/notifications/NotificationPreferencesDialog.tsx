@@ -48,6 +48,7 @@ export function NotificationPreferencesDialog({
               </p>
             </div>
             <Switch
+              aria-label="Application updates"
               checked={preferences.application_updates}
               onCheckedChange={(checked) =>
                 onPreferenceChange("application_updates", checked)
@@ -60,6 +61,7 @@ export function NotificationPreferencesDialog({
               <p className="text-sm text-muted-foreground">Remind before upcoming events</p>
             </div>
             <Switch
+              aria-label="Event reminders"
               checked={preferences.event_reminders}
               onCheckedChange={(checked) =>
                 onPreferenceChange("event_reminders", checked)
@@ -74,6 +76,7 @@ export function NotificationPreferencesDialog({
               </p>
             </div>
             <Switch
+              aria-label="New messages"
               checked={preferences.new_messages}
               onCheckedChange={(checked) =>
                 onPreferenceChange("new_messages", checked)
@@ -88,6 +91,7 @@ export function NotificationPreferencesDialog({
               </p>
             </div>
             <Switch
+              aria-label="Deadline reminders"
               checked={preferences.deadline_reminders}
               onCheckedChange={(checked) =>
                 onPreferenceChange("deadline_reminders", checked)
@@ -102,6 +106,7 @@ export function NotificationPreferencesDialog({
               </p>
             </div>
             <Switch
+              aria-label="New posts from followed clubs"
               checked={preferences.new_post_notifications}
               onCheckedChange={(checked) =>
                 onPreferenceChange("new_post_notifications", checked)
@@ -116,6 +121,7 @@ export function NotificationPreferencesDialog({
               </p>
             </div>
             <Switch
+              aria-label="Team invitations"
               checked={preferences.team_invitations}
               onCheckedChange={(checked) =>
                 onPreferenceChange("team_invitations", checked)

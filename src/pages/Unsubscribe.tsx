@@ -167,11 +167,11 @@ export default function Unsubscribe() {
             </Button>
 
             {showSuccess && (
-              <Card className="mb-6 border-green-500/50 bg-green-500/5">
+              <Card className="mb-6 border-ok/40 bg-ok-wash">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <p className="text-foreground">
+                    <CheckCircle className="w-5 h-5 text-ok" />
+                    <p className="text-ink">
                       You've been unsubscribed from {type?.replace("_", " ")} emails.
                     </p>
                   </div>
@@ -199,15 +199,16 @@ export default function Unsubscribe() {
                     {(Object.keys(preferences) as Array<keyof typeof preferences>).map((key) => (
                       <div key={key} className="flex items-center justify-between gap-4">
                         <div className="space-y-0.5">
-                          <Label htmlFor={key} className="text-foreground font-medium">
+                          <Label htmlFor={key} className="text-ink font-medium">
                             {preferenceLabels[key].label}
                           </Label>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-ink-2">
                             {preferenceLabels[key].description}
                           </p>
                         </div>
                         <Switch
                           id={key}
+                          aria-label={preferenceLabels[key].label}
                           checked={preferences[key]}
                           onCheckedChange={() => handleToggle(key)}
                           disabled={isSaving}

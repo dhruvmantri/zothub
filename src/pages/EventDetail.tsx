@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { ArrowLeft, Bookmark, BookmarkCheck, Calendar, Clock, MapPin, Users } from "lucide-react";
+import { format } from "date-fns";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
@@ -7,26 +10,16 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 import { useEventRSVP } from "@/hooks/useEventRSVP";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Tag } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EntityAvatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/discover/EmptyState";
 import { toast } from "sonner";
 import { RSVPForm } from "@/components/RSVPForm";
 import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { ShareButton } from "@/components/ShareButton";
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  Clock, 
-  ArrowLeft,
-  Bookmark,
-  BookmarkCheck,
-  CheckCircle,
-  XCircle,
-  HourglassIcon
-} from "lucide-react";
-import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { FormQuestion } from "@/types";
 
 interface EventDetail {
@@ -47,28 +40,34 @@ interface EventDetail {
   rsvps: { id: string; student_id: string; status: string | null }[];
 }
 
+/**
+ * Event detail is bucket B — the mocks never drew it. Built by extending the
+ * opportunity-detail pattern rather than inventing a second one, so the two
+ * halves of Discover lead somewhere that feels like the same product: same
+ * header shape, same about-the-club mini-card, same sidebar action panel.
+ *
+ * The one intentional difference is the mono date block, which is the same
+ * device the cards use to say "event" without a second colour.
+ */
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, role } = useAuth();
-  
-  // Track page view
-  useTrackView('event', id);
-  
+
+  useTrackView("event", id);
+
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Use centralized bookmark hook
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const isEventBookmarked = id ? isBookmarked(id) : false;
 
   const fetchEvent = useCallback(async () => {
     if (!id) return;
-    
+
     try {
       // rsvp_questions is only needed by the (auth-only) RSVP form, so it is
-      // requested only when logged in — anon has no column grant for it. The
-      // dynamic column list is a plain string, so the row type is asserted.
+      // requested only when logged in — anon has no column grant for it.
       const { data, error } = (await supabase
         .from("events")
         .select(
@@ -76,24 +75,19 @@ export default function EventDetail() {
         )
         .eq("id", id)
         .single()) as unknown as {
-          data:
-            | (Omit<EventDetail, "rsvp_questions"> & { rsvp_questions?: unknown })
-            | null;
+          data: (Omit<EventDetail, "rsvp_questions"> & { rsvp_questions?: unknown }) | null;
           error: { message: string } | null;
         };
 
       if (error) throw error;
       if (!data) throw new Error("Event not found");
 
-      // Parse rsvp_questions from JSON
-      const eventData: EventDetail = {
+      setEvent({
         ...data,
         rsvp_questions: Array.isArray(data.rsvp_questions)
           ? (data.rsvp_questions as unknown as FormQuestion[])
           : null,
-      };
-
-      setEvent(eventData);
+      });
     } catch (error) {
       console.error("Error fetching event:", error);
       toast.error("Failed to load event");
@@ -106,7 +100,6 @@ export default function EventDetail() {
     fetchEvent();
   }, [fetchEvent]);
 
-  // Use the extracted RSVP hook
   const {
     studentProfileId,
     hasRSVP,
@@ -120,26 +113,13 @@ export default function EventDetail() {
     spotsLeft,
   } = useEventRSVP(id, event, fetchEvent);
 
-  const formatEventDate = (date: string) => {
-    return format(new Date(date), "EEEE, MMMM d, yyyy");
-  };
-
-  const formatEventTime = (date: string) => {
-    return format(new Date(date), "h:mm a");
-  };
-
-  const isEventPast = event ? new Date(event.event_date) < new Date() : false;
-  const eventUrl = typeof window !== "undefined" ? window.location.href : "";
-
   if (loading) {
     return (
       <RoleBasedLayout>
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <Skeleton className="h-8 w-32 mb-6" />
-          <Skeleton className="h-64 w-full rounded-lg mb-6" />
-          <Skeleton className="h-8 w-3/4 mb-4" />
-          <Skeleton className="h-4 w-1/2 mb-8" />
-          <Skeleton className="h-32 w-full" />
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          <Skeleton className="mb-6 h-9 w-40 rounded-pill" />
+          <Skeleton className="h-12 w-3/4" />
+          <Skeleton className="mt-8 h-40 w-full rounded-lg" />
         </div>
       </RoleBasedLayout>
     );
@@ -148,202 +128,266 @@ export default function EventDetail() {
   if (!event) {
     return (
       <RoleBasedLayout>
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Event Not Found</h1>
-          <Button onClick={() => navigate("/events")}>Back to Events</Button>
+        <div className="container mx-auto max-w-3xl px-4 py-16">
+          <EmptyState
+            title="That event isn't here —"
+            signature="something else might be."
+            body="It was removed, or the link is wrong."
+            actions={
+              <Button asChild>
+                <Link to="/events">Browse events</Link>
+              </Button>
+            }
+          />
         </div>
       </RoleBasedLayout>
     );
   }
 
+  const date = new Date(event.event_date);
+  const isPast = date < new Date();
+  const club = event.club_profiles;
+  const full = spotsLeft !== null && spotsLeft <= 0;
+
   return (
     <RoleBasedLayout>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/events")}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Events
-        </Button>
+      <div className="min-h-screen">
+        <div className="border-b border-line bg-surface">
+          <div className="container mx-auto max-w-5xl px-4 py-6">
+            <Button variant="ghost" size="sm" asChild className="-ml-3 mb-5">
+              <Link to="/events">
+                <ArrowLeft className="size-4" />
+                Events
+              </Link>
+            </Button>
 
-        {event.banner_url && (
-          <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              {/* The mono date block — same device the cards use. */}
+              <div
+                aria-hidden
+                className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[16px] border border-line-2 bg-surface-2 font-mono [font-variant-numeric:tabular-nums]"
+              >
+                <span className="text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-accent-text">
+                  {format(date, "MMM")}
+                </span>
+                <span className="text-[26px] font-semibold leading-tight text-ink">
+                  {format(date, "d")}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <Link
+                  to={`/clubs/${club?.id}`}
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-ink-2 hover:text-accent-text focus-visible:underline focus-visible:outline-none"
+                >
+                  {club?.club_name}
+                </Link>
+                <h1 className="mt-0.5 text-[clamp(26px,3.4vw,34px)] font-medium leading-tight tracking-[-0.026em] text-ink">
+                  {event.title}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Tag variant="neutral">Event</Tag>
+                  {event.requires_approval && <Tag variant="accent">Approval needed</Tag>}
+                  {isPast && <Tag variant="neutral">Ended</Tag>}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => id && toggleBookmark(id)}
+                aria-pressed={isEventBookmarked}
+                aria-label={
+                  isEventBookmarked
+                    ? `Saved: ${event.title}. Remove from saved`
+                    : `Save ${event.title}`
+                }
+              >
+                {isEventBookmarked ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                {isEventBookmarked ? "Saved" : "Save"}
+              </Button>
+              <ShareButton
+                url={typeof window !== "undefined" ? window.location.href : ""}
+                title={event.title}
+                description={`Event at ${club?.club_name}`}
+                variant="outline"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          {event.banner_url && (
             <img
               src={event.banner_url}
-              alt={event.title}
-              className="w-full h-full object-cover"
+              alt=""
+              aria-hidden
+              className="mb-6 h-56 w-full rounded-lg border border-line object-cover md:h-72"
             />
-          </div>
-        )}
+          )}
 
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <h1 className="text-3xl font-bold text-foreground">{event.title}</h1>
-              <div className="flex items-center gap-2 shrink-0">
-                <ShareButton url={eventUrl} title={event.title} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => id && toggleBookmark(id)}
-                >
-                  {isEventBookmarked ? (
-                    <BookmarkCheck className="w-5 h-5 text-primary" />
-                  ) : (
-                    <Bookmark className="w-5 h-5" />
+          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+            <div className="flex flex-col gap-4">
+              <section className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+                <dl className="flex flex-col gap-3 text-[15px]">
+                  {/* Data voice is decided by what the value IS, not by who
+                      typed it — a club types the date, the time, the capacity
+                      AND the room, so authorship cannot be the discriminator.
+                      Mono + tabular-nums earns its place on values that get
+                      scanned, compared or stacked, because equal-width digits
+                      stop "1 going" → "10 going" from shifting the layout.
+                      Location is free text (these events contain "DBH 111" and
+                      "idk"), and arbitrary prose set in mono reads as code. */}
+                  {[
+                    { Icon: Calendar, label: "Date", value: format(date, "EEEE, MMMM d, yyyy"), data: true },
+                    { Icon: Clock, label: "Time", value: format(date, "h:mm a"), data: true },
+                    ...(event.location
+                      ? [{ Icon: MapPin, label: "Location", value: event.location, data: false }]
+                      : []),
+                    {
+                      Icon: Users,
+                      label: "Attending",
+                      value:
+                        event.capacity !== null
+                          ? `${confirmedRsvps} going · ${Math.max(spotsLeft ?? 0, 0)} spots left`
+                          : `${confirmedRsvps} going`,
+                      data: true,
+                    },
+                  ].map(({ Icon, label, value, data }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <Icon aria-hidden className="size-[18px] shrink-0 text-ink-3" />
+                      <dt className="sr-only">{label}</dt>
+                      <dd className={cn("text-ink", data && "font-data")}>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
+              <section className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+                <h2 className="text-[18px] font-semibold tracking-[-0.018em] text-ink">
+                  About this event
+                </h2>
+                <div className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink-2">
+                  {event.description || (
+                    <span className="text-ink-3">The club hasn't added a description yet.</span>
                   )}
-                </Button>
-              </div>
+                </div>
+              </section>
             </div>
 
-            <div className="flex items-center gap-3 mb-6">
-              {event.club_profiles.logo_url ? (
-                <img
-                  src={event.club_profiles.logo_url}
-                  alt={event.club_profiles.club_name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-semibold">
-                    {event.club_profiles.club_name.charAt(0)}
-                  </span>
-                </div>
-              )}
-              <span className="text-muted-foreground">
-                Hosted by <span className="text-foreground font-medium">{event.club_profiles.club_name}</span>
-              </span>
-            </div>
-
-            <Card className="mb-6">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-3 text-foreground">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <span>{formatEventDate(event.event_date)}</span>
-                </div>
-                <div className="flex items-center gap-3 text-foreground">
-                  <Clock className="w-5 h-5 text-primary" />
-                  <span>{formatEventTime(event.event_date)}</span>
-                </div>
-                {event.location && (
-                  <div className="flex items-center gap-3 text-foreground">
-                    <MapPin className="w-5 h-5 text-primary" />
-                    <span>{event.location}</span>
-                  </div>
+            <aside className="flex flex-col gap-4">
+              {/* RSVP panel — every state offers the next action. */}
+              <div
+                className={cn(
+                  "rounded-lg border p-5",
+                  isPast
+                    ? "border-line bg-surface-2"
+                    : hasRSVP
+                      ? "border-line bg-surface shadow-e1"
+                      : "border-accent-line bg-accent-wash",
                 )}
-                <div className="flex items-center gap-3 text-foreground">
-                  <Users className="w-5 h-5 text-primary" />
-                  <span>
-                    {confirmedRsvps} attending
-                    {event.capacity && ` • ${spotsLeft} spots left`}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Add to Calendar */}
-            {!isEventPast && hasRSVP && rsvpStatus === "confirmed" && (
-              <div className="mb-6">
-                <AddToCalendarButton
-                  event={{
-                    title: event.title,
-                    description: event.description || "",
-                    location: event.location || "",
-                    startDate: new Date(event.event_date),
-                    endDate: new Date(new Date(event.event_date).getTime() + 2 * 60 * 60 * 1000),
-                  }}
-                />
-              </div>
-            )}
-
-            {event.description && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-foreground mb-3">About this event</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap">{event.description}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="md:w-80">
-            <Card className="sticky top-24">
-              <CardContent className="p-6">
-                {isEventPast ? (
-                  <div className="text-center">
-                    <Badge variant="secondary" className="mb-3">Event Ended</Badge>
-                    <p className="text-muted-foreground text-sm">This event has already taken place.</p>
-                  </div>
+              >
+                {isPast ? (
+                  <>
+                    <p className="text-[15px] font-semibold text-ink">This event has ended</p>
+                    <p className="mt-1 text-sm text-ink-2">
+                      {club?.club_name} may post another — following them puts it in front of you.
+                    </p>
+                    <Button variant="outline" className="mt-4 w-full" asChild>
+                      <Link to={`/clubs/${club?.id}`}>View club</Link>
+                    </Button>
+                  </>
                 ) : (
                   <>
-                    {hasRSVP && rsvpStatus === "confirmed" ? (
-                      <div className="text-center mb-4">
-                        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
-                        <p className="font-semibold text-foreground">You're registered!</p>
-                        <p className="text-sm text-muted-foreground">We'll see you there</p>
-                      </div>
-                    ) : hasRSVP && rsvpStatus === "pending" ? (
-                      <div className="text-center mb-4">
-                        <HourglassIcon className="w-12 h-12 text-amber-500 mx-auto mb-2" />
-                        <p className="font-semibold text-foreground">RSVP Pending</p>
-                        <p className="text-sm text-muted-foreground">Awaiting approval from the organizer</p>
+                    {hasRSVP && rsvpStatus ? (
+                      <div className="flex items-center gap-2">
+                        <StatusBadge domain="rsvp" status={rsvpStatus} audience="student" />
                       </div>
                     ) : (
-                      <div className="text-center mb-4">
-                        <p className="text-lg font-semibold text-foreground mb-1">
-                          {event.capacity ? `${spotsLeft} spots left` : "Open registration"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatEventDate(event.event_date)} at {formatEventTime(event.event_date)}
-                        </p>
-                        {event.requires_approval && (
-                          <Badge variant="secondary" className="mt-2">Requires Approval</Badge>
-                        )}
-                      </div>
+                      <p className="text-[15px] font-semibold text-ink">
+                        {event.capacity !== null
+                          ? `${Math.max(spotsLeft ?? 0, 0)} spots left`
+                          : "Open registration"}
+                      </p>
                     )}
+
+                    <p className="mt-2 text-sm text-ink-2">
+                      {hasRSVP && rsvpStatus === "confirmed"
+                        ? "You're on the list. Add it to your calendar so it doesn't sneak up on you."
+                        : hasRSVP && rsvpStatus === "pending"
+                          ? `${club?.club_name} approves each RSVP — you'll hear back.`
+                          : event.requires_approval
+                            ? "The club approves each RSVP, so this isn't instant."
+                            : "RSVP takes one tap. You can cancel any time."}
+                    </p>
 
                     {role === "student" && (
                       <Button
-                        className="w-full"
+                        className="mt-4 w-full"
                         variant={hasRSVP ? "outline" : "default"}
                         onClick={handleRSVP}
-                        disabled={rsvpLoading || (!hasRSVP && spotsLeft !== null && spotsLeft <= 0)}
+                        disabled={rsvpLoading || (!hasRSVP && full)}
                       >
-                        {rsvpLoading ? (
-                          "Processing..."
-                        ) : hasRSVP ? (
-                          <>
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Cancel RSVP
-                          </>
-                        ) : spotsLeft !== null && spotsLeft <= 0 ? (
-                          "Event Full"
-                        ) : (
-                          "RSVP Now"
-                        )}
+                        {rsvpLoading
+                          ? "Working…"
+                          : hasRSVP
+                            ? "Cancel RSVP"
+                            : full
+                              ? "Event full"
+                              : "RSVP"}
                       </Button>
                     )}
 
                     {!user && (
-                      <Button className="w-full" onClick={() => navigate("/login")}>
-                        Log in to RSVP
+                      <Button className="mt-4 w-full" asChild>
+                        <Link to="/login">Log in to RSVP</Link>
                       </Button>
                     )}
 
                     {role === "club" && (
-                      <p className="text-center text-sm text-muted-foreground">
-                        Clubs cannot RSVP to events
+                      <p className="mt-4 text-sm text-ink-3">
+                        Clubs can't RSVP — this is how students see your event.
                       </p>
+                    )}
+
+                    {hasRSVP && rsvpStatus === "confirmed" && (
+                      <div className="mt-3">
+                        <AddToCalendarButton
+                          className="w-full"
+                          event={{
+                            title: event.title,
+                            description: event.description || "",
+                            location: event.location || "",
+                            startDate: date,
+                            endDate: new Date(date.getTime() + 2 * 60 * 60 * 1000),
+                          }}
+                        />
+                      </div>
                     )}
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+                <h2 className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                  Hosted by
+                </h2>
+                <div className="mt-3 flex items-center gap-3">
+                  <EntityAvatar name={club?.club_name} src={club?.logo_url} kind="org" size="lg" />
+                  <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">
+                    {club?.club_name}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
+                  <Link to={`/clubs/${club?.id}`}>View club</Link>
+                </Button>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
 
-      {/* RSVP Form Modal */}
       {showRSVPForm && event && studentProfileId && (
         <RSVPForm
           event={{

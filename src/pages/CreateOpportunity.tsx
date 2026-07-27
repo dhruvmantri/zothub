@@ -134,7 +134,7 @@ export default function CreateOpportunity() {
 
       if (asDraft) {
         toast.success("Opportunity saved as draft");
-        navigate("/club/dashboard");
+        navigate("/club/dashboard/opportunities");
       } else {
         setCreatedOpportunityId(insertedData?.id || null);
         setShowSuccessModal(true);
@@ -149,16 +149,16 @@ export default function CreateOpportunity() {
 
   return (
     <ClubLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard">
+            <Link to="/club/dashboard/opportunities">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to Postings
             </Link>
           </Button>
-          <h1 className="font-display text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-semibold tracking-[-0.02em] text-ink">
             Create New Opportunity
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -274,6 +274,7 @@ export default function CreateOpportunity() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Publish immediately"
                   id="isActive"
                   checked={isActive}
                   onCheckedChange={setIsActive}
@@ -288,6 +289,7 @@ export default function CreateOpportunity() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Show application count"
                   id="showApplicationCount"
                   checked={showApplicationCount}
                   onCheckedChange={setShowApplicationCount}
@@ -318,7 +320,7 @@ export default function CreateOpportunity() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard">Cancel</Link>
+              <Link to="/club/dashboard/opportunities">Cancel</Link>
             </Button>
             <Button
               type="button"
@@ -350,13 +352,13 @@ export default function CreateOpportunity() {
           open={showSuccessModal}
           onClose={() => {
             setShowSuccessModal(false);
-            navigate("/club/dashboard");
+            navigate("/club/dashboard/opportunities");
           }}
           title="Opportunity Published!"
           description={`"${title}" is now live and students can start applying. Share it to reach more students!`}
           primaryAction={{
             label: "View Dashboard",
-            onClick: () => navigate("/club/dashboard"),
+            onClick: () => navigate("/club/dashboard/opportunities"),
           }}
           secondaryAction={{
             label: "Create Another",

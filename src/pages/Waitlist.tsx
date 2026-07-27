@@ -55,18 +55,18 @@ export default function Waitlist() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-surface-2 flex items-center justify-center">
         <PageLoader size="md" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-2 flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center">
-            <Clock className="h-8 w-8 text-accent" />
+          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-accent-wash flex items-center justify-center">
+            <Clock className="h-8 w-8 text-accent-text" />
           </div>
           <CardTitle className="text-2xl">You're on the Waitlist!</CardTitle>
           <CardDescription>
@@ -74,24 +74,24 @@ export default function Waitlist() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="bg-surface-2 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-ink-2">
               <Mail className="h-4 w-4" />
               <span>{user.email}</span>
             </div>
             {entry && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-ink-2">
                 <span className="capitalize">Account type: {entry.role}</span>
               </div>
             )}
             {entry && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-ink-2">
                 Requested: {new Date(entry.requested_at).toLocaleDateString()}
               </div>
             )}
           </div>
 
-          <div className="space-y-2 text-center text-sm text-muted-foreground">
+          <div className="space-y-2 text-center text-sm text-ink-2">
             <p>
               We manually review all signups to ensure quality and prevent spam.
             </p>

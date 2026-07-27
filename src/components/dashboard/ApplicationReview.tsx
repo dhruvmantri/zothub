@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EntityAvatar } from "@/components/ui/avatar";
+import { getStatus } from "@/lib/status";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -73,13 +75,6 @@ interface Opportunity {
   id: string;
   title: string;
 }
-
-const statusColors = {
-  pending: "accent",
-  reviewed: "default",
-  accepted: "default",
-  rejected: "destructive"
-} as const;
 
 export function ApplicationReview() {
   const { user } = useAuth();
@@ -231,7 +226,11 @@ export function ApplicationReview() {
         ).catch(console.error);
       }
 
-      toast.success(`Application ${newStatus}`);
+      toast.success(
+        newStatus === "reviewed"
+          ? "Marked as reviewed"
+          : `Application ${getStatus("application", newStatus, "club").label.toLowerCase()}`,
+      );
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -278,7 +277,9 @@ export function ApplicationReview() {
         )
       );
 
-      toast.success(`${selectedIds.size} applications ${newStatus}`);
+      toast.success(
+        `${selectedIds.size} applications ${getStatus("application", newStatus, "club").label.toLowerCase()}`,
+      );
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Error:", err);
@@ -362,11 +363,6 @@ export function ApplicationReview() {
     return answer;
   };
 
-  const getInitials = (name: string | null): string => {
-    if (!name) return "?";
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
       const matchesSearch = 
@@ -426,17 +422,19 @@ export function ApplicationReview() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <Filter className="w-4 h-4" />
-                  {statusFilter === "all" ? "All Status" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                  {/* Club-audience wording: "pending" reads as "New", "rejected"
+                      as "Declined" — same vocabulary as the badges. */}
+                  {statusFilter === "all" ? "All statuses" : getStatus("application", statusFilter, "club").label}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStatusFilter("pending")}>
-                  Pending ({pendingCount})
+                  New ({pendingCount})
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStatusFilter("reviewed")}>Reviewed</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStatusFilter("accepted")}>Accepted</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>Rejected</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>Declined</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -450,29 +448,29 @@ export function ApplicationReview() {
 
         {/* Bulk Actions Bar */}
         {someSelected && (
-          <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-            <CheckSquare className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-3">
+            <CheckSquare className="w-4 h-4 text-ink-2" />
+            <span className="text-sm font-medium text-ink">{selectedIds.size} selected</span>
             <div className="flex gap-2 ml-auto">
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5 text-green-600 border-green-600/30 hover:bg-green-600/10"
+                className="gap-1.5 border-ok/40 text-ok hover:bg-ok-wash hover:text-ok"
                 disabled={isBulkUpdating}
                 onClick={() => handleBulkStatusUpdate("accepted")}
               >
                 <Check className="w-3.5 h-3.5" />
-                Accept All
+                Accept all
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                className="gap-1.5 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
                 disabled={isBulkUpdating}
                 onClick={() => handleBulkStatusUpdate("rejected")}
               >
                 <X className="w-3.5 h-3.5" />
-                Reject All
+                Decline all
               </Button>
               <Button
                 size="sm"
@@ -486,133 +484,147 @@ export function ApplicationReview() {
         )}
       </div>
 
-      {/* Applications List */}
-      <div className="space-y-3">
-        {/* Select All Header */}
-        {filteredApplications.length > 0 && (
-          <div className="flex items-center gap-3 px-5 py-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={allSelected}
-              onCheckedChange={handleSelectAll}
-              aria-label="Select all"
-            />
-            <span>Select all ({filteredApplications.length})</span>
-          </div>
-        )}
-
-        {filteredApplications.map((application) => (
-          <div 
-            key={application.id}
-            className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all"
-          >
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              {/* Checkbox */}
-              <Checkbox
-                checked={selectedIds.has(application.id)}
-                onCheckedChange={(checked) => handleSelectOne(application.id, checked as boolean)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={`Select ${application.student.full_name || application.student.email}`}
-              />
-
-              {/* Applicant Info */}
-              <div 
-                className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
-                onClick={() => setSelectedApplication(application)}
-              >
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <span className="text-lg font-semibold text-muted-foreground">
-                    {getInitials(application.student.full_name)}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground truncate">
-                      {application.student.full_name || application.student.email}
-                    </h3>
-                    <Badge 
-                      variant={statusColors[application.status as keyof typeof statusColors] || "default"} 
-                      className="capitalize shrink-0"
-                    >
-                      {application.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {application.student.major || "No major"} • {application.student.year || "Year not set"}
-                  </p>
-                </div>
+      {/* Applications List — same table shape as the RSVP queue so both
+          Responses tabs read as one surface: a header row, then aligned
+          columns that don't shift whether a row is decided or not. */}
+      {filteredApplications.length === 0 ? (
+        <div className="rounded-lg border border-line bg-surface py-12 text-center">
+          <Inbox className="w-12 h-12 mx-auto text-ink-3 mb-4" />
+          <p className="text-ink-2">
+            {applications.length === 0
+              ? "No applications yet. They'll appear here when students apply to your opportunities."
+              : "No applications match your search criteria."
+            }
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+          <div className="min-w-[760px]">
+            {/* Header */}
+            <div className="grid grid-cols-[auto_1.6fr_1fr_120px_116px_176px] items-center gap-4 border-b border-line bg-surface-2 px-4 py-3 text-sm font-medium text-ink-2">
+              <div className="flex items-center">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all applications"
+                />
               </div>
+              <div>Applicant</div>
+              <div>Opportunity</div>
+              <div>Applied</div>
+              <div>Status</div>
+              <div className="text-right">Actions</div>
+            </div>
 
-              {/* Opportunity */}
-              <div className="md:w-64 cursor-pointer" onClick={() => setSelectedApplication(application)}>
-                <p className="text-sm font-medium text-foreground truncate">{application.opportunity.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Applied {format(new Date(application.created_at), "MMM d, yyyy")}
-                </p>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="flex items-center gap-2">
-                {application.resume_url && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="gap-1.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openFileUrl(application.resume_url!).catch(() =>
-                        toast.error("Could not open resume")
-                      );
-                    }}
+            {/* Rows */}
+            <div className="divide-y divide-line">
+              {filteredApplications.map((application) => {
+                const decided = application.status === "accepted" || application.status === "rejected";
+                return (
+                  <div
+                    key={application.id}
+                    className="grid grid-cols-[auto_1.6fr_1fr_120px_116px_176px] items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2 cursor-pointer"
+                    onClick={() => setSelectedApplication(application)}
                   >
-                    <FileText className="w-4 h-4" />
-                    Resume
-                  </Button>
-                )}
-                {application.status === "pending" && (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      className="h-8 w-8 text-green-600 hover:bg-green-600/10"
-                      disabled={isUpdating}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateApplicationStatus(application.id, "accepted");
-                      }}
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                      disabled={isUpdating}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateApplicationStatus(application.id, "rejected");
-                      }}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={selectedIds.has(application.id)}
+                        onCheckedChange={(checked) => handleSelectOne(application.id, checked as boolean)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${application.student.full_name || application.student.email}`}
+                      />
+                    </div>
+
+                    {/* Applicant */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <EntityAvatar
+                        kind="person"
+                        name={application.student.full_name || application.student.email}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink truncate">
+                          {application.student.full_name || application.student.email}
+                        </p>
+                        <p className="text-sm text-ink-2 truncate">
+                          {application.student.major || "No major"} • {application.student.year || "Year not set"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Opportunity */}
+                    <div className="min-w-0">
+                      <p className="text-sm text-ink truncate">{application.opportunity.title}</p>
+                    </div>
+
+                    {/* Applied */}
+                    <div className="font-data text-sm text-ink-2">
+                      {format(new Date(application.created_at), "MMM d, yyyy")}
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <StatusBadge domain="application" status={application.status} audience="club" />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-2">
+                      {application.resume_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openFileUrl(application.resume_url!).catch(() =>
+                              toast.error("Could not open resume")
+                            );
+                          }}
+                        >
+                          <FileText className="w-4 h-4" />
+                          Resume
+                        </Button>
+                      )}
+                      {/* A reviewed application must still be decidable — the old
+                          `=== "pending"` gate is the "reviewed status unsettable" bug. */}
+                      {!decided && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            className="text-ok hover:bg-ok-wash hover:text-ok"
+                            aria-label="Accept application"
+                            disabled={isUpdating}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateApplicationStatus(application.id, "accepted");
+                            }}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            className="text-bad hover:bg-bad-wash hover:text-bad"
+                            aria-label="Decline application"
+                            disabled={isUpdating}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateApplicationStatus(application.id, "rejected");
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
-
-        {filteredApplications.length === 0 && (
-          <div className="text-center py-12 bg-card rounded-xl border border-border">
-            <Inbox className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">
-              {applications.length === 0 
-                ? "No applications yet. Applications will appear here when students apply to your opportunities."
-                : "No applications match your search criteria."
-              }
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Application Detail Dialog */}
       <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
@@ -621,11 +633,11 @@ export function ApplicationReview() {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
-                    <span className="text-xl font-semibold text-muted-foreground">
-                      {getInitials(selectedApplication.student.full_name)}
-                    </span>
-                  </div>
+                  <EntityAvatar
+                    kind="person"
+                    name={selectedApplication.student.full_name || selectedApplication.student.email}
+                    size="xl"
+                  />
                   <div>
                     <DialogTitle className="text-xl">
                       {selectedApplication.student.full_name || selectedApplication.student.email}
@@ -679,63 +691,75 @@ export function ApplicationReview() {
 
                 {/* Responses */}
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-foreground">Application Responses</h4>
+                  <h4 className="font-semibold text-ink">Application responses</h4>
                   {selectedApplication.answers.length > 0 ? (
                     selectedApplication.answers.map((response, index) => (
                       <div key={index} className="space-y-2">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {getQuestionText(response.question_id, selectedApplication.opportunity.application_questions)}
                         </p>
-                        <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                        <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
                           {formatAnswer(response.answer)}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">No custom responses provided.</p>
+                    <p className="text-sm text-ink-3">No custom responses provided.</p>
                   )}
                 </div>
 
                 {/* Status */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground">Status</h4>
+                  <h4 className="font-semibold text-ink">Status</h4>
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={statusColors[selectedApplication.status as keyof typeof statusColors] || "default"} 
-                      className="capitalize"
-                    >
-                      {selectedApplication.status}
-                    </Badge>
+                    <StatusBadge
+                      domain="application"
+                      status={selectedApplication.status}
+                      audience="club"
+                    />
                   </div>
                 </div>
               </div>
 
-              <DialogFooter className="gap-2">
-                {selectedApplication.status === "pending" && (
+              <DialogFooter className="gap-2 sm:justify-between">
+                {selectedApplication.status === "accepted" || selectedApplication.status === "rejected" ? (
+                  <Button variant="outline" onClick={() => setSelectedApplication(null)}>
+                    Close
+                  </Button>
+                ) : (
                   <>
-                    <Button 
-                      variant="outline" 
-                      className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    <Button
+                      variant="outline"
+                      className="gap-2 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
                       disabled={isUpdating}
                       onClick={() => updateApplicationStatus(selectedApplication.id, "rejected")}
                     >
                       {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                      Reject
+                      Decline
                     </Button>
-                    <Button 
-                      className="gap-2"
-                      disabled={isUpdating}
-                      onClick={() => updateApplicationStatus(selectedApplication.id, "accepted")}
-                    >
-                      {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Accept
-                    </Button>
+                    <div className="flex gap-2">
+                      {/* "Mark as reviewed" — the seen-but-not-decided middle
+                          state, previously unreachable from any screen. */}
+                      {selectedApplication.status !== "reviewed" && (
+                        <Button
+                          variant="ghost"
+                          disabled={isUpdating}
+                          onClick={() => updateApplicationStatus(selectedApplication.id, "reviewed")}
+                        >
+                          Mark as reviewed
+                        </Button>
+                      )}
+                      <Button
+                        variant="success"
+                        className="gap-2"
+                        disabled={isUpdating}
+                        onClick={() => updateApplicationStatus(selectedApplication.id, "accepted")}
+                      >
+                        {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                        Accept
+                      </Button>
+                    </div>
                   </>
-                )}
-                {selectedApplication.status !== "pending" && (
-                  <Button variant="outline" onClick={() => setSelectedApplication(null)}>
-                    Close
-                  </Button>
                 )}
               </DialogFooter>
             </>

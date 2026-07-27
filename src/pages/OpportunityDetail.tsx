@@ -1,31 +1,25 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { ArrowLeft, Clock, Globe, CheckCircle2 } from "lucide-react";
+import { format } from "date-fns";
+
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tag } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EntityAvatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/discover/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { ApplicationForm } from "@/components/ApplicationForm";
 import { ShareButton } from "@/components/ShareButton";
 import { SuccessModal } from "@/components/SuccessModal";
-import {
-  ArrowLeft,
-  Clock,
-  Users,
-  Building2,
-  Calendar,
-  FileText,
-  CheckCircle2,
-  Globe,
-  Bookmark,
-} from "lucide-react";
+import { opportunityTypeLabel } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 import type { FormQuestion } from "@/types";
 
 interface OpportunityDetail {
@@ -49,20 +43,21 @@ interface OpportunityDetail {
   applications: { id: string }[];
 }
 
-const typeColors = {
-  leadership: "accent",
-  project: "success",
-  internship: "default",
-  volunteer: "muted",
-} as const;
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+      <h2 className="text-[18px] font-semibold tracking-[-0.018em] text-ink">{title}</h2>
+      <div className="mt-3 text-[15px] leading-relaxed text-ink-2">{children}</div>
+    </section>
+  );
+}
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, role } = useAuth();
 
-  // Track page view
-  useTrackView('opportunity', id);
+  useTrackView("opportunity", id);
 
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +65,6 @@ export default function OpportunityDetail() {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Use centralized bookmark hook
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const isOpportunityBookmarked = id ? isBookmarked(id) : false;
 
@@ -89,7 +83,6 @@ export default function OpportunityDetail() {
     try {
       // application_questions is only needed by the (auth-only) application form,
       // so it is requested only when logged in — anon has no column grant for it.
-      // The dynamic column list is a plain string, so the row type is asserted.
       const { data, error } = (await supabase
         .from("opportunities")
         .select(
@@ -129,7 +122,6 @@ export default function OpportunityDetail() {
         return;
       }
 
-      // Parse application_questions from JSON
       let parsedQuestions: FormQuestion[] | null = null;
       if (data.application_questions && Array.isArray(data.application_questions)) {
         parsedQuestions = (data.application_questions as unknown[]).map((q: unknown) => {
@@ -139,13 +131,13 @@ export default function OpportunityDetail() {
             type: (question.type as FormQuestion["type"]) || "short_text",
             question: String(question.question || ""),
             required: Boolean(question.required),
-            options: Array.isArray(question.options) ? question.options as string[] : undefined,
+            options: Array.isArray(question.options) ? (question.options as string[]) : undefined,
             placeholder: question.placeholder ? String(question.placeholder) : undefined,
           };
         });
       }
 
-      const parsedData: OpportunityDetail = {
+      setOpportunity({
         id: data.id,
         title: data.title,
         type: data.type,
@@ -158,9 +150,7 @@ export default function OpportunityDetail() {
         club_id: data.club_id,
         club_profiles: data.club_profiles as OpportunityDetail["club_profiles"],
         applications: data.applications as { id: string }[],
-      };
-
-      setOpportunity(parsedData);
+      });
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -172,7 +162,6 @@ export default function OpportunityDetail() {
     if (!user || !id) return;
 
     try {
-      // Get student profile first
       const { data: profile } = await supabase
         .from("student_profiles")
         .select("id")
@@ -188,14 +177,11 @@ export default function OpportunityDetail() {
         .eq("student_id", profile.id)
         .maybeSingle();
 
-      if (!error && data) {
-        setHasApplied(true);
-      }
+      if (!error && data) setHasApplied(true);
     } catch (err) {
       console.error("Error checking application:", err);
     }
   };
-
 
   const handleApplicationSuccess = () => {
     setHasApplied(true);
@@ -203,41 +189,19 @@ export default function OpportunityDetail() {
     setShowSuccessModal(true);
   };
 
-  const formatDeadline = (deadline: string | null) => {
-    if (!deadline) return "Rolling applications";
-    try {
-      return format(new Date(deadline), "MMMM d, yyyy 'at' h:mm a");
-    } catch {
-      return "Rolling applications";
-    }
-  };
-
-  const isDeadlinePassed = (deadline: string | null) => {
-    if (!deadline) return false;
-    return new Date(deadline) < new Date();
-  };
-
-  const getTypeVariant = (type: string) => {
-    const validTypes = Object.keys(typeColors);
-    return validTypes.includes(type.toLowerCase())
-      ? typeColors[type.toLowerCase() as keyof typeof typeColors]
-      : "muted";
-  };
+  const deadlinePassed = !!opportunity?.deadline && new Date(opportunity.deadline) < new Date();
 
   if (isLoading) {
     return (
       <RoleBasedLayout>
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <Skeleton className="h-8 w-32 mb-6" />
-          <div className="space-y-6">
-            <Skeleton className="h-12 w-3/4" />
-            <div className="flex gap-4">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-6 w-32" />
-            </div>
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-60 w-full" />
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          <Skeleton className="mb-6 h-9 w-40 rounded-pill" />
+          <Skeleton className="h-12 w-3/4" />
+          <div className="mt-4 flex gap-3">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-6 w-32" />
           </div>
+          <Skeleton className="mt-8 h-40 w-full rounded-lg" />
         </div>
       </RoleBasedLayout>
     );
@@ -246,289 +210,251 @@ export default function OpportunityDetail() {
   if (!opportunity) {
     return (
       <RoleBasedLayout>
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-            Opportunity not found
-          </h2>
-          <Button asChild>
-            <Link to="/opportunities">Browse Opportunities</Link>
-          </Button>
+        <div className="container mx-auto max-w-3xl px-4 py-16">
+          <EmptyState
+            title="That role isn't here —"
+            signature="it may have closed."
+            body="The posting was removed, or its deadline has passed and it's no longer listed."
+            actions={
+              <Button asChild>
+                <Link to="/opportunities">Browse open roles</Link>
+              </Button>
+            }
+          />
         </div>
       </RoleBasedLayout>
     );
   }
 
+  const club = opportunity.club_profiles;
+  const applicantCount = opportunity.applications?.length || 0;
+
   return (
     <RoleBasedLayout>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         {/* Header */}
-        <div className="bg-secondary/50 border-b border-border">
-          <div className="container mx-auto px-4 py-8 max-w-4xl">
-            <Button variant="ghost" size="sm" asChild className="mb-6">
+        <div className="border-b border-line bg-surface">
+          <div className="container mx-auto max-w-5xl px-4 py-6">
+            <Button variant="ghost" size="sm" asChild className="-ml-3 mb-5">
               <Link to="/opportunities">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Opportunities
+                <ArrowLeft className="size-4" />
+                Discover
               </Link>
             </Button>
 
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-16 h-16 rounded-xl bg-card flex items-center justify-center overflow-hidden border border-border">
-                {opportunity.club_profiles?.logo_url ? (
-                  <img
-                    src={opportunity.club_profiles.logo_url}
-                    alt={opportunity.club_profiles.club_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="font-display text-2xl font-bold text-muted-foreground">
-                    {opportunity.club_profiles?.club_name.charAt(0)}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <EntityAvatar
+                name={club?.club_name}
+                src={club?.logo_url}
+                kind="org"
+                size="xl"
+                className="shrink-0"
+              />
+              <div className="min-w-0 flex-1">
                 <Link
-                  to={`/clubs/${opportunity.club_profiles?.id}`}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  to={`/clubs/${club?.id}`}
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-ink-2 hover:text-accent-text focus-visible:underline focus-visible:outline-none"
                 >
-                  {opportunity.club_profiles?.club_name}
+                  {club?.club_name}
                 </Link>
-                <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mt-1">
+                <h1 className="mt-0.5 text-[clamp(26px,3.4vw,34px)] font-medium leading-tight tracking-[-0.026em] text-ink">
                   {opportunity.title}
                 </h1>
-                <div className="flex flex-wrap items-center gap-3 mt-3">
-                  <Badge variant={getTypeVariant(opportunity.type)} className="capitalize">
-                    {opportunity.type}
-                  </Badge>
+
+                {/* Tags live in their own slot, never on the title's line. */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Tag variant="neutral">{opportunityTypeLabel(opportunity.type)}</Tag>
                   {opportunity.show_application_count && (
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{opportunity.applications?.length || 0} applicants</span>
-                    </div>
+                    <span className="text-[13px] text-ink-3">
+                      <span className="font-data">{applicantCount}</span>{" "}
+                      {applicantCount === 1 ? "person has" : "people have"} applied
+                    </span>
                   )}
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>Posted {format(new Date(opportunity.created_at), "MMM d, yyyy")}</span>
-                  </div>
+                  <span className="text-[13px] text-ink-3">
+                    Posted{" "}
+                    <span className="font-data">
+                      {format(new Date(opportunity.created_at), "MMM d")}
+                    </span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-3">
-              {role === "student" && !hasApplied && !isDeadlinePassed(opportunity.deadline) && (
-                <Button onClick={() => setShowApplicationForm(true)}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Apply Now
-                </Button>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {role === "student" && !hasApplied && !deadlinePassed && (
+                <Button onClick={() => setShowApplicationForm(true)}>Apply</Button>
               )}
               {hasApplied && (
                 <Button variant="secondary" disabled>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Already Applied
+                  <CheckCircle2 className="size-4" />
+                  Applied
                 </Button>
               )}
-              {isDeadlinePassed(opportunity.deadline) && !hasApplied && (
+              {deadlinePassed && !hasApplied && (
                 <Button variant="secondary" disabled>
-                  <Clock className="w-4 h-4 mr-2" />
-                  Deadline Passed
+                  <Clock className="size-4" />
+                  Closed
+                </Button>
+              )}
+              {!user && (
+                <Button asChild>
+                  <Link to="/login">Log in to apply</Link>
                 </Button>
               )}
               <Button
                 variant="outline"
                 onClick={() => id && toggleBookmark(id)}
-                className={cn(isOpportunityBookmarked && "text-accent")}
+                aria-pressed={isOpportunityBookmarked}
+                aria-label={
+                  isOpportunityBookmarked
+                    ? `Saved: ${opportunity.title}. Remove from saved`
+                    : `Save ${opportunity.title}`
+                }
               >
-                <Bookmark className={cn("w-4 h-4 mr-2", isOpportunityBookmarked && "fill-current")} />
-                {isOpportunityBookmarked ? "Bookmarked" : "Bookmark"}
+                {isOpportunityBookmarked ? (
+                  <BookmarkCheck className="size-4" />
+                ) : (
+                  <Bookmark className="size-4" />
+                )}
+                {isOpportunityBookmarked ? "Saved" : "Save"}
               </Button>
               <ShareButton
                 url={window.location.href}
                 title={opportunity.title}
-                description={`Check out this ${opportunity.type} opportunity from ${opportunity.club_profiles?.club_name}`}
+                description={`${opportunityTypeLabel(opportunity.type)} at ${club?.club_name}`}
                 variant="outline"
               />
             </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Deadline Alert */}
-              {opportunity.deadline && (
-                <Card className={cn(
-                  "border-l-4",
-                  isDeadlinePassed(opportunity.deadline) 
-                    ? "border-l-destructive bg-destructive/5" 
-                    : "border-l-accent bg-accent/5"
-                )}>
-                  <CardContent className="py-4">
-                    <div className="flex items-center gap-3">
-                      <Clock className={cn(
-                        "w-5 h-5",
-                        isDeadlinePassed(opportunity.deadline) ? "text-destructive" : "text-accent"
-                      )} />
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {isDeadlinePassed(opportunity.deadline) ? "Applications Closed" : "Application Deadline"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDeadline(opportunity.deadline)}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Description */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>About This Opportunity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {opportunity.description ? (
-                    <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
-                      {opportunity.description}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground italic">No description provided</p>
+        {/* Body */}
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+            <div className="flex flex-col gap-4">
+              {/* Deadline: accent means "act now", bad means the door is shut. */}
+              <div
+                className={cn(
+                  "flex items-center gap-3 rounded-md border-l-[3px] px-4 py-3",
+                  deadlinePassed
+                    ? "border-l-bad bg-bad-wash"
+                    : opportunity.deadline
+                      ? "border-l-accent bg-accent-wash"
+                      : "border-l-line-3 bg-surface-2",
+                )}
+              >
+                <Clock
+                  aria-hidden
+                  className={cn(
+                    "size-[18px] shrink-0",
+                    deadlinePassed ? "text-bad" : opportunity.deadline ? "text-accent-text" : "text-ink-3",
                   )}
-                </CardContent>
-              </Card>
+                />
+                <p className="text-sm text-ink-2">
+                  <span className="font-semibold text-ink">
+                    {deadlinePassed
+                      ? "Applications closed"
+                      : opportunity.deadline
+                        ? "Closes"
+                        : "Rolling applications"}
+                  </span>
+                  {opportunity.deadline && (
+                    <>
+                      {" · "}
+                      <span className="font-data">
+                        {format(new Date(opportunity.deadline), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                    </>
+                  )}
+                  {!opportunity.deadline && " · no deadline, apply any time"}
+                </p>
+              </div>
 
-              {/* Requirements */}
+              <Section title="About this role">
+                {opportunity.description ? (
+                  <div className="whitespace-pre-wrap">{opportunity.description}</div>
+                ) : (
+                  <p className="text-ink-3">The club hasn't added a description yet.</p>
+                )}
+              </Section>
+
               {opportunity.requirements && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Requirements & Qualifications</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
-                      {opportunity.requirements}
-                    </div>
-                  </CardContent>
-                </Card>
+                <Section title="What they're looking for">
+                  <div className="whitespace-pre-wrap">{opportunity.requirements}</div>
+                </Section>
               )}
 
-              {/* Application Questions Preview */}
               {opportunity.application_questions && opportunity.application_questions.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Application Questions</CardTitle>
-                    <CardDescription>
-                      You'll be asked to answer {opportunity.application_questions.length} question(s) when applying
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {opportunity.application_questions.map((q, index) => (
-                        <li key={q.id} className="flex items-start gap-2 text-sm">
-                          <span className="text-muted-foreground">{index + 1}.</span>
-                          <span className="text-foreground">
-                            {q.question}
-                            {q.required && <span className="text-destructive ml-1">*</span>}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                <Section title="What you'll be asked">
+                  <p className="mb-3 text-[13.5px] text-ink-3">
+                    <span className="font-data">{opportunity.application_questions.length}</span>{" "}
+                    {opportunity.application_questions.length === 1 ? "question" : "questions"}, so
+                    you know before you start.
+                  </p>
+                  <ol className="flex flex-col gap-2">
+                    {opportunity.application_questions.map((q, index) => (
+                      <li key={q.id} className="flex gap-2.5 text-[15px]">
+                        <span className="font-data shrink-0 text-ink-3">{index + 1}.</span>
+                        <span className="text-ink">
+                          {q.question}
+                          {q.required && (
+                            <span className="ml-1 text-bad" aria-label="required">
+                              *
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </Section>
               )}
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Club Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">About the Club</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
-                      {opportunity.club_profiles?.logo_url ? (
-                        <img
-                          src={opportunity.club_profiles.logo_url}
-                          alt={opportunity.club_profiles.club_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Building2 className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {opportunity.club_profiles?.club_name}
-                      </p>
-                    </div>
-                  </div>
-                  {opportunity.club_profiles?.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {opportunity.club_profiles.description}
-                    </p>
+            {/* About-the-club mini card */}
+            <aside className="flex flex-col gap-4">
+              <div className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+                <h2 className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                  About the club
+                </h2>
+                <div className="mt-3 flex items-center gap-3">
+                  <EntityAvatar name={club?.club_name} src={club?.logo_url} kind="org" size="lg" />
+                  <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">
+                    {club?.club_name}
+                  </p>
+                </div>
+                {club?.description && (
+                  <p className="mt-3 line-clamp-4 text-sm text-ink-2">{club.description}</p>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link to={`/clubs/${club?.id}`}>View club</Link>
+                  </Button>
+                  {club?.website_url && (
+                    <Button variant="ghost" size="icon-sm" asChild aria-label={`${club.club_name} website`}>
+                      <a href={club.website_url} target="_blank" rel="noopener noreferrer">
+                        <Globe className="size-4" />
+                      </a>
+                    </Button>
                   )}
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild className="flex-1">
-                      <Link to={`/clubs/${opportunity.club_profiles?.id}`}>
-                        View Club
-                      </Link>
-                    </Button>
-                    {opportunity.club_profiles?.website_url && (
-                      <Button variant="ghost" size="sm" asChild>
-                        <a
-                          href={opportunity.club_profiles.website_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Globe className="w-4 h-4" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* Quick Apply CTA */}
-              {role === "student" && !hasApplied && !isDeadlinePassed(opportunity.deadline) && (
-                <Card className="bg-primary text-primary-foreground">
-                  <CardContent className="py-6 text-center">
-                    <h3 className="font-display font-semibold mb-2">Ready to Apply?</h3>
-                    <p className="text-sm opacity-90 mb-4">
-                      Submit your application and take the next step
-                    </p>
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => setShowApplicationForm(true)}
-                    >
-                      Start Application
-                    </Button>
-                  </CardContent>
-                </Card>
+              {role === "student" && !hasApplied && !deadlinePassed && (
+                <div className="rounded-lg border border-accent-line bg-accent-wash p-5">
+                  <p className="text-[15px] font-semibold text-ink">Ready to apply?</p>
+                  <p className="mt-1 text-sm text-ink-2">
+                    They see your name, year and major — nothing else from your profile.
+                  </p>
+                  <Button className="mt-4 w-full" onClick={() => setShowApplicationForm(true)}>
+                    Start application
+                  </Button>
+                </div>
               )}
-
-              {!user && (
-                <Card>
-                  <CardContent className="py-6 text-center">
-                    <h3 className="font-display font-semibold mb-2">Want to Apply?</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Log in or create an account to submit your application
-                    </p>
-                    <Button asChild className="w-full">
-                      <Link to="/login">Log In to Apply</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            </aside>
           </div>
         </div>
       </div>
 
-      {/* Application Form Modal */}
       {showApplicationForm && opportunity && (
         <ApplicationForm
           opportunity={opportunity}
@@ -538,20 +464,13 @@ export default function OpportunityDetail() {
         />
       )}
 
-      {/* Success Modal */}
       <SuccessModal
         open={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Application Submitted!"
-        description={`Your application to ${opportunity?.title} has been successfully submitted. You'll be notified when ${opportunity?.club_profiles?.club_name} reviews your application.`}
-        primaryAction={{
-          label: "View My Applications",
-          onClick: () => navigate("/student/dashboard"),
-        }}
-        secondaryAction={{
-          label: "Browse More Opportunities",
-          onClick: () => navigate("/opportunities"),
-        }}
+        title="Application sent"
+        description={`${club?.club_name} has your application for ${opportunity?.title}. You'll hear back either way — you can track it in Activity.`}
+        primaryAction={{ label: "Track it in Activity", onClick: () => navigate("/student/dashboard") }}
+        secondaryAction={{ label: "Keep browsing", onClick: () => navigate("/opportunities") }}
       />
     </RoleBasedLayout>
   );

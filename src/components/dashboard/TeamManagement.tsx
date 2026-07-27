@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EntityAvatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,16 +36,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  Plus, 
-  MoreHorizontal, 
-  Mail, 
-  UserCog, 
+import {
+  Plus,
+  MoreHorizontal,
+  Mail,
+  UserCog,
   Trash2,
   Users,
   Loader2,
-  Clock,
-  CheckCircle,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -71,14 +70,7 @@ const ROLE_SUGGESTIONS = [
   "Member",
 ];
 
-const statusColors = {
-  pending: "secondary",
-  active: "success",
-  inactive: "muted",
-  declined: "destructive",
-} as const;
-
-export function TeamManagement({ 
+export function TeamManagement({
   teamMembers, 
   onAddMember, 
   onUpdateMember, 
@@ -174,8 +166,8 @@ export function TeamManagement({
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Team Members</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold text-ink">Team members</h2>
+          <p className="text-sm text-ink-2">
             Manage who has access to your club's dashboard
           </p>
         </div>
@@ -252,28 +244,29 @@ export function TeamManagement({
       </div>
 
       {/* Team Members List */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-line bg-surface">
         {teamMembers.length === 0 ? (
           <div className="text-center py-12">
-            <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">No team members yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <Users className="w-12 h-12 mx-auto text-ink-3 mb-4" />
+            <p className="text-ink-2">No team members yet</p>
+            <p className="text-sm text-ink-3 mt-1">
               Add members to give them access to your club's dashboard
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-line">
             {teamMembers.map((member, index) => (
-              <div 
+              <div
                 key={member.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/20 transition-colors"
+                className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:bg-surface-2"
               >
                 {/* Reorder buttons */}
                 <div className="flex flex-col gap-0.5 shrink-0">
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                    size="icon-sm"
+                    className="size-7"
+                    aria-label={`Move ${member.name || member.email} up`}
                     onClick={() => handleMoveUp(index)}
                     disabled={index === 0 || isReordering}
                   >
@@ -281,8 +274,9 @@ export function TeamManagement({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                    size="icon-sm"
+                    className="size-7"
+                    aria-label={`Move ${member.name || member.email} down`}
                     onClick={() => handleMoveDown(index)}
                     disabled={index === teamMembers.length - 1 || isReordering}
                   >
@@ -290,37 +284,30 @@ export function TeamManagement({
                   </Button>
                 </div>
 
+                <EntityAvatar kind="person" name={member.name || member.email} size="md" />
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground truncate">
+                    <p className="font-medium text-ink truncate">
                       {member.name || member.email}
                     </p>
-                    <Badge 
-                      variant={statusColors[member.status as keyof typeof statusColors] || "muted"}
-                      className="capitalize"
-                    >
-                      {member.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
-                      {member.status === "active" && <CheckCircle className="w-3 h-3 mr-1" />}
-                      {member.status}
-                    </Badge>
+                    <StatusBadge domain="team" status={member.status} />
                   </div>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-4 mt-1 text-sm text-ink-2">
                     <span className="flex items-center gap-1">
                       <Mail className="w-3.5 h-3.5" />
                       {member.email}
                     </span>
-                    <span className="capitalize">
-                      {member.role}
-                    </span>
+                    <span>{member.role}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="font-data text-xs text-ink-3 mt-1">
                     Invited {format(new Date(member.invited_at), "MMM d, yyyy")}
                   </p>
                 </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="shrink-0">
+                    <Button variant="ghost" size="icon" className="shrink-0" aria-label="Member actions">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { getStatus, getEventStatus } from "@/lib/status";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -32,7 +33,7 @@ import {
   Calendar,
   Filter,
 } from "lucide-react";
-import { format, isPast, isToday } from "date-fns";
+import { format } from "date-fns";
 import type { DashboardEvent } from "@/types";
 import { PageLoader } from "@/components/ui/page-loader";
 
@@ -48,24 +49,9 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [eventToDelete, setEventToDelete] = useState<DashboardEvent | null>(null);
 
-  const getStatus = (event: DashboardEvent) => {
-    if (!event.is_active) return "draft";
-    const eventDate = new Date(event.event_date);
-    if (isPast(eventDate)) return "past";
-    if (isToday(eventDate)) return "ongoing";
-    return "upcoming";
-  };
-
-  const statusColors: Record<string, "success" | "accent" | "muted" | "secondary"> = {
-    upcoming: "success",
-    ongoing: "accent",
-    past: "muted",
-    draft: "secondary",
-  };
-
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const status = getStatus(event);
+    const status = getEventStatus(event);
     const matchesStatus = statusFilter === "all" || status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -98,13 +84,13 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
                 <Filter className="w-4 h-4" />
-                {statusFilter === "all" ? "All Status" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                {statusFilter === "all" ? "All statuses" : getStatus("event", statusFilter).label}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("upcoming")}>Upcoming</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("ongoing")}>Ongoing</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("ongoing")}>Today</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("past")}>Past</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("draft")}>Draft</DropdownMenuItem>
             </DropdownMenuContent>
@@ -120,9 +106,9 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
 
       {/* Events Grid */}
       {filteredEvents.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-xl border border-border">
-          <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">
+        <div className="rounded-lg border border-line bg-surface py-12 text-center">
+          <Calendar className="w-12 h-12 mx-auto text-ink-3 mb-4" />
+          <p className="text-ink-2">
             {events.length === 0 ? "No events created yet" : "No events found"}
           </p>
           {events.length === 0 && (
@@ -137,31 +123,28 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
       ) : (
         <div className="grid gap-4">
           {filteredEvents.map((event) => {
-            const status = getStatus(event);
-            const capacityPercent = event.capacity 
-              ? Math.min((event.rsvps_count / event.capacity) * 100, 100) 
+            const capacityPercent = event.capacity
+              ? Math.min((event.rsvps_count / event.capacity) * 100, 100)
               : 0;
-            
+
             return (
-              <div 
+              <div
                 key={event.id}
-                className="p-5 rounded-xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all"
+                className="rounded-lg border border-line bg-surface p-5 shadow-e1 transition-all hover:shadow-e2"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                   {/* Event Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-                      <Badge variant={statusColors[status]} className="capitalize shrink-0">
-                        {status}
-                      </Badge>
+                      <h3 className="font-semibold text-ink truncate">{event.title}</h3>
+                      <StatusBadge domain="event" status={getEventStatus(event)} className="shrink-0" />
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-ink-2">
+                      <div className="flex items-center gap-1.5 font-data">
                         <Calendar className="w-4 h-4" />
                         {format(new Date(event.event_date), "MMM d, yyyy")}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 font-data">
                         <Clock className="w-4 h-4" />
                         {format(new Date(event.event_date), "h:mm a")}
                       </div>
@@ -177,29 +160,29 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
                   {/* Stats */}
                   <div className="flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground">{event.rsvps_count}</p>
-                      <p className="text-xs text-muted-foreground">RSVPs</p>
+                      <p className="font-data text-2xl font-semibold text-ink">{event.rsvps_count}</p>
+                      <p className="text-xs text-ink-2">RSVPs</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground">{event.capacity || "∞"}</p>
-                      <p className="text-xs text-muted-foreground">Capacity</p>
+                      <p className="font-data text-2xl font-semibold text-ink">{event.capacity || "∞"}</p>
+                      <p className="text-xs text-ink-2">Capacity</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground">{event.views}</p>
-                      <p className="text-xs text-muted-foreground">Views</p>
+                      <p className="font-data text-2xl font-semibold text-ink">{event.views}</p>
+                      <p className="text-xs text-ink-2">Views</p>
                     </div>
                   </div>
 
                   {/* Progress */}
                   {event.capacity && (
                     <div className="lg:w-32">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                      <div className="mb-1 flex items-center justify-between text-xs text-ink-2">
                         <span>Capacity</span>
-                        <span>{Math.round(capacityPercent)}%</span>
+                        <span className="font-data">{Math.round(capacityPercent)}%</span>
                       </div>
-                      <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                        <div 
-                          className="h-full bg-accent rounded-full transition-all"
+                      <div className="h-2 overflow-hidden rounded-full bg-surface-3">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all"
                           style={{ width: `${capacityPercent}%` }}
                         />
                       </div>
@@ -209,7 +192,12 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
                   {/* Actions */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        aria-label={`Actions for ${event.title}`}
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>

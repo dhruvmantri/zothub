@@ -1,5 +1,11 @@
 import { format } from "date-fns";
 
+import {
+  OPPORTUNITY_TYPES,
+  OPPORTUNITY_TYPE_VALUES,
+  type OpportunityTypeValue,
+} from "@/lib/constants";
+
 /**
  * Format a date string for display as a deadline.
  * Returns "Rolling" if no deadline is provided.
@@ -67,14 +73,23 @@ export function formatRelativeTime(dateString: string): string {
 }
 
 /**
- * Validate and normalize an opportunity type to a known type.
+ * Normalise an opportunity type to one of the six supported values.
+ *
+ * This used to silently coerce anything unrecognised to "volunteer", which
+ * meant every `committee` and `other` posting was mislabelled on every card in
+ * the app — a club would post a Committee role and watch it advertise itself as
+ * Volunteer. Structure §3 calls for all six types supported properly, so the
+ * coercion is gone; genuinely unknown values fall through to "other".
  */
-export function normalizeOpportunityType(
-  type: string
-): "leadership" | "project" | "internship" | "volunteer" {
-  const validTypes = ["leadership", "project", "internship", "volunteer"];
-  const normalized = type.toLowerCase();
-  return validTypes.includes(normalized)
-    ? (normalized as "leadership" | "project" | "internship" | "volunteer")
-    : "volunteer";
+export function normalizeOpportunityType(type: string): OpportunityTypeValue {
+  const normalized = (type || "").toLowerCase().trim();
+  return (OPPORTUNITY_TYPE_VALUES as readonly string[]).includes(normalized)
+    ? (normalized as OpportunityTypeValue)
+    : "other";
+}
+
+/** Human label for a type value, e.g. `leadership` → "Leadership Role". */
+export function opportunityTypeLabel(type: string): string {
+  const value = normalizeOpportunityType(type);
+  return OPPORTUNITY_TYPES.find((t) => t.value === value)?.label ?? "Other";
 }

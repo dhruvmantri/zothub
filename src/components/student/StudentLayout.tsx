@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+
 import { useNavigationCounts } from "@/hooks/useNavigationCounts";
 import { StudentTopNav } from "./StudentTopNav";
 import { StudentBottomNav } from "./StudentBottomNav";
@@ -8,25 +9,23 @@ interface StudentLayoutProps {
 }
 
 /**
- * Layout wrapper for student pages.
- * Provides consistent top/bottom navigation with badge counts.
+ * Layout wrapper for student pages. Provides the top bar and the mobile tab
+ * bar with live counts.
  */
 export function StudentLayout({ children }: StudentLayoutProps) {
   const { unreadMessageCount, notificationCount } = useNavigationCounts();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface-2">
       <StudentTopNav
         unreadMessageCount={unreadMessageCount}
         notificationCount={notificationCount}
       />
-      
-      {/* Main content with padding for fixed header and bottom nav on mobile */}
-      <main className="pt-16 pb-20 md:pb-0">
-        {children}
-      </main>
 
-      <StudentBottomNav />
+      {/* Clears the fixed header, and the tab bar on mobile. */}
+      <main className="pb-24 pt-[60px] md:pb-0">{children}</main>
+
+      <StudentBottomNav unreadMessageCount={unreadMessageCount} />
     </div>
   );
 }

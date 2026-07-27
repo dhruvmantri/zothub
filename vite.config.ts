@@ -33,7 +33,11 @@ export default defineConfig(({ mode }) => ({
           "query": ["@tanstack/react-query"],
           "form": ["react-hook-form", "@hookform/resolvers", "zod"],
           "animation": ["framer-motion"],
-          "charts": ["recharts"],
+          // recharts is deliberately NOT a manual vendor chunk. Declaring it
+          // here forced it into an eagerly-preloaded chunk even though its only
+          // importer (ClubAnalytics) is lazy — that's why it stayed in the
+          // initial download. Left to Rollup, it folds into the on-demand
+          // ClubAnalytics chunk and loads only when the analytics tab opens.
         },
       },
     },

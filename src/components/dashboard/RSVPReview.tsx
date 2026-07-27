@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EntityAvatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -69,12 +70,6 @@ interface Event {
   id: string;
   title: string;
 }
-
-const statusColors = {
-  confirmed: "success",
-  pending: "accent",
-  cancelled: "destructive"
-} as const;
 
 export function RSVPReview() {
   const { user } = useAuth();
@@ -388,11 +383,6 @@ export function RSVPReview() {
     return answer;
   };
 
-  const getInitials = (name: string | null): string => {
-    if (!name) return "?";
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const filteredRsvps = useMemo(() => {
     return rsvps.filter(rsvp => {
       const matchesSearch = 
@@ -465,8 +455,8 @@ export function RSVPReview() {
 
         {/* Bulk Actions Bar */}
         {someSelected && (
-          <div className="flex items-center gap-4 p-3 bg-accent/10 rounded-lg border border-accent/20">
-            <span className="text-sm font-medium text-foreground">
+          <div className="flex items-center gap-4 rounded-lg border border-line bg-surface-2 p-3">
+            <span className="text-sm font-medium text-ink">
               {selectedIds.size} selected
             </span>
             <div className="flex gap-2">
@@ -475,7 +465,7 @@ export function RSVPReview() {
                 variant="outline"
                 onClick={() => handleBulkStatusUpdate("confirmed")}
                 disabled={isBulkUpdating}
-                className="gap-1"
+                className="gap-1 border-ok/40 text-ok hover:bg-ok-wash hover:text-ok"
               >
                 <Check className="w-3 h-3" />
                 Confirm
@@ -485,7 +475,7 @@ export function RSVPReview() {
                 variant="outline"
                 onClick={() => handleBulkStatusUpdate("cancelled")}
                 disabled={isBulkUpdating}
-                className="gap-1 text-destructive hover:text-destructive"
+                className="gap-1 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
               >
                 <X className="w-3 h-3" />
                 Cancel
@@ -505,66 +495,70 @@ export function RSVPReview() {
 
       {/* Pending RSVPs Notice */}
       {pendingCount > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-lg border border-accent/20">
-          <CalendarCheck className="w-5 h-5 text-accent" />
-          <p className="text-sm text-foreground">
-            You have <span className="font-semibold">{pendingCount}</span> pending RSVPs awaiting approval
+        <div className="flex items-center gap-3 rounded-lg border border-accent-line bg-accent-wash p-4">
+          <CalendarCheck className="w-5 h-5 text-accent-text" />
+          <p className="text-sm text-ink">
+            You have <span className="font-semibold">{pendingCount}</span> pending RSVPs awaiting your approval
           </p>
         </div>
       )}
 
       {/* RSVPs List */}
       {filteredRsvps.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-xl border border-border">
-          <Inbox className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">
+        <div className="rounded-lg border border-line bg-surface py-12 text-center">
+          <Inbox className="w-12 h-12 mx-auto text-ink-3 mb-4" />
+          <p className="text-ink-2">
             {rsvps.length === 0 ? "No RSVPs yet" : "No RSVPs found matching your filters"}
           </p>
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-line bg-surface">
           {/* Table Header */}
-          <div className="grid grid-cols-[auto_1fr_1fr_120px_100px_80px] gap-4 px-4 py-3 bg-secondary/50 border-b border-border text-sm font-medium text-muted-foreground">
+          <div className="grid grid-cols-[auto_1fr_1fr_120px_110px_88px] gap-4 border-b border-line bg-surface-2 px-4 py-3 text-sm font-medium text-ink-2">
             <div className="flex items-center">
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={handleSelectAll}
+                aria-label="Select all RSVPs"
               />
             </div>
             <div>Attendee</div>
             <div>Event</div>
-            <div>RSVP Date</div>
+            <div>RSVP date</div>
             <div>Status</div>
             <div>Actions</div>
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-line">
             {filteredRsvps.map((rsvp) => (
-              <div 
+              <div
                 key={rsvp.id}
-                className="grid grid-cols-[auto_1fr_1fr_120px_100px_80px] gap-4 px-4 py-3 items-center hover:bg-secondary/30 transition-colors"
+                className="grid grid-cols-[auto_1fr_1fr_120px_110px_88px] items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2"
               >
                 <div className="flex items-center">
                   <Checkbox
                     checked={selectedIds.has(rsvp.id)}
                     onCheckedChange={(checked) => handleSelectOne(rsvp.id, !!checked)}
+                    aria-label={`Select ${rsvp.student.full_name || rsvp.student.email}`}
                   />
                 </div>
-                
+
                 {/* Attendee Info */}
-                <div 
-                  className="flex items-center gap-3 cursor-pointer"
+                <div
+                  className="flex items-center gap-3 cursor-pointer min-w-0"
                   onClick={() => setSelectedRsvp(rsvp)}
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                    {getInitials(rsvp.student.full_name)}
-                  </div>
+                  <EntityAvatar
+                    kind="person"
+                    name={rsvp.student.full_name || rsvp.student.email}
+                    size="sm"
+                  />
                   <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">
+                    <p className="font-medium text-ink truncate">
                       {rsvp.student.full_name || "Unknown"}
                     </p>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-sm text-ink-2 truncate">
                       {rsvp.student.email}
                     </p>
                   </div>
@@ -572,46 +566,41 @@ export function RSVPReview() {
 
                 {/* Event */}
                 <div className="min-w-0">
-                  <p className="text-sm text-foreground truncate">{rsvp.event.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-ink truncate">{rsvp.event.title}</p>
+                  <p className="font-data text-xs text-ink-3">
                     {format(new Date(rsvp.event.event_date), "MMM d, yyyy")}
                   </p>
                 </div>
 
                 {/* RSVP Date */}
-                <div className="text-sm text-muted-foreground">
+                <div className="font-data text-sm text-ink-2">
                   {format(new Date(rsvp.created_at), "MMM d, yyyy")}
                 </div>
 
                 {/* Status */}
-                <Badge 
-                  variant={statusColors[rsvp.status as keyof typeof statusColors] || "default"}
-                  className="capitalize"
-                >
-                  {rsvp.status}
-                </Badge>
+                <StatusBadge domain="rsvp" status={rsvp.status} audience="club" />
 
                 {/* Quick Actions */}
                 <div className="flex gap-1">
                   {rsvp.status === "pending" && (
                     <>
                       <Button
-                        size="icon"
+                        size="icon-sm"
                         variant="ghost"
-                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                        className="text-ok hover:bg-ok-wash hover:text-ok"
                         onClick={() => updateRsvpStatus(rsvp.id, "confirmed")}
                         disabled={isUpdating}
-                        title="Confirm"
+                        aria-label="Confirm RSVP"
                       >
                         <Check className="w-4 h-4" />
                       </Button>
                       <Button
-                        size="icon"
+                        size="icon-sm"
                         variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="text-bad hover:bg-bad-wash hover:text-bad"
                         onClick={() => updateRsvpStatus(rsvp.id, "cancelled")}
                         disabled={isUpdating}
-                        title="Cancel"
+                        aria-label="Cancel RSVP"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -629,12 +618,14 @@ export function RSVPReview() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                {selectedRsvp && getInitials(selectedRsvp.student.full_name)}
-              </div>
+              <EntityAvatar
+                kind="person"
+                name={selectedRsvp?.student.full_name || selectedRsvp?.student.email}
+                size="md"
+              />
               <div>
                 <p>{selectedRsvp?.student.full_name || "Unknown Attendee"}</p>
-                <p className="text-sm font-normal text-muted-foreground">
+                <p className="text-sm font-normal text-ink-2">
                   RSVP for {selectedRsvp?.event.title}
                 </p>
               </div>
@@ -645,25 +636,25 @@ export function RSVPReview() {
             <div className="space-y-6">
               {/* Attendee Info */}
               <div className="space-y-3">
-                <h4 className="font-medium text-foreground">Attendee Details</h4>
+                <h4 className="font-medium text-ink">Attendee details</h4>
                 <div className="grid gap-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-ink-2">
                     <Mail className="w-4 h-4" />
                     <span>{selectedRsvp.student.email}</span>
                   </div>
                   {selectedRsvp.student.major && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-2 text-ink-2">
                       <GraduationCap className="w-4 h-4" />
                       <span>{selectedRsvp.student.major}</span>
                     </div>
                   )}
                   {selectedRsvp.student.year && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-2 text-ink-2">
                       <User className="w-4 h-4" />
                       <span>{selectedRsvp.student.year}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-ink-2">
                     <Calendar className="w-4 h-4" />
                     <span>RSVP'd on {format(new Date(selectedRsvp.created_at), "MMMM d, yyyy")}</span>
                   </div>
@@ -672,26 +663,21 @@ export function RSVPReview() {
 
               {/* Status */}
               <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge 
-                  variant={statusColors[selectedRsvp.status as keyof typeof statusColors] || "default"}
-                  className="capitalize"
-                >
-                  {selectedRsvp.status}
-                </Badge>
+                <span className="text-sm text-ink-2">Status:</span>
+                <StatusBadge domain="rsvp" status={selectedRsvp.status} audience="club" />
               </div>
 
               {/* Answers */}
               {selectedRsvp.answers.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Responses</h4>
+                  <h4 className="font-medium text-ink">Responses</h4>
                   <div className="space-y-4">
                     {selectedRsvp.answers.map((answer, index) => (
                       <div key={index} className="space-y-1">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-ink">
                           {getQuestionText(answer.question_id, selectedRsvp.event.rsvp_questions)}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
                           {formatAnswer(answer.answer)}
                         </p>
                       </div>
@@ -709,12 +695,13 @@ export function RSVPReview() {
                   variant="outline"
                   onClick={() => updateRsvpStatus(selectedRsvp.id, "cancelled")}
                   disabled={isUpdating}
-                  className="gap-2 flex-1 sm:flex-none"
+                  className="gap-2 flex-1 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad sm:flex-none"
                 >
                   <X className="w-4 h-4" />
                   Cancel RSVP
                 </Button>
                 <Button
+                  variant="success"
                   onClick={() => updateRsvpStatus(selectedRsvp.id, "confirmed")}
                   disabled={isUpdating}
                   className="gap-2 flex-1 sm:flex-none"

@@ -32,3 +32,6 @@ dist-ssr
 test-results/
 playwright-report/
 supabase/.temp/
+
+# Local Claude permissions
+.claude/settings.local.json

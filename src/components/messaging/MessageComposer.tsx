@@ -41,23 +41,26 @@ export function MessageComposer({ onSend, isSending, disabled }: MessageComposer
   }, [content]);
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
+    <form onSubmit={handleSubmit} className="p-4 border-t border-line bg-surface">
       <div className="flex items-end gap-2">
         <Textarea
           ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? "Select a conversation" : "Type a message..."}
+          placeholder={disabled ? "Select a conversation" : "Type a message…"}
           disabled={disabled || isSending}
+          aria-label="Message"
           className="min-h-[44px] max-h-[120px] resize-none"
           rows={1}
         />
-        <Button 
-          type="submit" 
-          size="icon" 
+        <Button
+          type="submit"
+          size="icon"
+          variant="accent"
           disabled={!content.trim() || isSending || disabled}
-          className="flex-shrink-0 h-11 w-11"
+          aria-label="Send message"
+          className="flex-shrink-0"
         >
           {isSending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -66,7 +69,7 @@ export function MessageComposer({ onSend, isSending, disabled }: MessageComposer
           )}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
+      <p className="text-xs text-ink-3 mt-2">
         Press Enter to send, Shift+Enter for new line
       </p>
     </form>

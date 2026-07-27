@@ -40,30 +40,30 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
           <div className="max-w-md w-full space-y-6 text-center">
             <div className="flex justify-center">
-              <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-destructive" />
+              <div className="w-16 h-16 bg-bad-wash rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-bad" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">
+              <h1 className="text-2xl font-semibold text-ink">
                 Something went wrong
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-ink-2">
                 We're sorry, but something unexpected happened. Please try again.
               </p>
             </div>
 
             {import.meta.env.DEV && this.state.error && (
-              <div className="mt-4 p-4 bg-muted rounded-lg text-left">
-                <p className="text-sm font-mono text-destructive break-words">
+              <div className="mt-4 p-4 bg-surface-3 rounded-lg text-left">
+                <p className="text-sm font-mono text-bad break-words">
                   {this.state.error.toString()}
                 </p>
                 {this.state.error.stack && (
-                  <pre className="mt-2 text-xs text-muted-foreground overflow-auto max-h-40">
+                  <pre className="mt-2 text-xs text-ink-2 overflow-auto max-h-40">
                     {this.state.error.stack}
                   </pre>
                 )}

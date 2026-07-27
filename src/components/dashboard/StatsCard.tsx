@@ -11,24 +11,27 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, change, trend, icon: Icon }: StatsCardProps) {
   return (
-    <div className="p-5 rounded-xl bg-card border border-border shadow-card">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-          <Icon className="w-5 h-5 text-muted-foreground" />
+    <div className="rounded-lg border border-line bg-surface p-5 shadow-e1">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex size-10 items-center justify-center rounded-md bg-surface-3">
+          <Icon className="size-5 text-ink-2" />
         </div>
         {change && trend && (
-          <span className={cn(
-            "text-xs font-medium px-2 py-0.5 rounded-full",
-            trend === "up" && "bg-success/10 text-success",
-            trend === "down" && "bg-destructive/10 text-destructive",
-            trend === "neutral" && "bg-muted text-muted-foreground"
-          )}>
+          <span
+            className={cn(
+              "rounded-pill px-2 py-0.5 text-xs font-medium",
+              trend === "up" && "bg-ok-wash text-ok",
+              trend === "down" && "bg-bad-wash text-bad",
+              trend === "neutral" && "bg-surface-3 text-ink-3",
+            )}
+          >
             {change}
           </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
-      <p className="text-sm text-muted-foreground">{title}</p>
+      {/* A scanned/compared number → data voice (mono, tabular). */}
+      <p className="font-data text-2xl font-semibold text-ink">{value}</p>
+      <p className="text-sm text-ink-2">{title}</p>
     </div>
   );
 }

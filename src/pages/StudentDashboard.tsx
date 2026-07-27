@@ -1,88 +1,64 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Calendar, 
-  FileText, 
-  Bell, 
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Building2,
-  Loader2,
-  Inbox,
-  MessageSquare,
-  Users,
-  Bookmark,
-  ArrowRight,
-  type LucideIcon,
-} from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
+import { Bookmark, Loader2 } from "lucide-react";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { StudentLayout } from "@/components/student/StudentLayout";
-import type { 
+import { EmptyState } from "@/components/discover/EmptyState";
+import { Button } from "@/components/ui/button";
+import { EntityAvatar } from "@/components/ui/avatar";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import type {
   StudentApplicationData as ApplicationData,
   StudentRSVPData as RsvpData,
   BookmarkedOpportunity,
-  BookmarkedEvent
+  BookmarkedEvent,
+  FollowedClub,
 } from "@/types";
 
-export default function StudentDashboard() {
+/**
+ * Activity — everything the student has *done*, in one place: what they applied
+ * to, what they're going to, what they saved, who they follow.
+ *
+ * This replaces the old "Welcome back 👋" dashboard, which was four vanity stat
+ * cards over five-item previews whose "view all" links went to /opportunities —
+ * a page that never showed your applications at all. Every list here is the
+ * real list, and every row goes where its label says it goes.
+ *
+ * Status wording comes from lib/status with audience="student", which is where
+ * a rejection finally reads "Not selected" to the person who was not selected,
+ * while the club's own queue still says "Declined".
+ */
+
+type Section = "applications" | "going" | "saved" | "following";
+
+export default function StudentActivity() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
+  const [section, setSection] = useState<Section>("applications");
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [rsvps, setRsvps] = useState<RsvpData[]>([]);
-  const [bookmarkCount, setBookmarkCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [bookmarkedOpportunities, setBookmarkedOpportunities] = useState<BookmarkedOpportunity[]>([]);
   const [bookmarkedEvents, setBookmarkedEvents] = useState<BookmarkedEvent[]>([]);
+  const [followedClubs, setFollowedClubs] = useState<FollowedClub[]>([]);
+  const [unfollowing, setUnfollowing] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
-
-      // Subscribe to real-time notifications
-      const channel = supabase
-        .channel("student-notifications")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            // Refetch notification count on change
-            supabase
-              .from("notifications")
-              .select("id")
-              .eq("user_id", user.id)
-              .eq("is_read", false)
-              .then(({ data }) => {
-                setNotificationCount(data?.length || 0);
-              });
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      fetchActivity();
     }
   }, [user]);
 
-  const fetchDashboardData = async () => {
+  const fetchActivity = async () => {
     if (!user) return;
 
     try {
-      // Get student profile
       const { data: studentProfile, error: profileError } = await supabase
         .from("student_profiles")
         .select("id")
@@ -95,11 +71,17 @@ export default function StudentDashboard() {
         return;
       }
 
-      setStudentProfileId(studentProfile.id);
-
-      // Fetch all data in parallel
-      const [applicationsRes, rsvpsRes, bookmarksRes, notificationsRes, messagesRes, bookmarkedOppsRes, bookmarkedEventsRes] = await Promise.all([
-        // Fetch applications
+      // Same queries as before, with two deliberate changes: RSVPs now select
+      // `status` (a student who is only waitlisted must not be told they are
+      // going), and the five-row preview caps are gone because this page is
+      // now the full list rather than a teaser for one.
+      const [
+        applicationsRes,
+        rsvpsRes,
+        bookmarkedOppsRes,
+        bookmarkedEventsRes,
+        followsRes,
+      ] = await Promise.all([
         supabase
           .from("applications")
           .select(`
@@ -107,156 +89,161 @@ export default function StudentDashboard() {
             status,
             created_at,
             opportunity:opportunities!inner (
+              id,
               title,
               club:club_profiles!inner (
-                club_name
+                club_name,
+                logo_url
               )
             )
           `)
           .eq("student_id", studentProfile.id)
           .order("created_at", { ascending: false })
-          .limit(5),
-        
-        // Fetch RSVPs with upcoming events only
+          .limit(100),
+
         supabase
           .from("rsvps")
           .select(`
             id,
+            status,
             event:events!inner (
               id,
               title,
               event_date,
+              location,
               club:club_profiles!inner (
-                club_name
+                club_name,
+                logo_url
               )
             )
           `)
           .eq("student_id", studentProfile.id)
           .gte("event.event_date", new Date().toISOString())
           .order("created_at", { ascending: false })
-          .limit(5),
-        
-        // Fetch bookmark count
-        supabase
-          .from("bookmarks")
-          .select("id, opportunity_id, event_id, club_id")
-          .eq("user_id", user.id),
-        
-        // Fetch unread notifications count
-        supabase
-          .from("notifications")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("is_read", false),
+          .limit(100),
 
-        // Fetch unread messages count
-        supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("receiver_id", user.id)
-          .eq("is_read", false),
-
-        // Fetch bookmarked opportunities with details (exclude expired)
         supabase
           .from("bookmarks")
           .select(`
             opportunity:opportunities!inner (
               id, title, deadline,
-              club:club_profiles!inner (club_name)
+              club:club_profiles!inner (club_name, logo_url)
             )
           `)
           .eq("user_id", user.id)
           .not("opportunity_id", "is", null)
-          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`, { foreignTable: 'opportunities' })
-          .limit(5),
+          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`, {
+            foreignTable: "opportunities",
+          })
+          .limit(100),
 
-        // Fetch bookmarked events with details (exclude past events)
         supabase
           .from("bookmarks")
           .select(`
             event:events!inner (
               id, title, event_date,
-              club:club_profiles!inner (club_name)
+              club:club_profiles!inner (club_name, logo_url)
             )
           `)
           .eq("user_id", user.id)
           .not("event_id", "is", null)
-          .gte('event.event_date', new Date().toISOString())
-          .limit(5)
+          .gte("event.event_date", new Date().toISOString())
+          .limit(100),
+
+        supabase
+          .from("bookmarks")
+          .select("club_id")
+          .eq("user_id", user.id)
+          .not("club_id", "is", null),
       ]);
 
       if (applicationsRes.error) {
         console.error("Error fetching applications:", applicationsRes.error);
       } else {
-        const transformedApps: ApplicationData[] = (applicationsRes.data || []).map((app) => ({
-          id: app.id,
-          status: app.status || "pending",
-          created_at: app.created_at,
-          opportunity: {
-            title: app.opportunity.title,
-            club: {
-              club_name: app.opportunity.club.club_name
-            }
-          }
-        }));
-        setApplications(transformedApps);
+        setApplications(
+          (applicationsRes.data || []).map((app) => ({
+            id: app.id,
+            status: app.status || "pending",
+            created_at: app.created_at,
+            opportunity: {
+              id: app.opportunity.id,
+              title: app.opportunity.title,
+              club: {
+                club_name: app.opportunity.club.club_name,
+                logo_url: app.opportunity.club.logo_url,
+              },
+            },
+          })),
+        );
       }
 
       if (rsvpsRes.error) {
         console.error("Error fetching RSVPs:", rsvpsRes.error);
       } else {
-        const transformedRsvps: RsvpData[] = (rsvpsRes.data || []).map((rsvp) => ({
-          id: rsvp.id,
-          event: {
-            id: rsvp.event.id,
-            title: rsvp.event.title,
-            event_date: rsvp.event.event_date,
-            club: {
-              club_name: rsvp.event.club.club_name
-            }
-          }
-        }));
-        setRsvps(transformedRsvps);
+        setRsvps(
+          (rsvpsRes.data || []).map((rsvp) => ({
+            id: rsvp.id,
+            status: rsvp.status || "confirmed",
+            event: {
+              id: rsvp.event.id,
+              title: rsvp.event.title,
+              event_date: rsvp.event.event_date,
+              location: rsvp.event.location,
+              club: {
+                club_name: rsvp.event.club.club_name,
+                logo_url: rsvp.event.club.logo_url,
+              },
+            },
+          })),
+        );
       }
 
-      if (!bookmarksRes.error) {
-        const bookmarks = bookmarksRes.data || [];
-        setBookmarkCount(bookmarks.length);
-        // Count club follows separately
-        const clubFollows = bookmarks.filter((b) => b.club_id !== null);
-        setFollowingCount(clubFollows.length);
-      }
-
-      if (!notificationsRes.error) {
-        setNotificationCount(notificationsRes.data?.length || 0);
-      }
-
-      if (!messagesRes.error) {
-        setUnreadMessageCount(messagesRes.count || 0);
-      }
-
-      // Process bookmarked opportunities
       if (!bookmarkedOppsRes.error && bookmarkedOppsRes.data) {
-        const opps = bookmarkedOppsRes.data.map((item) => ({
-          id: item.opportunity.id,
-          title: item.opportunity.title,
-          deadline: item.opportunity.deadline,
-          club: { club_name: item.opportunity.club.club_name }
-        }));
-        setBookmarkedOpportunities(opps);
+        setBookmarkedOpportunities(
+          bookmarkedOppsRes.data.map((item) => ({
+            id: item.opportunity.id,
+            title: item.opportunity.title,
+            deadline: item.opportunity.deadline,
+            club: {
+              club_name: item.opportunity.club.club_name,
+              logo_url: item.opportunity.club.logo_url,
+            },
+          })),
+        );
       }
 
-      // Process bookmarked events
       if (!bookmarkedEventsRes.error && bookmarkedEventsRes.data) {
-        const evts = bookmarkedEventsRes.data.map((item) => ({
-          id: item.event.id,
-          title: item.event.title,
-          event_date: item.event.event_date,
-          club: { club_name: item.event.club.club_name }
-        }));
-        setBookmarkedEvents(evts);
+        setBookmarkedEvents(
+          bookmarkedEventsRes.data.map((item) => ({
+            id: item.event.id,
+            title: item.event.title,
+            event_date: item.event.event_date,
+            club: {
+              club_name: item.event.club.club_name,
+              logo_url: item.event.club.logo_url,
+            },
+          })),
+        );
       }
 
+      // Followed clubs used to live on /student/feed. The feed became a filter
+      // on Discover, so the list of who you follow — and the only place to
+      // unfollow — moved here rather than disappearing.
+      if (!followsRes.error) {
+        const clubIds = (followsRes.data || [])
+          .map((b) => b.club_id)
+          .filter(Boolean) as string[];
+
+        if (clubIds.length > 0) {
+          const { data: clubs } = await supabase
+            .from("club_profiles")
+            .select("id, club_name, logo_url")
+            .in("id", clubIds);
+          setFollowedClubs(clubs || []);
+        } else {
+          setFollowedClubs([]);
+        }
+      }
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -264,299 +251,428 @@ export default function StudentDashboard() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="accent"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      case "accepted":
-        return <Badge variant="default" className="bg-success text-success-foreground"><CheckCircle2 className="w-3 h-3 mr-1" />Accepted</Badge>;
-      case "rejected":
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
-      case "reviewed":
-        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Reviewed</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
+  const handleUnfollow = async (clubId: string) => {
+    if (!user) return;
+    setUnfollowing(clubId);
+    try {
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("club_id", clubId);
+
+      if (error) throw error;
+
+      setFollowedClubs((prev) => prev.filter((c) => c.id !== clubId));
+      toast.success("Unfollowed");
+    } catch (err) {
+      console.error("Error unfollowing:", err);
+      toast.error("Failed to unfollow club");
+    } finally {
+      setUnfollowing(null);
     }
   };
 
-  // Calculate stats
-  const stats: Array<{
-    label: string;
-    value: number;
-    icon: LucideIcon;
-    color: string;
-    link?: string;
-  }> = [
-    { label: "Applications", value: applications.length, icon: FileText, color: "text-accent" },
-    { label: "Following", value: followingCount, icon: Users, color: "text-primary", link: "/student/feed" },
-    { label: "Messages", value: unreadMessageCount, icon: MessageSquare, color: "text-emerald-500", link: "/student/messages" },
-    { label: "Notifications", value: notificationCount, icon: Bell, color: "text-amber-500", link: "/notifications" },
-  ];
+  const savedCount = bookmarkedOpportunities.length + bookmarkedEvents.length;
 
-  if (isLoading) {
-    return (
-      <StudentLayout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </StudentLayout>
-    );
-  }
+  /**
+   * A saved role you already applied to must not offer "Apply" again — the app
+   * does not stop a duplicate application, so an inviting button here is a trap.
+   * Both sets come from data already on this page; no extra queries.
+   */
+  const appliedStatusByOpportunity = useMemo(
+    () => new Map(applications.map((a) => [a.opportunity.id, a.status])),
+    [applications],
+  );
+  const rsvpStatusByEvent = useMemo(
+    () => new Map(rsvps.map((r) => [r.event.id, r.status])),
+    [rsvps],
+  );
+
+  const sections: Array<{ value: Section; label: string; count: number }> = useMemo(
+    () => [
+      { value: "applications", label: "Applications", count: applications.length },
+      { value: "going", label: "Going", count: rsvps.length },
+      { value: "saved", label: "Saved", count: savedCount },
+      { value: "following", label: "Following", count: followedClubs.length },
+    ],
+    [applications.length, rsvps.length, savedCount, followedClubs.length],
+  );
+
+  const total = applications.length + rsvps.length + savedCount;
 
   return (
     <StudentLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-            Welcome back! 👋
-          </h1>
-          <p className="text-muted-foreground">
-            Track your applications, saved items, and upcoming events.
-          </p>
+      <div className="min-h-screen">
+        <div className="border-b border-line bg-surface">
+          <div className="container mx-auto max-w-4xl px-4 py-9">
+            <h1 className="text-[clamp(30px,4vw,40px)] font-medium tracking-[-0.03em] text-ink">
+              Activity
+            </h1>
+            <p className="mt-2 max-w-2xl text-ink-2">
+              {/* Describes what is here, not how the product is doing. */}
+              Everything you've applied to, said yes to, and saved.
+            </p>
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => {
-            const content = (
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-secondary ${stat.color}`}>
-                    <stat.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            );
+        <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
+          <div className="container mx-auto max-w-4xl px-4 py-3">
+            <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+              <TabsList className="max-w-full justify-start overflow-x-auto">
+                {sections.map((s) => (
+                  <TabsTrigger key={s.value} value={s.value} className="gap-2">
+                    {s.label}
+                    {/* A count is only shown when there is something to count —
+                        a row of zeros is noise, not information. */}
+                    {s.count > 0 && (
+                      <span className="font-data text-[12px] tabular-nums opacity-70">
+                        {s.count}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
 
-            return (
-              <Card key={stat.label} className={stat.link ? "hover:bg-secondary/50 transition-colors cursor-pointer" : ""}>
-                {stat.link ? (
-                  <Link to={stat.link}>{content}</Link>
+        <div className="container mx-auto max-w-4xl px-4 py-8">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4"
+                >
+                  <Skeleton className="size-[38px] shrink-0 rounded-[10px]" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/5" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-pill" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {section === "applications" &&
+                (applications.length > 0 ? (
+                  <List>
+                    {applications.map((app) => (
+                      <Row
+                        key={app.id}
+                        href={`/opportunities/${app.opportunity.id}`}
+                        title={app.opportunity.title}
+                        clubName={app.opportunity.club.club_name}
+                        clubLogo={app.opportunity.club.logo_url}
+                        meta={
+                          <>
+                            Applied{" "}
+                            <span className="font-data">
+                              {format(new Date(app.created_at), "MMM d")}
+                            </span>
+                          </>
+                        }
+                        trailing={
+                          <StatusBadge
+                            domain="application"
+                            status={app.status}
+                            audience="student"
+                          />
+                        }
+                      />
+                    ))}
+                  </List>
                 ) : (
-                  content
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                  <EmptyState
+                    title="No applications yet —"
+                    signature="clubs are hiring."
+                    body="Once you apply to a role, it lands here and you can watch its status change."
+                    actions={
+                      <Button variant="accent" asChild>
+                        <Link to="/opportunities">Browse roles</Link>
+                      </Button>
+                    }
+                  />
+                ))}
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          {/* Recent Applications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-accent" />
-                Recent Applications
-              </CardTitle>
-              <CardDescription>Track your application status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {applications.length > 0 ? (
-                <div className="space-y-4">
-                  {applications.map((app) => (
-                    <div 
-                      key={app.id} 
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">{app.opportunity.title}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />
-                          {app.opportunity.club.club_name}
-                        </p>
-                      </div>
-                      {getStatusBadge(app.status)}
+              {section === "going" &&
+                (rsvps.length > 0 ? (
+                  <List>
+                    {rsvps.map((rsvp) => (
+                      <Row
+                        key={rsvp.id}
+                        href={`/events/${rsvp.event.id}`}
+                        title={rsvp.event.title}
+                        clubName={rsvp.event.club.club_name}
+                        clubLogo={rsvp.event.club.logo_url}
+                        meta={
+                          <>
+                            <span className="font-data">
+                              {format(new Date(rsvp.event.event_date), "EEE MMM d · h:mm a")}
+                            </span>
+                            {rsvp.event.location ? ` · ${rsvp.event.location}` : ""}
+                          </>
+                        }
+                        trailing={
+                          <StatusBadge domain="rsvp" status={rsvp.status} audience="student" />
+                        }
+                      />
+                    ))}
+                  </List>
+                ) : (
+                  <EmptyState
+                    title="Nothing on the calendar —"
+                    signature="something's on this week."
+                    body="Events you RSVP to show up here, with the date and where to go."
+                    actions={
+                      <Button variant="accent" asChild>
+                        <Link to="/events">Browse events</Link>
+                      </Button>
+                    }
+                  />
+                ))}
+
+              {section === "saved" &&
+                (savedCount > 0 ? (
+                  <div className="space-y-8">
+                    {bookmarkedOpportunities.length > 0 && (
+                      <section>
+                        <SectionHeading>
+                          Roles · <span className="font-data">{bookmarkedOpportunities.length}</span>
+                        </SectionHeading>
+                        <List>
+                          {bookmarkedOpportunities.map((opp) => (
+                            <Row
+                              key={opp.id}
+                              href={`/opportunities/${opp.id}`}
+                              title={opp.title}
+                              clubName={opp.club.club_name}
+                              clubLogo={opp.club.logo_url}
+                              meta={
+                                opp.deadline ? (
+                                  <>
+                                    Closes{" "}
+                                    <span className="font-data">
+                                      {format(new Date(opp.deadline), "MMM d")}
+                                    </span>
+                                  </>
+                                ) : (
+                                  "No deadline"
+                                )
+                              }
+                              trailing={
+                                appliedStatusByOpportunity.has(opp.id) ? (
+                                  <StatusBadge
+                                    domain="application"
+                                    status={appliedStatusByOpportunity.get(opp.id)}
+                                    audience="student"
+                                  />
+                                ) : (
+                                  <Button variant="ink" size="sm" asChild className="relative z-10">
+                                    <Link to={`/opportunities/${opp.id}`}>Apply</Link>
+                                  </Button>
+                                )
+                              }
+                            />
+                          ))}
+                        </List>
+                      </section>
+                    )}
+
+                    {bookmarkedEvents.length > 0 && (
+                      <section>
+                        <SectionHeading>
+                          Events · <span className="font-data">{bookmarkedEvents.length}</span>
+                        </SectionHeading>
+                        <List>
+                          {bookmarkedEvents.map((event) => (
+                            <Row
+                              key={event.id}
+                              href={`/events/${event.id}`}
+                              title={event.title}
+                              clubName={event.club.club_name}
+                              clubLogo={event.club.logo_url}
+                              meta={
+                                <span className="font-data">
+                                  {format(new Date(event.event_date), "EEE MMM d · h:mm a")}
+                                </span>
+                              }
+                              trailing={
+                                rsvpStatusByEvent.has(event.id) ? (
+                                  <StatusBadge
+                                    domain="rsvp"
+                                    status={rsvpStatusByEvent.get(event.id)}
+                                    audience="student"
+                                  />
+                                ) : (
+                                  <Button variant="ink" size="sm" asChild className="relative z-10">
+                                    <Link to={`/events/${event.id}`}>RSVP</Link>
+                                  </Button>
+                                )
+                              }
+                            />
+                          ))}
+                        </List>
+                      </section>
+                    )}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Nothing saved yet —"
+                    signature="save one and it waits here."
+                    body={
+                      <>
+                        Tap the <Bookmark className="inline size-3.5 align-[-2px]" aria-hidden />{" "}
+                        bookmark on any role or event to keep it.
+                      </>
+                    }
+                    actions={
+                      <Button variant="outline" asChild>
+                        <Link to="/opportunities">Browse roles</Link>
+                      </Button>
+                    }
+                  />
+                ))}
+
+              {section === "following" &&
+                (followedClubs.length > 0 ? (
+                  <>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-ink-3">
+                        <span className="font-data text-ink-2">{followedClubs.length}</span>{" "}
+                        {followedClubs.length === 1 ? "club" : "clubs"}
+                      </p>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/opportunities?filter=following">See what they've posted</Link>
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Inbox className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">No applications yet</p>
-                  <Button variant="link" asChild className="mt-2">
-                    <Link to="/opportunities">Browse opportunities</Link>
-                  </Button>
-                </div>
-              )}
-              {applications.length > 0 && (
-                <Button variant="ghost" className="w-full mt-4" asChild>
-                  <Link to="/opportunities">View all opportunities</Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+                    <List>
+                      {followedClubs.map((club) => (
+                        <Row
+                          key={club.id}
+                          href={`/clubs/${club.id}`}
+                          title={club.club_name}
+                          clubLogo={club.logo_url}
+                          clubName={club.club_name}
+                          hideClubLine
+                          trailing={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="relative z-10"
+                              disabled={unfollowing === club.id}
+                              onClick={() => handleUnfollow(club.id)}
+                            >
+                              {unfollowing === club.id ? (
+                                <>
+                                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                                  <span className="sr-only">Unfollowing {club.club_name}</span>
+                                </>
+                              ) : (
+                                "Unfollow"
+                              )}
+                            </Button>
+                          }
+                        />
+                      ))}
+                    </List>
+                  </>
+                ) : (
+                  <EmptyState
+                    title="Not following anyone yet —"
+                    signature="follow a club, see its posts first."
+                    body="Following a club puts its new roles and events in a filter on Discover."
+                    actions={
+                      <Button variant="accent" asChild>
+                        <Link to="/clubs">Browse clubs</Link>
+                      </Button>
+                    }
+                  />
+                ))}
 
-          {/* Upcoming Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-accent" />
-                Upcoming Events
-              </CardTitle>
-              <CardDescription>Events you've RSVP'd to</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {rsvps.length > 0 ? (
-                <div className="space-y-4">
-                  {rsvps.map((rsvp) => (
-                    <Link 
-                      key={rsvp.id} 
-                      to={`/events/${rsvp.event.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors block"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">{rsvp.event.title}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />
-                          {rsvp.event.club.club_name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-foreground">
-                          {format(new Date(rsvp.event.event_date), "MMM d, yyyy")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(rsvp.event.event_date), "h:mm a")}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Calendar className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">No upcoming events</p>
-                  <Button variant="link" asChild className="mt-2">
-                    <Link to="/events">Explore events</Link>
-                  </Button>
-                </div>
+              {/* One honest line about the whole page, not a stat card wall. */}
+              {total > 0 && (
+                <p className="mt-8 text-center text-[13px] text-ink-3">
+                  <span className="font-data">{total}</span>{" "}
+                  {total === 1 ? "thing" : "things"} tracked here.
+                </p>
               )}
-              {rsvps.length > 0 && (
-                <Button variant="ghost" className="w-full mt-4" asChild>
-                  <Link to="/events">View all events</Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bookmarked Items */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Saved Opportunities */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bookmark className="w-5 h-5 text-primary" />
-                Saved Opportunities
-              </CardTitle>
-              <CardDescription>Opportunities you've bookmarked</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {bookmarkedOpportunities.length > 0 ? (
-                <div className="space-y-3">
-                  {bookmarkedOpportunities.map((opp) => (
-                    <Link 
-                      key={opp.id} 
-                      to={`/opportunities/${opp.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors block"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{opp.title}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Building2 className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{opp.club.club_name}</span>
-                        </p>
-                      </div>
-                      {opp.deadline && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1 ml-2">
-                          <Clock className="w-3 h-3" />
-                          {format(new Date(opp.deadline), "MMM d")}
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Bookmark className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">No saved opportunities</p>
-                  <Button variant="link" asChild className="mt-2">
-                    <Link to="/opportunities">Browse opportunities</Link>
-                  </Button>
-                </div>
-              )}
-              {bookmarkedOpportunities.length > 0 && (
-                <Button variant="ghost" className="w-full mt-4 gap-2" asChild>
-                  <Link to="/opportunities">
-                    View all saved
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Saved Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bookmark className="w-5 h-5 text-primary" />
-                Saved Events
-              </CardTitle>
-              <CardDescription>Events you've bookmarked</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {bookmarkedEvents.length > 0 ? (
-                <div className="space-y-3">
-                  {bookmarkedEvents.map((event) => (
-                    <Link 
-                      key={event.id} 
-                      to={`/events/${event.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors block"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{event.title}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Building2 className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{event.club.club_name}</span>
-                        </p>
-                      </div>
-                      <div className="text-right ml-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {format(new Date(event.event_date), "MMM d")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(event.event_date), "h:mm a")}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Bookmark className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">No saved events</p>
-                  <Button variant="link" asChild className="mt-2">
-                    <Link to="/events">Explore events</Link>
-                  </Button>
-                </div>
-              )}
-              {bookmarkedEvents.length > 0 && (
-                <Button variant="ghost" className="w-full mt-4 gap-2" asChild>
-                  <Link to="/events">
-                    View all saved
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+            </>
+          )}
         </div>
       </div>
     </StudentLayout>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+      {children}
+    </h2>
+  );
+}
+
+function List({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface shadow-e1">
+      {children}
+    </ul>
+  );
+}
+
+/**
+ * One activity row. The whole row is the hit area via a stretched link on the
+ * title (`relative` here anchors it); anything interactive on the right sits
+ * above it on z-10 so Unfollow and Apply stay separately clickable.
+ */
+function Row({
+  href,
+  title,
+  clubName,
+  clubLogo,
+  meta,
+  trailing,
+  hideClubLine = false,
+}: {
+  href: string;
+  title: string;
+  clubName: string;
+  clubLogo?: string | null;
+  meta?: React.ReactNode;
+  trailing?: React.ReactNode;
+  hideClubLine?: boolean;
+}) {
+  return (
+    <li
+      className={cn(
+        "relative flex items-center gap-3 px-4 py-3",
+        "transition-colors duration-fast ease-zh hover:bg-surface-2",
+      )}
+    >
+      <EntityAvatar
+        name={clubName}
+        src={clubLogo}
+        kind="org"
+        size="sm"
+        className="size-[38px] shrink-0"
+      />
+      <div className="min-w-0 flex-1">
+        <Link
+          to={href}
+          className="block truncate text-[15px] font-semibold text-ink after:absolute after:inset-0 after:content-[''] hover:text-accent-text focus-visible:underline focus-visible:outline-none"
+        >
+          {title}
+        </Link>
+        <p className="truncate text-[13px] text-ink-3">
+          {!hideClubLine && clubName}
+          {!hideClubLine && meta ? " · " : ""}
+          {meta}
+        </p>
+      </div>
+      {trailing && <div className="shrink-0">{trailing}</div>}
+    </li>
   );
 }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark" style="color-scheme: dark">
+<html lang="en" data-theme="light" style="color-scheme: light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,12 +23,22 @@
     
     <link rel="canonical" href="https://zothub.app" />
     <script>
+      // Applies the stored theme before first paint so the page never flashes
+      // the wrong palette. Must stay in sync with the ThemeProvider in App.tsx:
+      // attribute `data-theme`, storage key `theme`, light default.
       (function() {
-        const theme = localStorage.getItem('theme') || 'system';
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDark = theme === 'dark' || (theme === 'system' && systemDark);
-        document.documentElement.classList.toggle('dark', isDark);
-        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+        var stored = null;
+        try { stored = localStorage.getItem('theme'); } catch (e) {}
+        // No stored choice means light — that is the product default, not the
+        // OS's. "system" is only honoured when the user explicitly picked it.
+        var theme = 'light';
+        if (stored === 'dark' || stored === 'light') {
+          theme = stored;
+        } else if (stored === 'system') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
       })();
     </script>
   </head>
