@@ -1,45 +1,54 @@
 import { Link } from "react-router-dom";
 
+import { cn } from "@/lib/utils";
+
 interface LogoProps {
-  linkTo?: string;
+  linkTo?: string | null;
+  className?: string;
+  /** 20px in app chrome; 17px on the mobile top bar. */
+  size?: "sm" | "md" | "lg";
 }
 
-export function Logo({ linkTo = "/" }: LogoProps) {
-  const logoElement = (
-    <div className="flex items-center h-7 select-none">
-      {/* Anteater Z SVG */}
-      <svg 
-        viewBox="0 0 32 28" 
-        className="h-full w-auto"
-        aria-hidden="true"
-      >
-        {/* Stylized anteater snout Z shape */}
-        <path
-          d="M2 6 C2 4 4 2 7 2 L26 2 C29 2 31 4 30 7 C29 9 27 10 24 10 L14 10 L26 22 C28 24 27 26 24 26 L22 26 L6 12 L6 14 C6 16 4 18 2 16 L2 6 Z"
-          fill="currentColor"
-          className="text-primary"
-        />
-        {/* Eye notch detail */}
-        <path
-          d="M8 5 L12 5 L10 8 Z"
-          className="fill-background"
-        />
-      </svg>
-      
-      {/* Typography */}
-      <span className="font-bold text-lg tracking-tight leading-none text-primary">ot</span>
-      <span className="font-bold text-lg tracking-tight leading-none text-foreground">Hub</span>
-      <span className="font-bold text-lg tracking-tight leading-none text-primary">.</span>
-    </div>
+const SIZES = {
+  sm: "text-[17px]",
+  md: "text-[20px]",
+  lg: "text-[26px]",
+} as const;
+
+/**
+ * The wordmark: `zot` upright in ink, `hub` italic in accent, one line.
+ *
+ * The italic is load-bearing — the same move as the signature phrase, and the
+ * reason the typeface is Instrument Sans (its true italic is a real design,
+ * not a slant). Rendered from the live webfont rather than traced to paths, so
+ * it stays theme-correct and crisp at any size.
+ *
+ * Still outstanding before launch (00-handoff §6): the favicon / app-icon set
+ * needs the glyphs OUTLINED from licensed Instrument — the stacked disc mark,
+ * white `zot` over italic-accent `hub`, using the 16px tight cut.
+ */
+export function Logo({ linkTo = "/", className, size = "md" }: LogoProps) {
+  const mark = (
+    <span
+      className={cn(
+        "select-none font-semibold leading-none tracking-[-0.045em] text-ink",
+        SIZES[size],
+        className,
+      )}
+    >
+      zot<i className="italic text-accent-text">hub</i>
+    </span>
   );
 
-  if (linkTo) {
-    return (
-      <Link to={linkTo} className="flex items-center">
-        {logoElement}
-      </Link>
-    );
-  }
+  if (!linkTo) return mark;
 
-  return logoElement;
+  return (
+    <Link
+      to={linkTo}
+      aria-label="ZotHub home"
+      className="inline-flex min-h-11 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      {mark}
+    </Link>
+  );
 }

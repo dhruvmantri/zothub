@@ -37,7 +37,7 @@ An approved 10-stage workflow, later collapsed into three phases by agreement.
 | 4–6 · Brand, direction, design language | ✅ **Identity locked (v4) + design system derived (2026-07-25).** 11 directions → D11 → critiqued → identity labs → UCI blue/place turn (v4) → `design-system.html` + `design-system.md` |
 | 7 · Core journey design | ✅ **complete** — component library (`component-library.html`, 10 sections) + four assembled screen files (club-firstrun, student-apply, clubs, more-screens), both themes, AA-verified by measurement |
 | 8 · Validation | Not started |
-| 9 · Implementation in slices | Not started (tokens ready to port into `src/index.css`) |
+| 9 · Implementation in slices | ✅ **all slices (0–11) done and verified** on branch `redesign/implementation` — see `implementation-audit.md`. Every surface re-skinned + verified in the running app, both themes, 0 contrast / 0 unlabelled. Route-level code splitting landed (recharts out of the initial bundle). Remaining work is pre-launch ops, not redesign — see §6 |
 | 10 · Onboarding readiness | Not started |
 
 **Agreed remaining sequence:** ~~refine Direction 11 → design system + brand kit~~ ✅ done → **component library → remaining pages** → implementation.
@@ -211,7 +211,122 @@ in BOTH themes; keep the docs current as decisions land.
 
 **Screen assembly is complete — Stage 7 done.** Four screen files under `current/`: club-firstrun, student-apply, clubs, more-screens. Every core route + the cold-start surface has a designed, both-theme, AA-verified home, all composed from the locked component library.
 
-**Next: implementation (Stage 9).** Rewrite `src/index.css` to the token spec (`design-system.md` §1–3), self-host Instrument (~55KB, `font-display:swap`), re-token shadcn components, route-split (recharts is preloaded on landing today), then build screen-by-screen against these mocks — **re-skin, don't rebuild the wiring** (RLS/queries/routing untouched). Still-open pre-launch items in §6 stand: hero-photo licensing + WebP/AVIF, production SVG for the stacked mark, Test Club purge, and the **unpushed security migration** (`user_roles` self-insert privilege-escalation).
+### Implementation status (Stage 9) — branch `redesign/implementation`
+
+The contract is **`implementation-audit.md`**: every route, feature, field and state the live app has
+today, mapped to buckets A (mocked → re-skin), B (exists, no mock → design in-system) and C (mocked,
+no backend). Read it before touching anything.
+
+Maintainer decisions settled 2026-07-25: member DMs are in scope / ZotSpot deferred and marked
+not-yet-live · nav collapses to four per role with Feed→a Discover filter and Analytics+Team→My Club ·
+`/club/dashboard` lands on Responses with the overview moving into My Club · pre-existing bugs get
+fixed in the slice that owns the screen · theme toggle lives in the account menu with an icon button
+in the public nav · the wordmark ships font-rendered now, outlined SVG later.
+
+**Done and verified in the running app** (both themes, AA measured on real pixels — 0 text-contrast
+and 0 control-boundary failures throughout):
+- **Slice 1 — tokens.** `src/index.css` and `tailwind.config.ts` rewritten. Colour is stored as HSL
+  triplets so Tailwind alpha modifiers keep working; every triplet round-trips to the mock's exact
+  hex. Instrument Sans self-hosted (4 woff2, ~62KB fetched). `forcedTheme="dark"` removed.
+- **Slice 2 — primitives.** 22 shadcn/Radix components re-tokened, plus `lib/status.ts` (the one
+  shared, audience-aware status map) and shape-as-kind avatars.
+- **Slice 3 — furniture.** Italic-hub wordmark, four-destination nav per role with one accent
+  "you are here" language, account menu, working theme toggle. *Club nav still pending a club login.*
+- **Slice 4 — discovery.** Landing (with the hero photo and its scrim, whose stops are an AA
+  control), Discover cards↔list, opportunity detail, event detail.
+- **Slice 5 — apply + RSVP.** Verified end-to-end against a real submission: all four dynamic
+  question types, required-field validation, resume-from-profile, success modal, posting flips to
+  "Applied".
+- **Slice 6 — clubs.** Directory and club page. The category filter was hard-coded to nine labels
+  that do not exist in the taxonomy; it is derived from the data now.
+- **Slice 7 — student side.** The dashboard is now **Activity** (Applications · Going · Saved ·
+  Following), where a rejection finally reads **"Not selected"** to the student and an RSVP shows
+  whether it is confirmed or still awaiting approval. The feed became a **Following filter** on
+  Discover and Events, with `/student/feed` redirecting there; unfollow moved into Activity. The
+  profile split into a **view** (`/student/profile`) and an **edit** (`/student/profile/edit`).
+- **Slice 8 — club side.** `/club/dashboard` now lands on the **Responses** work queue, not a stats
+  page. The old flat seven-tab bar is gone, replaced by per-destination sub-tabs (`ClubSectionNav`):
+  Postings [Opportunities · Events], Responses [Applications · RSVPs], My Club [Overview · Team ·
+  Analytics]; the old overview stats + recent-item lists moved into **My Club → Overview** (the
+  profile editor sits one click deeper). Both review queues now speak the club vocabulary through
+  `StatusBadge audience="club"` — a pending application reads **"New"**, a rejection **"Declined"** —
+  and the management tables use `StatusBadge domain="posting"/"event"` (Live/Closed/Draft, Upcoming/
+  Today/Past). Fixed the **reviewed-status-unsettable** bug: a "Mark as reviewed" action, and reviewed
+  rows stay decidable. `ClubAnalytics` charts now read the **live token values keyed on theme**
+  instead of hard-coded HSL, so they finally adapt to dark mode; pie labels use the club vocabulary.
+  Every club surface verified in the running app in both themes: **0 text-contrast, 0 unlabelled**
+  (the shadcn `Switch` + adjacent `<label for>` pattern needed explicit `aria-label`s — a
+  `role=switch` button is not named by a `for` label; the per-row `⋯` menus needed them too).
+  Two follow-up polish fixes after review: the **Applications queue is now a header+aligned table**
+  (matching the RSVP queue — rows no longer shift between decided/undecided), and the My Club
+  identity card **skeletons while the profile loads** instead of flashing the email local-part as the
+  club name (`useAccountIdentity` now exposes `isLoading` and never uses the email as a club's name).
+- **Slice 9 — Messages.** Re-skinned the whole thread UI (`MessagesContainer`, `ConversationList`,
+  `MessageThread`, `MessageComposer` + both page headers): `EntityAvatar` shape-by-kind,
+  **accent-sent / grey-received** bubbles (the one deliberate accent outside "demands action"),
+  active-row accent left-bar, mono timestamps. The thread header links a **club** participant to
+  their public page. Closed the **student↔member dead link**: `useMessages` gained `startConversation`
+  behind a `?to=<user_id>` handler in `MessagesContainer` — the "Message a member" button on the club
+  page now opens (or drafts) that thread instead of 404-ing; the param is stripped after open.
+  A **MEMBER** chip (one batch `club_team_members` read) marks a team member so a student never mistakes
+  them for the official club. Verified club-side both themes (0/0) incl. the `?to=` open; student view
+  shares the same container, and the MEMBER chip is code-verified (Test Club has no members yet).
+- **Slice 10 — edges.** Two real bugs closed: the **`/reset-password` route now exists** (new
+  `ResetPassword` page — ForgotPassword had been redirecting to a 404), and `NotificationCard`'s
+  **`/club/applications` dead link** → `/club/dashboard/applications`. A11y sweep: the flagged
+  **password-eye** buttons (Login, Signup, ResetPassword) are labelled + verified toggling; the
+  notification action buttons, the 6 preference switches in `NotificationPreferencesDialog`, the 6 in
+  `Unsubscribe`, and the admin approve/reject/delete buttons all gained `aria-label`s (a `role=switch`
+  / icon button is never named by a sibling `<label for>`). Off-palette raw colours → tokens
+  (notification type-icons emerald/amber/purple → ok/warn/ink; admin waitlist statuses →
+  `StatusBadge domain="waitlist"`; various washes). **NotFound** redesigned (wordmark · mono 404 ·
+  accent CTA). One dark-mode contrast fix: the unread-notification row moved from a full `accent-wash`
+  (which dropped the meta timestamp to 4.49:1) to an **accent left-bar on a near-base surface** — the
+  same "passes on base, fails on a wash" pattern as messages. Verified both themes, 0/0: Notifications
+  (+ prefs dialog), NotFound, ResetPassword, Privacy, Unsubscribe, Login, Signup. Waitlist ×2 (need a
+  pending/rejected user) and Admin (need an admin login) are code-verified only.
+
+- **Slice 11 — route splitting.** Every route is now `lazy()` + `Suspense` (Landing stays eager as
+  the LCP page), and `ClubAnalytics` is lazily imported *inside* `ClubHome` so recharts loads only when
+  the Analytics tab opens. The real fix was in `vite.config.ts`: the explicit
+  `manualChunks: { charts: ["recharts"] }` was forcing recharts into an **eagerly-preloaded** vendor
+  chunk even though its only importer is lazy — that's why "recharts was still in the landing bundle."
+  Removing that entry lets recharts fold into the on-demand ClubAnalytics chunk. Verified against a
+  production build: recharts (~411KB) is no longer in `index.html`'s modulepreloads nor a static import
+  of the entry, and the Analytics tab lazy-loads + renders its charts correctly at runtime. **This
+  completes the redesign implementation (slices 0–11).**
+
+**Pre-commit parity audit (before anything was committed).** Ran `tsc --noEmit` (0 errors), ESLint
+(0 errors), a production build (clean), and a four-way diff of the working tree against `HEAD` (= the
+previous design) across every subsystem. Route set is additive-only (no route removed). Verdict:
+**full feature parity** with one exception — the club **Feed** (`/club/feed`, "browse other clubs'
+postings") had silently lost its nav entry in the 4-destination collapse (it was a top/bottom-nav
+destination at HEAD, never mentioned in the relocation decisions). Resolved by mirroring the student
+feed: `/club/feed` now redirects to `/opportunities`, and `ClubFeed.tsx` + its exclusive deps
+`FeedCard`/`EmptyFeedState` were deleted. If clubs are meant to have a first-class discovery
+destination, that's a nav decision to revisit — but nothing is now orphaned or broken.
+
+**Three traps worth remembering.** shadcn's `--accent` is its neutral menu-hover surface, not a brand
+colour — pointing it at Pacific blue lights every dropdown row blue (26 usages across 9 files were
+re-pointed at `surface-3`). React 18.3 **silently drops** camelCase DOM props it does not know
+(`fetchPriority` cost the hero its LCP hint) — check the attribute is actually in the DOM. And a
+**forced** `data-theme` flip leaves stale transitioned colours behind: elements keep their old
+`color` because changing a `var()` does not always restart a running transition, so an audit run
+straight after reports phantom failures. Waiting is not enough — suppress transitions during the
+flip, which is exactly what next-themes' `disableTransitionOnChange` does for the real toggle.
+
+**Redesign implementation is complete (slices 0–11).** What's left is **pre-launch ops, not
+re-skin work** (§6): WebP/AVIF for the hero photo, the outlined SVG favicon/stacked-mark, the Test
+Club data purge, and the **unpushed `user_roles` security migration** (run the abuse-check query
+before deploying — it destroys the evidence). A few screens are **code-verified only** because the
+current data/logins can't exercise them — pick these up when possible: a **populated club Team row**
+and the **Messages MEMBER chip** against a real club member (Test Club has none), the **student-side**
+Messages/Activity against a student login, and the **Waitlist ×2 / Admin** screens (need a
+pending/rejected user and an admin login).
+Still-open pre-launch items in §6 stand: WebP/AVIF for the hero, production SVG for the stacked
+mark, Test Club purge, and the **unpushed security migration** (`user_roles` self-insert
+privilege-escalation — run the abuse-check query *before* deploying it, since the migration destroys
+the evidence).
 
 **Capture note (tooling):** the in-app Browser pane renders wide desktop layouts (3-col grids, the Messages two-pane) only when the viewport is actually wide — set `resize_window` to ~1440 and confirm `window.innerWidth` before screenshotting, or responsive breakpoints collapse to the narrow layout. Screens use a step-switcher so each renders at scroll 0 (avoids the deep-scroll blank bug).
 

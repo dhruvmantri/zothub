@@ -8,9 +8,9 @@ interface PublicLayoutProps {
 
 export function PublicLayout({ children, showNavbar = true }: PublicLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface-2">
       {showNavbar && <Navbar />}
-      <main className={showNavbar ? "pt-16" : ""}>{children}</main>
+      <main className={showNavbar ? "pt-[60px]" : ""}>{children}</main>
     </div>
   );
 }

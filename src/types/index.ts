@@ -355,29 +355,35 @@ export interface NotificationPreferences {
   deadline_reminders: boolean;
 }
 
-// ============= Student Dashboard Types =============
+// ============= Student Activity Types =============
+
+/** Every activity row shows which club it belongs to, so the logo rides along. */
+interface ActivityClub {
+  club_name: string;
+  logo_url?: string | null;
+}
 
 export interface StudentApplicationData {
   id: string;
   status: string;
   created_at: string;
   opportunity: {
+    id: string;
     title: string;
-    club: {
-      club_name: string;
-    };
+    club: ActivityClub;
   };
 }
 
 export interface StudentRSVPData {
   id: string;
+  /** pending = awaiting the club's approval; confirmed = actually going. */
+  status: string;
   event: {
     id: string;
     title: string;
     event_date: string;
-    club: {
-      club_name: string;
-    };
+    location?: string | null;
+    club: ActivityClub;
   };
 }
 
@@ -385,12 +391,12 @@ export interface BookmarkedOpportunity {
   id: string;
   title: string;
   deadline: string | null;
-  club: { club_name: string };
+  club: ActivityClub;
 }
 
 export interface BookmarkedEvent {
   id: string;
   title: string;
   event_date: string;
-  club: { club_name: string };
+  club: ActivityClub;
 }

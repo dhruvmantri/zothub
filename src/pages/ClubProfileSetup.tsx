@@ -159,7 +159,7 @@ export default function ClubProfileSetup() {
       }
 
       toast.success("Profile saved successfully!");
-      navigate("/club/dashboard");
+      navigate("/club/dashboard/overview");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -184,9 +184,9 @@ export default function ClubProfileSetup() {
           <Logo />
 
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/club/dashboard">
+            <Link to="/club/dashboard/overview">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to My Club
             </Link>
           </Button>
         </div>
@@ -368,7 +368,7 @@ export default function ClubProfileSetup() {
           {/* Save Button */}
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" asChild>
-              <Link to="/club/dashboard">Cancel</Link>
+              <Link to="/club/dashboard/overview">Cancel</Link>
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? (

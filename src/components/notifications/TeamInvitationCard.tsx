@@ -31,17 +31,17 @@ export function TeamInvitationCard({
       <p
         className={cn(
           "text-sm",
-          !notification.is_read ? "font-medium text-foreground" : "text-muted-foreground"
+          !notification.is_read ? "font-medium text-ink" : "text-ink-2"
         )}
       >
         {notification.title}
       </p>
       {notification.message && (
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-ink-2 mt-0.5">
           {notification.message}
         </p>
       )}
-      <p className="text-xs text-muted-foreground mt-1">
+      <p className="font-data text-xs text-ink-3 mt-1">
         {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
       </p>
 

@@ -3,6 +3,7 @@ import { useWaitlistAdmin } from "@/hooks/useWaitlist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -131,18 +132,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Pending</Badge>;
-      case "approved":
-        return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Approved</Badge>;
-      case "rejected":
-        return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">Rejected</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  const getStatusBadge = (status: string) =>
+    status ? <StatusBadge domain="waitlist" status={status} /> : <Badge variant="outline">Unknown</Badge>;
 
   if (isLoading) {
     return (
@@ -189,28 +180,28 @@ export default function AdminDashboard() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-yellow-500" />
-                <span className="text-2xl font-bold">{stats.pending}</span>
+                <Clock className="h-5 w-5 text-warn" />
+                <span className="font-data text-2xl font-semibold text-ink">{stats.pending}</span>
               </div>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-ink-2">Pending</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="text-2xl font-bold">{stats.approved}</span>
+                <CheckCircle className="h-5 w-5 text-ok" />
+                <span className="font-data text-2xl font-semibold text-ink">{stats.approved}</span>
               </div>
-              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-sm text-ink-2">Approved</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2">
-                <XCircle className="h-5 w-5 text-red-500" />
-                <span className="text-2xl font-bold">{stats.rejected}</span>
+                <XCircle className="h-5 w-5 text-bad" />
+                <span className="font-data text-2xl font-semibold text-ink">{stats.rejected}</span>
               </div>
-              <p className="text-sm text-muted-foreground">Rejected</p>
+              <p className="text-sm text-ink-2">Rejected</p>
             </CardContent>
           </Card>
         </div>
@@ -302,7 +293,8 @@ export default function AdminDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  className="border-ok/40 text-ok hover:bg-ok-wash hover:text-ok"
+                                  aria-label={`Approve ${entry.email}`}
                                   onClick={() => handleApprove(entry.user_id, entry.email, entry.role as "student" | "club")}
                                   disabled={isProcessing}
                                 >
@@ -311,7 +303,8 @@ export default function AdminDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
+                                  aria-label={`Reject ${entry.email}`}
                                   onClick={() => handleRejectClick(entry.user_id, entry.email)}
                                   disabled={isProcessing}
                                 >
@@ -322,7 +315,8 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-muted-foreground hover:text-destructive"
+                              className="text-ink-3 hover:bg-bad-wash hover:text-bad"
+                              aria-label={`Delete ${entry.email}`}
                               onClick={() => handleDelete(entry.user_id, entry.email)}
                             >
                               <Trash2 className="h-4 w-4" />

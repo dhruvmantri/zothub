@@ -18,10 +18,19 @@ export interface Conversation {
   participantId: string;
   participantName: string;
   participantAvatar?: string;
+  /** club_profiles.id / student_profiles.id — lets the thread header link a
+   *  club participant to their public page. */
+  participantProfileId?: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
   isClub: boolean;
+  /** A person who sits on a club's team — labelled MEMBER so a student never
+   *  mistakes them for the official club account (Positioning §8). */
+  isMember?: boolean;
+  /** Opened via a "message a member" link but no messages exchanged yet, so it
+   *  is not persisted until the first send. */
+  isDraft?: boolean;
 }
 
 export function useMessages() {
@@ -79,15 +88,16 @@ export function useMessages() {
       
       // Build conversation list using cached profiles
       const conversationList: Conversation[] = [];
-      
+
       for (const [partnerId, data] of conversationMap) {
         const profile = profiles.get(partnerId);
         const lastMsg = data.messages[0];
-        
+
         conversationList.push({
           participantId: partnerId,
           participantName: profile?.name || "Unknown User",
           participantAvatar: profile?.avatar,
+          participantProfileId: profile?.id,
           lastMessage: lastMsg.content,
           lastMessageTime: lastMsg.created_at,
           unreadCount: data.unreadCount,
@@ -95,8 +105,23 @@ export function useMessages() {
         });
       }
 
+      // Which of the non-club partners are actually club team members? One
+      // batch read (club_team_members is already public — it drives the members
+      // list on the club page). Degrades quietly: no rows → no MEMBER chips.
+      const nonClubIds = conversationList.filter((c) => !c.isClub).map((c) => c.participantId);
+      if (nonClubIds.length > 0) {
+        const { data: members } = await supabase
+          .from("club_team_members")
+          .select("user_id")
+          .in("user_id", nonClubIds);
+        const memberSet = new Set((members || []).map((m) => m.user_id));
+        conversationList.forEach((c) => {
+          if (memberSet.has(c.participantId)) c.isMember = true;
+        });
+      }
+
       // Sort by last message time
-      conversationList.sort((a, b) => 
+      conversationList.sort((a, b) =>
         new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
       );
 
@@ -177,14 +202,18 @@ export function useMessages() {
       const profile = await fetchProfileInfo(receiverId);
       setConversations(prev => {
         const existing = prev.find(c => c.participantId === receiverId);
-        const updated = {
+        const updated: Conversation = {
           participantId: receiverId,
           participantName: profile?.name || existing?.participantName || "Unknown",
           participantAvatar: profile?.avatar || existing?.participantAvatar,
+          participantProfileId: profile?.id ?? existing?.participantProfileId,
           lastMessage: content,
           lastMessageTime: data.created_at,
           unreadCount: 0,
           isClub: profile?.isClub || existing?.isClub || false,
+          isMember: existing?.isMember,
+          // No longer a draft — it now has a real message behind it.
+          isDraft: false,
         };
 
         const filtered = prev.filter(c => c.participantId !== receiverId);
@@ -258,6 +287,48 @@ export function useMessages() {
     fetchMessagesForConversation(partnerId);
   }, [fetchMessagesForConversation]);
 
+  // Open a thread with a specific user — the ?to=<user_id> entry point behind
+  // the "Message a member" button on the club page. If we've never spoken, a
+  // draft conversation is added so the header + composer render immediately;
+  // it persists on first send (see sendMessage).
+  const startConversation = useCallback(async (partnerId: string) => {
+    if (!user || !partnerId || partnerId === user.id) return;
+
+    if (conversations.some((c) => c.participantId === partnerId)) {
+      selectConversation(partnerId);
+      return;
+    }
+
+    const profile = await fetchProfileInfo(partnerId);
+    let isMember = false;
+    if (profile && !profile.isClub) {
+      const { data: member } = await supabase
+        .from("club_team_members")
+        .select("user_id")
+        .eq("user_id", partnerId)
+        .maybeSingle();
+      isMember = !!member;
+    }
+
+    setConversations((prev) => {
+      if (prev.some((c) => c.participantId === partnerId)) return prev;
+      const draft: Conversation = {
+        participantId: partnerId,
+        participantName: profile?.name || "Unknown User",
+        participantAvatar: profile?.avatar,
+        participantProfileId: profile?.id,
+        lastMessage: "",
+        lastMessageTime: new Date().toISOString(),
+        unreadCount: 0,
+        isClub: profile?.isClub || false,
+        isMember,
+        isDraft: true,
+      };
+      return [draft, ...prev];
+    });
+    selectConversation(partnerId);
+  }, [user, conversations, fetchProfileInfo, selectConversation]);
+
   // Initial fetch
   useEffect(() => {
     if (user) {
@@ -315,6 +386,7 @@ export function useMessages() {
                   participantId: newMessage.sender_id,
                   participantName: profile?.name || "Unknown",
                   participantAvatar: profile?.avatar,
+                  participantProfileId: profile?.id,
                   lastMessage: newMessage.content,
                   lastMessageTime: newMessage.created_at,
                   unreadCount: 1,
@@ -340,6 +412,7 @@ export function useMessages() {
     isLoading,
     isSending,
     selectConversation,
+    startConversation,
     sendMessage,
     deleteMessage,
     getTotalUnreadCount,

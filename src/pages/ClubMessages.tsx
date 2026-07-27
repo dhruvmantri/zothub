@@ -6,8 +6,8 @@ export default function ClubMessages() {
     <ClubLayout>
       <div className="container mx-auto px-4 py-6 space-y-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Messages</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink">Messages</h1>
+          <p className="text-ink-2 mt-1">
             Communicate with students interested in your opportunities
           </p>
         </div>

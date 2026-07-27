@@ -2,8 +2,9 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/** Cards are `--r3` (14px) on `--bg` with the resting elevation `--e1`. */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
+  <div ref={ref} className={cn("rounded-lg border border-line bg-card text-card-foreground shadow-e1", className)} {...props} />
 ));
 Card.displayName = "Card";
 
@@ -14,16 +15,17 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardHeader.displayName = "CardHeader";
 
+/* Card step: 22px / 600 / -0.018em (design-system §2). */
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("text-[22px] font-semibold leading-tight tracking-[-0.018em]", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <p ref={ref} className={cn("text-sm text-ink-3", className)} {...props} />
   ),
 );
 CardDescription.displayName = "CardDescription";

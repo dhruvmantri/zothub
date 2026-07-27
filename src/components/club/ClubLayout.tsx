@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigationCounts } from "@/hooks/useNavigationCounts";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,55 +11,61 @@ interface ClubLayoutProps {
 }
 
 /**
- * Layout wrapper for club pages.
- * Provides consistent top/bottom navigation with badge counts.
+ * Layout wrapper for club pages. The Responses count is pending applications
+ * plus pending RSVPs — the two things actually waiting on the club — because
+ * Responses is one queue over both (Structure §5).
  */
 export function ClubLayout({ children }: ClubLayoutProps) {
   const { user } = useAuth();
   const { unreadMessageCount, notificationCount } = useNavigationCounts();
-  const [applicationCount, setApplicationCount] = useState(0);
+  const [responseCount, setResponseCount] = useState(0);
 
-  // Fetch pending application count for the club
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
 
-    const fetchApplicationCount = async () => {
-      // Get club profile
+    const fetchResponseCount = async () => {
       const { data: clubProfile } = await supabase
         .from("club_profiles")
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (clubProfile) {
-        // Pending applications count
-        const { count: appCount } = await supabase
+      if (!clubProfile || cancelled) return;
+
+      const [{ count: appCount }, { count: rsvpCount }] = await Promise.all([
+        supabase
           .from("applications")
           .select("*, opportunities!inner(club_id)", { count: "exact", head: true })
           .eq("opportunities.club_id", clubProfile.id)
-          .eq("status", "pending");
+          .eq("status", "pending"),
+        supabase
+          .from("rsvps")
+          .select("*, events!inner(club_id)", { count: "exact", head: true })
+          .eq("events.club_id", clubProfile.id)
+          .eq("status", "pending"),
+      ]);
 
-        setApplicationCount(appCount || 0);
-      }
+      if (!cancelled) setResponseCount((appCount || 0) + (rsvpCount || 0));
     };
 
-    fetchApplicationCount();
+    fetchResponseCount();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-surface-2">
       <ClubTopNav
         unreadMessageCount={unreadMessageCount}
         notificationCount={notificationCount}
-        applicationCount={applicationCount}
+        applicationCount={responseCount}
       />
-      
-      {/* Main content with padding for fixed header and bottom nav on mobile */}
-      <main className="pt-16 pb-20 md:pb-0">
-        {children}
-      </main>
 
-      <ClubBottomNav />
+      <main className="pb-24 pt-[60px] md:pb-0">{children}</main>
+
+      <ClubBottomNav unreadMessageCount={unreadMessageCount} applicationCount={responseCount} />
     </div>
   );
 }

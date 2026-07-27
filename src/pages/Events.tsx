@@ -1,13 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, X, Bookmark, Heart } from "lucide-react";
+import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { EventCard } from "@/components/cards/OpportunityCard";
+import { DiscoverList, type DiscoverListRow } from "@/components/discover/DiscoverList";
+import { FilterChip } from "@/components/discover/FilterChip";
+import { EmptyState } from "@/components/discover/EmptyState";
+import { ViewToggle, useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Calendar, X, Bookmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { formatDate, formatTime } from "@/lib/formatters";
 import { useBookmarks } from "@/hooks/useBookmarks";
 
@@ -27,18 +33,48 @@ interface Event {
   rsvps: { id: string }[];
 }
 
-const dateFilters = ["All", "Saved", "This Week", "This Month", "Upcoming"];
+/** "Following" is inserted after All when the student actually follows a club. */
+const BASE_FILTERS = [
+  { value: "saved", label: "Saved" },
+  { value: "week", label: "This week" },
+  { value: "month", label: "This month" },
+];
 
+/**
+ * Events is a pre-filtered entry point into the one discovery surface
+ * (Structure §2) — same card, same chips, same view toggle as Discover, with
+ * the mono date chip doing the work of telling you it is an event.
+ */
 export default function EventsPage() {
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
+  const { bookmarkedIds: followedClubIds } = useBookmarks("club");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDateFilter, setSelectedDateFilter] = useState("All");
+  const [selectedDateFilter, setSelectedDateFilter] = useState(
+    searchParams.get("filter") === "following" ? "following" : "all",
+  );
+  const [view, setView] = useDiscoverView("discover");
 
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  const selectFilter = (value: string) => {
+    setSelectedDateFilter(value);
+    if (value === "following") setSearchParams({ filter: "following" }, { replace: true });
+    else if (searchParams.has("filter")) setSearchParams({}, { replace: true });
+  };
+
+  const dateFilters = useMemo(
+    () => [
+      { value: "all", label: "All" },
+      ...(followedClubIds.size > 0 ? [{ value: "following", label: "Following" }] : []),
+      ...BASE_FILTERS,
+    ],
+    [followedClubIds],
+  );
 
   const fetchEvents = async () => {
     try {
@@ -81,175 +117,214 @@ export default function EventsPage() {
     }
   };
 
-
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       const clubName = event.club_profiles?.club_name || "";
       const matchesSearch =
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         clubName.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Handle "Saved" filter
-      if (selectedDateFilter === "Saved") {
+
+      if (selectedDateFilter === "saved") {
         return matchesSearch && isBookmarked(event.id);
       }
-      
-      // Inline date filtering logic
+
+      if (selectedDateFilter === "following") {
+        return matchesSearch && followedClubIds.has(event.club_id);
+      }
+
       const eventDate = new Date(event.event_date);
       const now = new Date();
       let matchesDate = true;
-      
+
       switch (selectedDateFilter) {
-        case "This Week":
+        case "week":
           matchesDate = isAfter(eventDate, startOfWeek(now)) && isBefore(eventDate, endOfWeek(now));
           break;
-        case "This Month":
-          matchesDate = isAfter(eventDate, startOfMonth(now)) && isBefore(eventDate, endOfMonth(now));
-          break;
-        case "Upcoming":
-          matchesDate = isAfter(eventDate, now);
+        case "month":
+          matchesDate =
+            isAfter(eventDate, startOfMonth(now)) && isBefore(eventDate, endOfMonth(now));
           break;
         default:
           matchesDate = true;
       }
-      
+
       return matchesSearch && matchesDate;
     });
-  }, [events, searchQuery, selectedDateFilter, isBookmarked]);
+  }, [events, searchQuery, selectedDateFilter, isBookmarked, followedClubIds]);
 
+  const hasFilters = searchQuery !== "" || selectedDateFilter !== "all";
+
+  const listRows: DiscoverListRow[] = filteredEvents.map((event) => ({
+    id: event.id,
+    href: `/events/${event.id}`,
+    title: event.title,
+    meta: `${formatDate(event.event_date)} · ${formatTime(event.event_date)}${
+      event.location ? ` · ${event.location}` : ""
+    }`,
+    tag: { label: "Event" },
+    clubId: event.club_id,
+    clubName: event.club_profiles?.club_name || "Unknown club",
+    clubLogo: event.club_profiles?.logo_url,
+    saved: isBookmarked(event.id),
+    onSave: () => toggleBookmark(event.id),
+    action: { label: "RSVP" },
+  }));
 
   return (
     <RoleBasedLayout>
       <div className="min-h-screen">
-        {/* Header */}
-        <div className="bg-secondary/50 border-b border-border">
-          <div className="container mx-auto px-4 py-12">
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+        <div className="border-b border-line bg-surface">
+          <div className="container mx-auto px-4 py-9">
+            <h1 className="text-[clamp(30px,4vw,40px)] font-medium tracking-[-0.03em] text-ink">
               Events
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Discover workshops, socials, career fairs, and more from UCI clubs and organizations.
+            <p className="mt-2 max-w-2xl text-ink-2">
+              Workshops, socials and info sessions from UCI clubs.
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="sticky top-16 z-40 bg-background border-b border-border">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
+        <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <label htmlFor="events-search" className="sr-only">
+                  Search events by title or club
+                </label>
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-3"
+                />
                 <Input
-                  type="text"
-                  placeholder="Search events..."
+                  id="events-search"
+                  type="search"
+                  placeholder="Search events or clubs…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-11"
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-secondary rounded"
+                    aria-label="Clear search"
+                    className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-pill text-ink-3 hover:bg-surface-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <X className="w-3 h-3 text-muted-foreground" />
+                    <X className="size-4" />
                   </button>
                 )}
               </div>
+              <ViewToggle view={view} onChange={setView} className="hidden sm:inline-flex" />
+            </div>
 
-              {/* Date filters */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                {dateFilters.map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setSelectedDateFilter(filter)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                      selectedDateFilter === filter
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {filter === "Saved" && <Bookmark className="w-3.5 h-3.5" />}
-                    {filter}
-                  </button>
-                ))}
-              </div>
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+              {dateFilters.map((filter) => (
+                <FilterChip
+                  key={filter.value}
+                  active={selectedDateFilter === filter.value}
+                  onClick={() => selectFilter(filter.value)}
+                >
+                  {filter.value === "saved" && <Bookmark className="size-3.5" aria-hidden />}
+                  {filter.value === "following" && <Heart className="size-3.5" aria-hidden />}
+                  {filter.label}
+                </FilterChip>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Results */}
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden">
-                  <Skeleton className="h-40 w-full" />
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="w-6 h-6 rounded-md" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-2/3" />
+                <div key={i} className="flex gap-3 rounded-lg border border-line bg-surface p-4">
+                  <Skeleton className="size-[46px] shrink-0 rounded-[11px]" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3.5 w-1/3" />
+                    <Skeleton className="h-3.5 w-1/2" />
+                    <Skeleton className="mt-4 h-9 w-full rounded-pill" />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <>
-              {/* Results count */}
-              <p className="text-sm text-muted-foreground mb-6">
-                Showing {filteredEvents.length} events
+              <p className="mb-5 text-sm text-ink-3">
+                <span className="font-data text-ink-2">{filteredEvents.length}</span>{" "}
+                {filteredEvents.length === 1 ? "event" : "events"}
+                {selectedDateFilter === "following"
+                  ? " from clubs you follow"
+                  : selectedDateFilter === "saved"
+                    ? " saved"
+                    : ""}
               </p>
 
-              {/* Grid */}
               {filteredEvents.length > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredEvents.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      id={event.id}
-                      title={event.title}
-                      clubName={event.club_profiles?.club_name || "Unknown Club"}
-                      clubLogo={event.club_profiles?.logo_url || undefined}
-                      date={formatDate(event.event_date)}
-                      time={formatTime(event.event_date)}
-                      location={event.location || "TBD"}
-                      bannerImage={event.banner_url || undefined}
-                      attendees={event.rsvps?.length || 0}
-                      capacity={event.capacity || undefined}
-                      isBookmarked={isBookmarked(event.id)}
-                      onBookmark={() => toggleBookmark(event.id)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-4 flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-muted-foreground" />
+                view === "cards" ? (
+                  <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        id={event.id}
+                        title={event.title}
+                        clubName={event.club_profiles?.club_name || "Unknown club"}
+                        clubLogo={event.club_profiles?.logo_url || undefined}
+                        eventDate={event.event_date}
+                        location={event.location || ""}
+                        attendees={event.rsvps?.length || 0}
+                        capacity={event.capacity ?? undefined}
+                        isBookmarked={isBookmarked(event.id)}
+                        onBookmark={() => toggleBookmark(event.id)}
+                      />
+                    ))}
                   </div>
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                    No events found
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    {events.length === 0
-                      ? "No events have been posted yet. Check back later!"
-                      : "Try adjusting your search or filters"}
-                  </p>
-                  {events.length > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedDateFilter("All");
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
+                ) : (
+                  <DiscoverList rows={listRows} />
+                )
+              ) : (
+                <EmptyState
+                  title={
+                    selectedDateFilter === "following"
+                      ? "Quiet from your clubs —"
+                      : hasFilters
+                        ? "Nothing on that date —"
+                        : "No events coming up —"
+                  }
+                  signature={
+                    selectedDateFilter === "following"
+                      ? "the rest of campus is busy."
+                      : hasFilters
+                        ? "try a wider window."
+                        : "roles are open though."
+                  }
+                  body={
+                    hasFilters
+                      ? selectedDateFilter === "saved"
+                        ? "You haven't saved any events yet. Save one from a card and it'll wait for you here."
+                        : selectedDateFilter === "following"
+                          ? "The clubs you follow have nothing scheduled. Their next event shows up here first."
+                          : "No events fall in that window. Clearing the filter shows everything upcoming."
+                      : "Clubs schedule events throughout the term. Following a club puts its next one in front of you."
+                  }
+                  actions={
+                    hasFilters ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchQuery("");
+                          selectFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : (
+                      <Button variant="outline" asChild>
+                        <a href="/opportunities">Browse roles</a>
+                      </Button>
+                    )
+                  }
+                />
               )}
             </>
           )}

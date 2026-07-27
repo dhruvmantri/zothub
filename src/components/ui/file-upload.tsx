@@ -107,18 +107,20 @@ export function FileUpload({
       />
 
       {currentUrl && isImage ? (
-        <div className="relative group">
-          <div className="w-full h-32 rounded-lg border border-border overflow-hidden bg-muted">
+        <div className="group relative">
+          <div className="h-32 w-full overflow-hidden rounded-lg border border-line bg-surface-2">
             <img
               src={currentUrl}
               alt="Uploaded preview"
-              className="w-full h-full object-cover"
+              className="size-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/placeholder.svg";
               }}
             />
           </div>
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+          {/* The overlay fades in on hover, but focus must reveal it too or the
+              controls are invisible to a keyboard user standing on them. */}
+          <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-[hsl(var(--ink))]/60 opacity-0 transition-opacity duration-fast ease-zh group-hover:opacity-100 group-focus-within:opacity-100">
             <Button
               type="button"
               size="sm"
@@ -127,96 +129,104 @@ export function FileUpload({
               disabled={isUploading}
             >
               {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
-                <Upload className="w-4 h-4" />
+                <Upload className="size-4" aria-hidden />
               )}
               Replace
             </Button>
             {onRemove && (
               <Button
                 type="button"
-                size="sm"
+                size="icon-sm"
                 variant="destructive"
                 onClick={handleRemove}
+                aria-label="Remove this image"
               >
-                <X className="w-4 h-4" />
+                <X className="size-4" aria-hidden />
               </Button>
             )}
           </div>
         </div>
       ) : currentUrl && !isImage ? (
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/50">
-          <FileText className="w-8 h-8 text-accent flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
-              File uploaded
-            </p>
+        <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-3">
+          <FileText className="size-8 shrink-0 text-ink-3" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">File uploaded</p>
             <button
               type="button"
               onClick={() =>
-                openFileUrl(currentUrl).catch(() =>
-                  toast.error("Could not open file")
-                )
+                openFileUrl(currentUrl).catch(() => toast.error("Could not open file"))
               }
-              className="text-xs text-accent hover:underline truncate block"
+              className="block truncate text-[13px] text-accent-text hover:underline focus-visible:underline focus-visible:outline-none"
             >
               View file
             </button>
           </div>
+          {/* Both of these were icon-only buttons with no accessible name, so a
+              screen reader announced two anonymous buttons on every upload. */}
           <div className="flex gap-1">
             <Button
               type="button"
-              size="sm"
+              size="icon-sm"
               variant="ghost"
               onClick={() => inputRef.current?.click()}
               disabled={isUploading}
+              aria-label="Replace this file"
             >
               {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
-                <Upload className="w-4 h-4" />
+                <Upload className="size-4" aria-hidden />
               )}
             </Button>
             {onRemove && (
               <Button
                 type="button"
-                size="sm"
+                size="icon-sm"
                 variant="ghost"
                 onClick={handleRemove}
+                aria-label="Remove this file"
               >
-                <X className="w-4 h-4" />
+                <X className="size-4" aria-hidden />
               </Button>
             )}
           </div>
         </div>
       ) : (
-        <div
+        /* Was a bare <div onClick> — not focusable, not announced, and not
+           operable by keyboard at all. A real button carries all three. */
+        <button
+          type="button"
           onClick={() => !isUploading && inputRef.current?.click()}
+          disabled={isUploading}
           className={cn(
-            "border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer transition-colors hover:border-accent hover:bg-accent/5",
-            isUploading && "opacity-50 cursor-not-allowed"
+            "block w-full rounded-lg border-2 border-dashed border-line-2 p-6 text-center",
+            "transition-colors duration-fast ease-zh",
+            "hover:border-accent-line hover:bg-accent-wash",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            isUploading && "cursor-not-allowed opacity-50",
           )}
         >
           {isUploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-8 h-8 text-accent animate-spin" />
-              <p className="text-sm text-muted-foreground">Uploading...</p>
-            </div>
+            <span className="flex flex-col items-center gap-2">
+              <Loader2 className="size-8 animate-spin text-ink-3" aria-hidden />
+              <span className="text-sm text-ink-2">Uploading…</span>
+            </span>
           ) : (
-            <div className="flex flex-col items-center gap-2">
+            <span className="flex flex-col items-center gap-2">
               {isImage ? (
-                <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                <ImageIcon className="size-8 text-ink-3" aria-hidden />
               ) : (
-                <Upload className="w-8 h-8 text-muted-foreground" />
+                <Upload className="size-8 text-ink-3" aria-hidden />
               )}
-              <p className="text-sm text-muted-foreground">{placeholder}</p>
-              <p className="text-xs text-muted-foreground">
-                Max size: {maxSizeMB}MB
-              </p>
-            </div>
+              <span className="text-sm text-ink-2">{placeholder}</span>
+              <span className="text-[13px] text-ink-3">
+                Max size: <span className="font-data">{maxSizeMB}</span>MB
+              </span>
+            </span>
           )}
-        </div>
+        </button>
       )}
     </div>
   );

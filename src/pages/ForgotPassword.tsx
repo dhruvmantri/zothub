@@ -55,11 +55,11 @@ export default function ForgotPassword() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 bg-accent-wash rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-6 h-6 text-accent-text" />
             </div>
             <CardTitle>Check your email</CardTitle>
             <CardDescription>
@@ -67,7 +67,7 @@ export default function ForgotPassword() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-2">
               Click the link in the email to reset your password. If you don't see it, check your spam folder.
             </p>
             <Button variant="outline" className="w-full" asChild>
@@ -83,7 +83,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-2">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Forgot your password?</CardTitle>

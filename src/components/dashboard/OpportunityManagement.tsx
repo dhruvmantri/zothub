@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tag } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { getStatus, getPostingStatus } from "@/lib/status";
+import { opportunityTypeLabel } from "@/lib/formatters";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -41,30 +44,15 @@ interface OpportunityManagementProps {
   isLoading?: boolean;
 }
 
-const typeColors: Record<string, "accent" | "success" | "default" | "muted"> = {
-  leadership: "accent",
-  project: "success",
-  internship: "default",
-  volunteer: "muted",
-  committee: "accent",
-  other: "muted",
-};
-
 export function OpportunityManagement({ opportunities, onDelete, isLoading }: OpportunityManagementProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [opportunityToDelete, setOpportunityToDelete] = useState<DashboardOpportunity | null>(null);
 
-  const getStatus = (opp: DashboardOpportunity) => {
-    if (!opp.is_active) return "draft";
-    if (opp.deadline && new Date(opp.deadline) < new Date()) return "closed";
-    return "active";
-  };
-
   const filteredOpportunities = opportunities.filter(opp => {
     const matchesSearch = opp.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const status = getStatus(opp);
+    const status = getPostingStatus(opp);
     const matchesStatus = statusFilter === "all" || status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -97,12 +85,12 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
                 <Filter className="w-4 h-4" />
-                {statusFilter === "all" ? "All Status" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                {statusFilter === "all" ? "All statuses" : getStatus("posting", statusFilter).label}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Status</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("active")}>Active</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("active")}>Live</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("closed")}>Closed</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("draft")}>Draft</DropdownMenuItem>
             </DropdownMenuContent>
@@ -117,12 +105,12 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
       </div>
 
       {/* Opportunities Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-line bg-surface">
         {filteredOpportunities.length === 0 ? (
           <div className="text-center py-12">
-            <Briefcase className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">
-              {opportunities.length === 0 ? "No opportunities created yet" : "No opportunities found"}
+            <Briefcase className="w-12 h-12 mx-auto text-ink-3 mb-4" />
+            <p className="text-ink-2">
+              {opportunities.length === 0 ? "No opportunities posted yet" : "No opportunities found"}
             </p>
             {opportunities.length === 0 && (
               <Link to="/club/opportunities/new">
@@ -137,64 +125,56 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                <tr className="border-b border-line bg-surface-2">
+                  <th className="text-left text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Opportunity
                   </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                  <th className="text-left text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Type
                   </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                  <th className="text-left text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Status
                   </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                  <th className="text-left text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Deadline
                   </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                  <th className="text-left text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Stats
                   </th>
-                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">
+                  <th className="text-right text-xs font-medium text-ink-2 uppercase tracking-wider px-6 py-4">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {filteredOpportunities.map((opportunity) => {
-                  const status = getStatus(opportunity);
                   return (
-                    <tr key={opportunity.id} className="hover:bg-secondary/20 transition-colors">
+                    <tr key={opportunity.id} className="hover:bg-surface-2 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-foreground">{opportunity.title}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="font-medium text-ink">{opportunity.title}</p>
+                          <p className="font-data text-xs text-ink-3">
                             Created {format(new Date(opportunity.created_at), "MMM d, yyyy")}
                           </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge variant={typeColors[opportunity.type] || "muted"} className="capitalize">
-                          {opportunity.type}
-                        </Badge>
+                        <Tag variant="neutral">{opportunityTypeLabel(opportunity.type)}</Tag>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge 
-                          variant={status === "active" ? "success" : status === "closed" ? "muted" : "secondary"} 
-                          className="capitalize"
-                        >
-                          {status}
-                        </Badge>
+                        <StatusBadge domain="posting" status={getPostingStatus(opportunity)} />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-sm text-ink-2">
                           <Clock className="w-3.5 h-3.5" />
-                          {opportunity.deadline 
+                          {opportunity.deadline
                             ? format(new Date(opportunity.deadline), "MMM d, yyyy")
                             : "Rolling"
                           }
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 font-data text-sm text-ink-2">
                           <div className="flex items-center gap-1.5">
                             <Eye className="w-3.5 h-3.5" />
                             {opportunity.views}
@@ -208,7 +188,11 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Actions for ${opportunity.title}`}
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>

@@ -76,7 +76,17 @@ White headline, `#AFCDF3` italic, `#E4EAF1` subhead, `#E6ECF2` counts, over a ba
 
 - **Tracking scales with size** — tight on display, near-0 on body.
 - **Italic has two jobs only:** the accent signature (one phrase per view) and the wordmark's `hub`. Never italicise body for emphasis — use weight.
-- **Data voice:** counts, dates, deadlines → mono + tabular-nums. Words people wrote → the UI face.
+- **Data voice:** counts, dates, times, deadlines, capacities → mono + tabular-nums. Everything else
+  → the UI face.
+  *Sharpened 2026-07-26 (maintainer).* The original wording — "words people wrote → the UI face" —
+  made **authorship** the test, which does not survive contact with the product: a club types the
+  date, the time, the capacity **and** the room name on the same form, so who typed it cannot
+  discriminate anything. The test is **what the value is**:
+  - **Mono** where values get *scanned, compared or stacked* — equal-width digits are the whole
+    point, so `1 going` → `10 going` doesn't shift the layout and columns of dates stay aligned.
+  - **UI face** for free-text fields, *even when they contain digits*. `DBH 111` is a room, and the
+    same field also holds `idk` and `Donald Bren Hall 1200`; arbitrary prose set in mono reads as
+    code.
 
 ---
 

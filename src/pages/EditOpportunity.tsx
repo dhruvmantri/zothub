@@ -70,7 +70,7 @@ export default function EditOpportunity() {
     if (error) {
       console.error("Error fetching opportunity:", error);
       toast.error("Failed to load opportunity");
-      navigate("/club/dashboard");
+      navigate("/club/dashboard/opportunities");
       return;
     }
 
@@ -152,7 +152,7 @@ export default function EditOpportunity() {
       }
 
       toast.success(asDraft ? "Opportunity saved as draft" : "Opportunity updated successfully!");
-      navigate("/club/dashboard");
+      navigate("/club/dashboard/opportunities");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -173,16 +173,16 @@ export default function EditOpportunity() {
 
   return (
     <ClubLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard">
+            <Link to="/club/dashboard/opportunities">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to Postings
             </Link>
           </Button>
-          <h1 className="font-display text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-semibold tracking-[-0.02em] text-ink">
             Edit Opportunity
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -298,6 +298,7 @@ export default function EditOpportunity() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Published"
                   id="isActive"
                   checked={isActive}
                   onCheckedChange={setIsActive}
@@ -312,6 +313,7 @@ export default function EditOpportunity() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Show application count"
                   id="showApplicationCount"
                   checked={showApplicationCount}
                   onCheckedChange={setShowApplicationCount}
@@ -342,7 +344,7 @@ export default function EditOpportunity() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard">Cancel</Link>
+              <Link to="/club/dashboard/opportunities">Cancel</Link>
             </Button>
             <Button
               type="button"
