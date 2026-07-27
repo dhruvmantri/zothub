@@ -23,20 +23,20 @@ const SIZES = {
  * not a slant). Rendered from the live webfont rather than traced to paths, so
  * it stays theme-correct and crisp at any size.
  *
- * Still outstanding before launch (00-handoff §6): the favicon / app-icon set
- * needs the glyphs OUTLINED from licensed Instrument — the stacked disc mark,
- * white `zot` over italic-accent `hub`, using the 16px tight cut.
+ * Spec (design-system.html §01, source of truth): Instrument Sans 700, `zot` in
+ * --ink, italic `hub` in --accent-text (light) / --accent (dark), tracking
+ * -0.045em. The outlined favicon / app-icon / social set ships in /public + /brand.
  */
 export function Logo({ linkTo = "/", className, size = "md" }: LogoProps) {
   const mark = (
     <span
       className={cn(
-        "select-none font-semibold leading-none tracking-[-0.045em] text-ink",
+        "select-none font-bold leading-none tracking-[-0.045em] text-ink",
         SIZES[size],
         className,
       )}
     >
-      zot<i className="italic text-accent-text">hub</i>
+      zot<i className="italic text-accent-text dark:text-accent">hub</i>
     </span>
   );
 

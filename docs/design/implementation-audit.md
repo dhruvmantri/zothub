@@ -101,7 +101,7 @@ Legend: ✅ = must survive. Every row below is a thing the app does today.
 | **UCI email enforcement** | `@uci.edu` or `ADMIN_ALLOWED_EMAILS`; also DB-enforced | B |
 | Password rules | ≥8 chars, confirm-match, show/hide toggle | B |
 | Google OAuth (`hd=uci.edu`) | `signInWithGoogle(intendedRole)`; new OAuth users → waitlist + profile row + confirmation email | B |
-| Auto sign-in after OTP | students auto-approved → `/student/dashboard`; clubs → `/waitlist` | B (uncommitted Day-0 change) |
+| Auto sign-in after OTP | students auto-approved → `/student/dashboard`; clubs → `/waitlist` | B (Day-0 change — committed; `verify-otp` deployed v3 ACTIVE 2026-07-27) |
 | Login + friendly error mapping | "Invalid login credentials" → plain English | B |
 | Login redirect logic | `from` state → role dashboard → waitlist/rejected fallback for role-less users | B |
 | Forgot password | UCI-email gated; success state; **`redirectTo` is broken** | B |
@@ -406,14 +406,17 @@ shadcn `ui/*` (48 files) — re-tokened wholesale, not rebuilt.
 
 ---
 
-## 5. Not deployed — flagged, not touched
+## 5. Deploy status (updated 2026-07-27)
 
-- `supabase/migrations/20260723000100_drop_self_insert_user_roles_policy.sql` — closes a **live
-  privilege-escalation hole** (`user_roles` self-insert lets any authenticated user grant themselves
-  `admin`). Written, guarded, **not pushed**. Separate deploy step; run the abuse-check query first.
-- Uncommitted Day-0 auth changes (`verify-otp` auto-approve + `Signup.tsx` auto sign-in) need
-  `supabase functions deploy verify-otp`.
-- Test Club seed data still live in production.
+- `supabase/migrations/20260723000100_drop_self_insert_user_roles_policy.sql` — closed a **live
+  privilege-escalation hole** (`user_roles` self-insert let any authenticated user grant themselves
+  `admin`). ✅ **Applied to the linked production database** (maintainer-confirmed). Correction to
+  the earlier note: it **only drops the unsafe policy — it deletes no `user_roles` rows and destroys
+  no evidence**. A read-only post-hoc admin-role audit (`scripts/audit_admin_roles.sql`) **remains
+  outstanding** until the maintainer runs it and reviews the results.
+- Day-0 auth changes (`verify-otp` auto-approve + `Signup.tsx` auto sign-in) are committed, and
+  ✅ **`verify-otp` is deployed and ACTIVE (Version 3)** (maintainer-confirmed).
+- Test Club seed data still live in production (open — see `docs/LAUNCH-BACKLOG.md` D1).
 
 ---
 

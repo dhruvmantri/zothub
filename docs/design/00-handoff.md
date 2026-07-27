@@ -179,8 +179,8 @@ Italic signature everywhere it belongs (hero, student card, empty state) · peri
 
 ## 6. Outstanding beyond design
 
-- **Security fix awaiting deploy:** `supabase/migrations/20260723000100_drop_self_insert_user_roles_policy.sql` closes a **live privilege-escalation hole** — the `user_roles` self-insert RLS policy was orphaned by `20260709000200` but never dropped, letting any authenticated user grant themselves `admin`. Written, guarded, **not yet pushed**. Run the abuse-check query in the plan first; it destroys the evidence.
-- **Day 0 auth changes uncommitted:** `verify-otp` (students auto-approved, clubs still queued) + `Signup.tsx` (auto sign-in after OTP). Needs `supabase functions deploy verify-otp`.
+- **Security fix — ✅ APPLIED TO PROD (2026-07-27):** `supabase/migrations/20260723000100_drop_self_insert_user_roles_policy.sql` closed a **live privilege-escalation hole** — the `user_roles` self-insert RLS policy was orphaned by `20260709000200` but never dropped, letting any authenticated user grant themselves `admin`. The migration is now **applied to the linked production database** (maintainer-confirmed). Correction to the earlier note: the migration **only drops the unsafe policy; it deletes no `user_roles` rows and destroys no evidence** — so a read-only post-hoc admin-role audit (`scripts/audit_admin_roles.sql`) is still fully doable and **remains outstanding** until the maintainer runs it and reviews the results.
+- **Day-0 auth changes — ✅ DEPLOYED (2026-07-27):** `verify-otp` (students auto-approved, clubs still queued) + `Signup.tsx` (auto sign-in after OTP) are committed, and **`verify-otp` is deployed and ACTIVE (Version 3)** (maintainer-confirmed).
 - **Test Club data** still live in production.
 - **Research gaps:** student interviews (guide is written and ready in `02-research.md` §3) and club recruiting artifacts. The club walkthrough blocks review-pipeline depth.
 - **Assumption A5 untested:** do students already use ZotSpot for discovery? Changes the student-side headline from "finally, one place" to "the same clubs, without the friction."
@@ -316,17 +316,17 @@ straight after reports phantom failures. Waiting is not enough — suppress tran
 flip, which is exactly what next-themes' `disableTransitionOnChange` does for the real toggle.
 
 **Redesign implementation is complete (slices 0–11).** What's left is **pre-launch ops, not
-re-skin work** (§6): WebP/AVIF for the hero photo, the outlined SVG favicon/stacked-mark, the Test
-Club data purge, and the **unpushed `user_roles` security migration** (run the abuse-check query
-before deploying — it destroys the evidence). A few screens are **code-verified only** because the
-current data/logins can't exercise them — pick these up when possible: a **populated club Team row**
-and the **Messages MEMBER chip** against a real club member (Test Club has none), the **student-side**
-Messages/Activity against a student login, and the **Waitlist ×2 / Admin** screens (need a
-pending/rejected user and an admin login).
-Still-open pre-launch items in §6 stand: WebP/AVIF for the hero, production SVG for the stacked
-mark, Test Club purge, and the **unpushed security migration** (`user_roles` self-insert
-privilege-escalation — run the abuse-check query *before* deploying it, since the migration destroys
-the evidence).
+re-skin work** (§6). ✅ Done since: the outlined SVG favicon / stacked-mark + full social/OG set
+shipped (`/public` + `/brand`); the `user_roles` security migration is **applied to prod**; and
+`verify-otp` is **deployed (v3 ACTIVE)** (all maintainer-confirmed 2026-07-27). Still open: WebP/AVIF
+for the hero photo, the Test Club data purge, and the **read-only post-hoc admin-role audit**
+(`scripts/audit_admin_roles.sql` — outstanding until the maintainer runs it and reviews the results;
+the migration deleted no rows, so no evidence was destroyed). A few screens are **code-verified
+only** because the current data/logins can't exercise them — pick these up when possible: a
+**populated club Team row** and the **Messages MEMBER chip** against a real club member (Test Club
+has none), the **student-side** Messages/Activity against a student login, and the **Waitlist ×2 /
+Admin** screens (need a pending/rejected user and an admin login). The single source of truth for
+all remaining items is now **`docs/LAUNCH-BACKLOG.md`**.
 
 **Capture note (tooling):** the in-app Browser pane renders wide desktop layouts (3-col grids, the Messages two-pane) only when the viewport is actually wide — set `resize_window` to ~1440 and confirm `window.innerWidth` before screenshotting, or responsive breakpoints collapse to the narrow layout. Screens use a step-switcher so each renders at scroll 0 (avoids the deep-scroll blank bug).
 

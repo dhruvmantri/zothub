@@ -1,0 +1,11 @@
+{
+  "name": "zothub-brand-generator",
+  "private": true,
+  "type": "commonjs",
+  "description": "Outlines Instrument Sans glyphs into the ZotHub brand assets.",
+  "dependencies": {
+    "fontkit": "^2.0.4",
+    "@resvg/resvg-js": "^2.6.2",
+    "png-to-ico": "^3.0.2"
+  }
+}

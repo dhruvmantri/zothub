@@ -44,6 +44,12 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Waitlist = lazy(() => import("./pages/Waitlist"));
 const WaitlistRejected = lazy(() => import("./pages/WaitlistRejected"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+// DEV-only: fixture harness for the club-seeding (MB5) UI. The dynamic import sits
+// inside an `import.meta.env.DEV` branch so Rollup dead-code-eliminates it (and its
+// chunk) from the production build entirely — it exists only during `vite dev`.
+const ClubsPreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/ClubsPreview"))
+  : null;
 
 const queryClient = new QueryClient();
 
@@ -262,6 +268,9 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            {import.meta.env.DEV && ClubsPreview && (
+              <Route path="/dev/clubs-preview" element={<ClubsPreview />} />
+            )}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

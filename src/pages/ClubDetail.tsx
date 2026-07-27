@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EntityAvatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { ContactClubDialog } from "@/components/ContactClubDialog";
+import { ClubClaimBanner } from "@/components/clubs/ClubClaimBanner";
 import { toast } from "sonner";
 import { opportunityTypeLabel } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ import type { TeamMember } from "@/types";
 
 interface ClubDetailData {
   id: string;
-  user_id?: string;
+  user_id: string | null;
   club_name: string;
   category: string | null;
   description: string | null;
@@ -31,6 +32,11 @@ interface ClubDetailData {
   linkedin_url: string | null;
   instagram_url: string | null;
   discord_url: string | null;
+  // ZotSpot-seed provenance (MB5). NULL across these = an organic ZotHub club.
+  source: string | null;
+  source_url: string | null;
+  imported_at: string | null;
+  claimed_at: string | null;
 }
 
 interface ClubOpportunity {
@@ -86,12 +92,15 @@ const ClubDetail = () => {
 
       setIsLoading(true);
       try {
-        // user_id is only needed to message the club (an authenticated-only
-        // action), so the logged-out UI does not request it.
+        // user_id is public (anon-granted for RLS) and also signals whether a
+        // seeded club is still unclaimed (NULL owner); source_* / claimed_at back
+        // the unclaimed treatment. All are on the public anon column allowlist
+        // (migration 20260727000100). NOTE: that migration must be APPLIED before
+        // this select ships, or these columns won't exist yet.
         const { data: clubData, error: clubError } = (await supabase
           .from("club_profiles")
           .select(
-            `id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url${user ? ", user_id" : ""}`,
+            `id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url, user_id, source, source_url, imported_at, claimed_at`,
           )
           .eq("id", id)
           .single()) as unknown as {
@@ -191,6 +200,10 @@ const ClubDetail = () => {
     );
   }
 
+  // A ZotSpot-seeded club that no one has claimed yet. It appears like any other
+  // club in the directory; here on its own page it gets the claim treatment.
+  const isUnclaimed = !!club.source && !club.claimed_at;
+
   const socials = [
     { url: club.website_url, Icon: Globe, name: "Website" },
     { url: club.instagram_url, Icon: Instagram, name: "Instagram" },
@@ -284,6 +297,15 @@ const ClubDetail = () => {
         </div>
 
         <div className="container mx-auto max-w-5xl px-4 py-8">
+          {isUnclaimed && (
+            <div className="mb-6">
+              <ClubClaimBanner
+                clubName={club.club_name}
+                sourceUrl={club.source_url}
+                importedAt={club.imported_at}
+              />
+            </div>
+          )}
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             <div className="flex flex-col gap-6">
               <section>
@@ -291,11 +313,19 @@ const ClubDetail = () => {
                   Open roles
                 </h2>
                 {opportunities.length === 0 ? (
-                  <EmptyState
-                    title="Not recruiting right now —"
-                    signature="follow to hear first."
-                    body={`${club.club_name} has no open roles. Following them puts their next posting in front of you.`}
-                  />
+                  isUnclaimed ? (
+                    <EmptyState
+                      title="Not on ZotHub yet —"
+                      signature="this is an imported listing."
+                      body={`${club.club_name} hasn't claimed its page, so it can't post roles or events here yet.`}
+                    />
+                  ) : (
+                    <EmptyState
+                      title="Not recruiting right now —"
+                      signature="follow to hear first."
+                      body={`${club.club_name} has no open roles. Following them puts their next posting in front of you.`}
+                    />
+                  )
                 ) : (
                   <ul className="flex flex-col gap-3">
                     {opportunities.map((opp) => (

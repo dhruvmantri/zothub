@@ -125,18 +125,19 @@ export default function Landing() {
         <div className="container relative mx-auto px-4 pb-32 pt-20 md:pb-40 md:pt-28">
           <div className="max-w-2xl">
             <h1 className="text-[clamp(38px,6vw,60px)] font-medium leading-[1.04] tracking-[-0.034em] text-white">
-              Find your people at UCI —{" "}
-              <span className="italic text-[#AFCDF3]">and actually hear back.</span>
+              Discover UCI.
+              <br />
+              <span className="italic text-[#AFCDF3]">Get Involved.</span>
             </h1>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[#E4EAF1]">
-              Clubs post real roles. You apply in a couple of minutes and track every
-              application in one place. No spreadsheets, no Google Form graveyard, no silence.
+              Discover clubs, events and opportunities in one place. See what interests you,
+              understand how to get involved and keep track of what happens next.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
               <Button size="lg" asChild>
                 <Link to="/signup">
-                  Get started
+                  Start exploring
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
@@ -145,7 +146,7 @@ export default function Landing() {
                 asChild
                 className="border-[1.5px] border-white/70 bg-transparent text-white hover:bg-white/10"
               >
-                <Link to="/opportunities">Browse roles</Link>
+                <Link to="/opportunities">Browse clubs</Link>
               </Button>
             </div>
 
@@ -174,14 +175,14 @@ export default function Landing() {
               For clubs
             </p>
             <h2 className="mt-3 text-[26px] font-medium leading-tight tracking-[-0.026em] text-ink">
-              Run recruiting, not a spreadsheet.
+              Show students what your club is really about.
             </h2>
             <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
-              Post a role in a minute — link the Google Form you already use, or build the
-              questions here. Review everyone in one queue, and nobody gets ghosted.
+              Create a home for your club, share your team, publish events and opportunities,
+              and manage student interest without sending everyone across scattered links and forms.
             </p>
             <Button variant="accent" className="mt-6" asChild>
-              <Link to="/signup?role=club">Post a role</Link>
+              <Link to="/signup?role=club">Bring your club to ZotHub</Link>
             </Button>
           </div>
 
@@ -190,14 +191,14 @@ export default function Landing() {
               For students
             </p>
             <h2 className="mt-3 text-[26px] font-medium leading-tight tracking-[-0.026em] text-ink">
-              Apply once. Know where you stand.
+              See what is happening. Find where you fit.
             </h2>
             <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
-              Every open role on campus in one place. Apply with the profile you already
-              filled in, then watch it move from Applied to a real answer.
+              Explore clubs beyond their names. See their teams, upcoming events and every way
+              to get involved—from general membership and volunteering to internships and leadership roles.
             </p>
             <Button variant="accent" className="mt-6" asChild>
-              <Link to="/signup?role=student">Find a club</Link>
+              <Link to="/signup?role=student">Explore clubs</Link>
             </Button>
           </div>
         </div>
@@ -209,18 +210,18 @@ export default function Landing() {
           {[
             {
               n: "01",
-              title: "One place to look",
-              body: "Roles and events from every club on one surface, filtered how you want it.",
+              title: "Everything in one place",
+              body: "Clubs, events and opportunities from across UCI—organized so you can find what matters to you.",
             },
             {
               n: "02",
-              title: "Less work than what it replaces",
-              body: "A club can be live in under a minute by linking the form it already has.",
+              title: "Know what you are joining",
+              body: "See what a club does, meet the people behind it and understand the different ways you can get involved.",
             },
             {
               n: "03",
-              title: "Nobody gets ghosted",
-              body: "Closing a posting prompts the club to answer everyone still waiting.",
+              title: "Never lose track",
+              body: "Save what interests you, follow your applications and receive updates when something changes.",
             },
           ].map((item) => (
             <div key={item.n} className="bg-surface p-7">
