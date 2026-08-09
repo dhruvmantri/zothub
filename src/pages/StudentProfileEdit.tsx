@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Github, Globe, Linkedin, Loader2, Plus, X } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentLayout } from "@/components/student/StudentLayout";
 import { Button } from "@/components/ui/button";
@@ -365,6 +366,10 @@ export default function StudentProfileEdit() {
                 <Button variant="ghost" size="lg" asChild>
                   <Link to="/student/profile">Cancel</Link>
                 </Button>
+              </div>
+
+              <div className="mt-10 border-t border-line pt-8">
+                <ChangePasswordCard />
               </div>
             </div>
           )}

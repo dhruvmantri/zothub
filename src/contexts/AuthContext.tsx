@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRole = async (userId: string) => {
     try {
+      // One account = one role. (Club claims are logged-out-only and always create
+      // a separate club account, so an account never accrues a second role here.)
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
@@ -149,20 +151,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             avatar_url: user?.user_metadata?.avatar_url || null
           });
       } else {
+        // Pending club → published=false so it stays out of the public directory
+        // and profile until an admin approves (the waitlist-approval trigger flips it).
         await supabase
           .from("club_profiles")
-          .insert({ 
-            user_id: userId, 
+          .insert({
+            user_id: userId,
             email: email,
-            club_name: "My Club"
+            club_name: "My Club",
+            published: false
           });
       }
 
-      // Send waitlist confirmation email
+      // Send waitlist confirmation email. Recipient is derived server-side from the
+      // signed-in caller's own account (authoritative self-send) — no client `to`.
       await supabase.functions.invoke("send-email", {
         body: {
           type: "waitlist_confirmation",
-          to: email,
           data: { role: intendedRole },
         },
       });

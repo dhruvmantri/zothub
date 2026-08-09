@@ -41,6 +41,21 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Atomic per-email rate limit across ALL codes for this email — a coarse guard
+    // on top of the per-code 5-attempt cap, keyed on the normalized email (not on
+    // an untrusted client IP).
+    const { data: verifyLimited } = await supabase.rpc("rate_limit_hit", {
+      p_bucket: `otp_verify:email:${email.toLowerCase()}`,
+      p_max: 20,
+      p_window_seconds: 3600,
+    });
+    if (verifyLimited === true) {
+      return new Response(
+        JSON.stringify({ error: "Too many attempts. Please try again later." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Get the verification record
     const { data: verification, error: fetchError } = await supabase
       .from("email_verifications")
@@ -80,14 +95,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check attempt limit (max 5 attempts)
+    // Fast-path attempt limit (authoritative gate is the atomic increment below).
     if (verification.attempts >= 5) {
-      // Delete the verification record
-      await supabase
-        .from("email_verifications")
-        .delete()
-        .eq("id", verification.id);
-
+      await supabase.from("email_verifications").delete().eq("id", verification.id);
       return new Response(
         JSON.stringify({ error: "Too many incorrect attempts. Please request a new code." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -96,16 +106,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Verify the code
     if (verification.code !== code) {
-      // Increment attempt counter
-      await supabase
-        .from("email_verifications")
-        .update({ attempts: verification.attempts + 1 })
-        .eq("id", verification.id);
-
-      const remainingAttempts = 4 - verification.attempts;
+      // ATOMIC increment: a single UPDATE ... SET attempts = attempts + 1 RETURNING
+      // (via the increment_otp_attempt RPC) so concurrent wrong guesses can't race
+      // past the cap with a lost update.
+      const { data: newAttempts, error: incErr } = await supabase.rpc("increment_otp_attempt", {
+        p_id: verification.id,
+      });
+      const attempts = typeof newAttempts === "number" ? newAttempts : (incErr ? verification.attempts + 1 : 5);
+      if (attempts >= 5) {
+        await supabase.from("email_verifications").delete().eq("id", verification.id);
+        return new Response(
+          JSON.stringify({ error: "Too many incorrect attempts. Please request a new code." }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      const remainingAttempts = 5 - attempts;
       return new Response(
-        JSON.stringify({ 
-          error: `Incorrect code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining.` 
+        JSON.stringify({
+          error: `Incorrect code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining.`
         }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -118,6 +136,29 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Password mismatch. Please try signing up again." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // The DB trigger enforce_uci_email (migration 20260727000200) is the
+    // authoritative gate: it blocks any non-@uci.edu auth.users insert unless a
+    // service-issued one-time authorization exists for that exact email. A club
+    // may use any email, so mint one immediately before createUser. Students are
+    // @uci.edu and don't need it (the trigger lets them through directly), and if
+    // a non-UCI student somehow reaches here the trigger correctly blocks it.
+    if (verification.role === "club") {
+      const { error: authzError } = await supabase
+        .from("signup_email_authorizations")
+        .insert({
+          email: email.toLowerCase(),
+          reason: "club_otp_signup",
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        });
+      if (authzError) {
+        console.error("Error minting signup authorization:", authzError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create account. Please try again." }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     // Create the Supabase auth user
@@ -209,10 +250,14 @@ const handler = async (req: Request): Promise<Response> => {
         console.error("Error creating student profile:", profileError);
       }
     } else {
+      // Pending club → published=false: it must NOT appear in the public directory
+      // or profile until an admin approves (the waitlist-approval trigger publishes
+      // it). Only students are auto-approved; clubs always go through review.
       const { error: profileError } = await supabase.from("club_profiles").insert({
         user_id: userId,
         email: email.toLowerCase(),
         club_name: email.split("@")[0], // Temporary placeholder
+        published: false,
       });
       if (profileError) {
         console.error("Error creating club profile:", profileError);

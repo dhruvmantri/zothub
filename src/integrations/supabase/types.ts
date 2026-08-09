@@ -140,57 +140,176 @@ export type Database = {
           },
         ]
       }
+      club_claim_requests: {
+        Row: {
+          claimant_email: string
+          club_id: string
+          created_at: string
+          created_user_id: string | null
+          email_status: string | null
+          id: string
+          note: string | null
+          processing_at: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          claimant_email: string
+          club_id: string
+          created_at?: string
+          created_user_id?: string | null
+          email_status?: string | null
+          id?: string
+          note?: string | null
+          processing_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          claimant_email?: string
+          club_id?: string
+          created_at?: string
+          created_user_id?: string | null
+          email_status?: string | null
+          id?: string
+          note?: string | null
+          processing_at?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_claim_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "club_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_profiles: {
         Row: {
           banner_url: string | null
           category: string | null
+          claimed_at: string | null
           club_name: string
           created_at: string
           description: string | null
           discord_url: string | null
-          email: string
+          email: string | null
           id: string
+          imported_at: string | null
           instagram_url: string | null
           linkedin_url: string | null
           logo_url: string | null
+          published: boolean
+          source: string | null
+          source_club_id: string | null
+          source_logo_url: string | null
+          source_url: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           views: number | null
           website_url: string | null
         }
         Insert: {
           banner_url?: string | null
           category?: string | null
+          claimed_at?: string | null
           club_name: string
           created_at?: string
           description?: string | null
           discord_url?: string | null
-          email: string
+          email?: string | null
           id?: string
+          imported_at?: string | null
           instagram_url?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
+          published?: boolean
+          source?: string | null
+          source_club_id?: string | null
+          source_logo_url?: string | null
+          source_url?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           views?: number | null
           website_url?: string | null
         }
         Update: {
           banner_url?: string | null
           category?: string | null
+          claimed_at?: string | null
           club_name?: string
           created_at?: string
           description?: string | null
           discord_url?: string | null
-          email?: string
+          email?: string | null
           id?: string
+          imported_at?: string | null
           instagram_url?: string | null
           linkedin_url?: string | null
           logo_url?: string | null
+          published?: boolean
+          source?: string | null
+          source_club_id?: string | null
+          source_logo_url?: string | null
+          source_url?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           views?: number | null
           website_url?: string | null
+        }
+        Relationships: []
+      }
+      rate_limit_events: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: never
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      signup_email_authorizations: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          reason?: string
         }
         Relationships: []
       }

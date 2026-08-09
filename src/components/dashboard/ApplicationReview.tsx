@@ -216,14 +216,10 @@ export function ApplicationReview() {
         setSelectedApplication(prev => prev ? { ...prev, status: newStatus } : null);
       }
 
-      // Send status update email (non-blocking)
+      // Send status update email (non-blocking). The DB status was just updated
+      // above; the edge function derives recipient + current status from it.
       if (app && (newStatus === "accepted" || newStatus === "rejected")) {
-        sendApplicationStatusUpdate(
-          app.student.email,
-          app.student.full_name || "Applicant",
-          app.opportunity.title,
-          newStatus
-        ).catch(console.error);
+        sendApplicationStatusUpdate(applicationId).catch(console.error);
       }
 
       toast.success(
@@ -257,16 +253,12 @@ export function ApplicationReview() {
         return;
       }
 
-      // Send status update emails for accepted/rejected (non-blocking)
+      // Send status update emails for accepted/rejected (non-blocking). The DB
+      // statuses were just updated above; each send derives from the application id.
       if (newStatus === "accepted" || newStatus === "rejected") {
         const appsToEmail = applications.filter(app => selectedIds.has(app.id));
         appsToEmail.forEach(app => {
-          sendApplicationStatusUpdate(
-            app.student.email,
-            app.student.full_name || "Applicant",
-            app.opportunity.title,
-            newStatus
-          ).catch(console.error);
+          sendApplicationStatusUpdate(app.id).catch(console.error);
         });
       }
 

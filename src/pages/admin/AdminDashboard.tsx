@@ -34,6 +34,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Check, X, Trash2, RefreshCw, Users, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
+import { ClubClaimsPanel } from "@/components/admin/ClubClaimsPanel";
 
 export default function AdminDashboard() {
   const { signOut } = useAuth();
@@ -72,9 +73,13 @@ export default function AdminDashboard() {
     setIsProcessing(false);
 
     if (result.success) {
+      // Only claim they were notified when the email actually went out.
       toast({
-        title: "User Approved",
-        description: `${email} has been approved and notified.`,
+        title: result.emailSent ? "User Approved" : "Approved — email NOT sent",
+        description: result.emailSent
+          ? `${email} has been approved and notified.`
+          : `${email} has been approved, but the notification email failed${result.emailError ? `: ${result.emailError}` : ""}.`,
+        variant: result.emailSent ? undefined : "destructive",
       });
     } else {
       toast({
@@ -101,8 +106,11 @@ export default function AdminDashboard() {
 
     if (result.success) {
       toast({
-        title: "User Rejected",
-        description: `${selectedEntry.email} has been rejected and notified.`,
+        title: result.emailSent ? "User Rejected" : "Rejected — email NOT sent",
+        description: result.emailSent
+          ? `${selectedEntry.email} has been rejected and notified.`
+          : `${selectedEntry.email} has been rejected, but the notification email failed${result.emailError ? `: ${result.emailError}` : ""}.`,
+        variant: result.emailSent ? undefined : "destructive",
       });
     } else {
       toast({
@@ -331,6 +339,8 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+
+        <ClubClaimsPanel />
       </main>
 
       {/* Rejection Dialog */}

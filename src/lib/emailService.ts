@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+// THE single shared email-result check — same module the edge functions use, so the
+// client and server agree on what "delivered" means (notably: HTTP 200 + { error }
+// is a FAILURE, not a success).
+import { checkEmailResult } from "../../supabase/functions/_shared/email-result.ts";
 
 type EmailType =
   | "application_confirmation"
@@ -38,11 +42,13 @@ export async function sendEmail(
       body: { type, to, data },
     });
 
-    if (error) {
-      console.error("Email sending error:", error);
-      return { success: false, error: error.message };
+    // A 200 response can still carry { error } (Resend false-success), so judge the
+    // outcome with the shared checker rather than the transport error alone.
+    const result = checkEmailResult(error, response);
+    if (!result.ok) {
+      console.error("Email sending failed:", type, result.error);
+      return { success: false, error: result.error };
     }
-
     return { success: true };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -51,17 +57,14 @@ export async function sendEmail(
   }
 }
 
+// Confirm to the applying student. Only the authoritative applicationId is sent;
+// the edge function verifies the caller owns the application and derives the
+// recipient (the student's own email) + content from the database. No client-chosen
+// recipient or content.
 export async function sendApplicationConfirmation(
-  studentEmail: string,
-  studentName: string,
-  opportunityTitle: string,
-  clubName: string
+  applicationId: string
 ): Promise<{ success: boolean; error?: string }> {
-  return sendEmail("application_confirmation", studentEmail, {
-    studentName,
-    opportunityTitle,
-    clubName,
-  });
+  return sendEmail("application_confirmation", "", { applicationId });
 }
 
 // Notify the owning club that a new application was submitted. Only the
@@ -78,17 +81,13 @@ export async function sendNewApplicationNotification(
   });
 }
 
+// Notify the student of a status change. Only the authoritative applicationId is
+// sent; the edge function verifies the caller owns the opportunity and derives the
+// recipient + the CURRENT status from the database (never a client-supplied status).
 export async function sendApplicationStatusUpdate(
-  studentEmail: string,
-  studentName: string,
-  opportunityTitle: string,
-  status: string
+  applicationId: string
 ): Promise<{ success: boolean; error?: string }> {
-  return sendEmail("application_status", studentEmail, {
-    studentName,
-    opportunityTitle,
-    status,
-  });
+  return sendEmail("application_status", "", { applicationId });
 }
 
 // Send the RSVP confirmation email to the student. Only the authoritative

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkEmailResult } from "../../supabase/functions/_shared/email-result.ts";
 
 export type WaitlistStatus = "pending" | "approved" | "rejected" | null;
 
@@ -135,17 +136,22 @@ export function useWaitlistAdmin() {
         return { success: false, error: waitlistError.message };
       }
 
-      // Send approval email
-      await supabase.functions.invoke("send-email", {
+      // Send approval email. The recipient is DERIVED server-side from the
+      // waitlist row (admin-authoritative handler) — no client-chosen recipient.
+      // The approval itself already succeeded, so a failed email is reported
+      // separately (emailSent) rather than failing the whole action or — worse —
+      // being silently presented as "notified".
+      const { data: emailData, error: emailErr } = await supabase.functions.invoke("send-email", {
         body: {
           type: "waitlist_approved",
-          to: email,
-          data: { role },
+          data: { waitlistUserId: userId },
         },
       });
+      const emailResult = checkEmailResult(emailErr, emailData);
+      if (!emailResult.ok) console.error("waitlist_approved email failed:", emailResult.error);
 
       await fetchAllEntries();
-      return { success: true };
+      return { success: true, emailSent: emailResult.ok, emailError: emailResult.error };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       return { success: false, error: errorMessage };
@@ -172,17 +178,18 @@ export function useWaitlistAdmin() {
         return { success: false, error: waitlistError.message };
       }
 
-      // Send rejection email
-      await supabase.functions.invoke("send-email", {
+      // Send rejection email. Recipient derived server-side from the waitlist row.
+      const { data: emailData, error: emailErr } = await supabase.functions.invoke("send-email", {
         body: {
           type: "waitlist_rejected",
-          to: email,
-          data: { reason },
+          data: { waitlistUserId: userId, reason },
         },
       });
+      const emailResult = checkEmailResult(emailErr, emailData);
+      if (!emailResult.ok) console.error("waitlist_rejected email failed:", emailResult.error);
 
       await fetchAllEntries();
-      return { success: true };
+      return { success: true, emailSent: emailResult.ok, emailError: emailResult.error };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       return { success: false, error: errorMessage };

@@ -15,6 +15,11 @@ interface OTPVerificationProps {
   onBack: () => void;
   isVerifying: boolean;
   error?: string;
+  /** Blocks "Resend code" until the captcha (below) has produced a fresh token. */
+  resendDisabled?: boolean;
+  /** Captcha widget rendered next to the resend control (tokens are single-use, so
+   *  a resend needs its own fresh challenge). */
+  resendSlot?: React.ReactNode;
 }
 
 export function OTPVerification({
@@ -25,6 +30,8 @@ export function OTPVerification({
   onBack,
   isVerifying,
   error,
+  resendDisabled = false,
+  resendSlot,
 }: OTPVerificationProps) {
   const [code, setCode] = useState("");
   const [timeLeft, setTimeLeft] = useState(0);
@@ -144,11 +151,13 @@ export function OTPVerification({
           </p>
         )}
 
+        {resendSlot && <div className="flex justify-center">{resendSlot}</div>}
+
         <Button
           variant="ghost"
           size="sm"
           onClick={handleResend}
-          disabled={resendCooldown > 0 || isResending || isVerifying}
+          disabled={resendCooldown > 0 || isResending || isVerifying || resendDisabled}
           className="gap-2"
         >
           {isResending ? (

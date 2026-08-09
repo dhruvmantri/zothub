@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 import { OTPVerification } from "@/components/OTPVerification";
+import { TurnstileWidget, TURNSTILE_ENABLED } from "@/components/security/TurnstileWidget";
+import { captchaReducer, initialCaptchaState, canSubmitWithCaptcha } from "@/lib/captchaToken";
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
@@ -38,6 +40,17 @@ export default function SignupPage() {
   const [otpExpiresAt, setOtpExpiresAt] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
+  // Cloudflare Turnstile token lifecycle. Tokens are single-use, so consuming one
+  // clears it AND bumps refreshKey to reset the widget — that's what makes every
+  // OTP resend carry a FRESH token. Logic lives in a pure, unit-tested reducer.
+  const [captcha, dispatchCaptcha] = useReducer(captchaReducer, initialCaptchaState);
+  const captchaToken = captcha.token;
+  const captchaRefresh = captcha.refreshKey;
+  const setCaptchaToken = useCallback(
+    (token: string | null) =>
+      dispatchCaptcha(token ? { type: "solved", token } : { type: "cleared" }),
+    [],
+  );
 
   // Redirect if already logged in
   useEffect(() => {
@@ -60,8 +73,12 @@ export default function SignupPage() {
     
     if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (!formData.email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())) {
-      newErrors.email = "Please use your @uci.edu email";
+    } else if (
+      selectedRole === "student" &&
+      !formData.email.endsWith("@uci.edu") &&
+      !ADMIN_ALLOWED_EMAILS.includes(formData.email.toLowerCase())
+    ) {
+      newErrors.email = "Students must use their @uci.edu email";
     }
     
     if (!formData.password) {
@@ -79,15 +96,20 @@ export default function SignupPage() {
   };
 
   const sendOTP = async () => {
+    if (!canSubmitWithCaptcha(captcha, TURNSTILE_ENABLED)) {
+      setErrors({ captcha: "Please complete the verification challenge first." });
+      return;
+    }
     setIsSubmitting(true);
     setErrors({});
-    
+
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
         body: {
           email: formData.email,
           password: formData.password,
           role: selectedRole,
+          turnstileToken: captchaToken ?? undefined,
         },
       });
 
@@ -120,6 +142,10 @@ export default function SignupPage() {
       });
     } finally {
       setIsSubmitting(false);
+      // The token just submitted is now spent (single-use), whether the request
+      // succeeded or not. Consuming it clears the token and resets the widget, so a
+      // retry or an OTP resend always carries a FRESH token.
+      dispatchCaptcha({ type: "consumed" });
     }
   };
 
@@ -283,15 +309,21 @@ export default function SignupPage() {
               </p>
             </>
           ) : step === "otp" ? (
-            <OTPVerification
-              email={formData.email}
-              expiresAt={otpExpiresAt}
-              onVerify={handleVerifyOTP}
-              onResend={handleResendOTP}
-              onBack={() => setStep("details")}
-              isVerifying={isVerifying}
-              error={otpError}
-            />
+            <>
+              <OTPVerification
+                email={formData.email}
+                expiresAt={otpExpiresAt}
+                onVerify={handleVerifyOTP}
+                onResend={handleResendOTP}
+                onBack={() => setStep("details")}
+                isVerifying={isVerifying}
+                error={otpError}
+                resendDisabled={!canSubmitWithCaptcha(captcha, TURNSTILE_ENABLED)}
+                resendSlot={
+                  <TurnstileWidget onToken={setCaptchaToken} refreshKey={captchaRefresh} />
+                }
+              />
+            </>
           ) : (
             <>
               <button
@@ -357,11 +389,11 @@ export default function SignupPage() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="email">UCI Email</Label>
+                  <Label htmlFor="email">{selectedRole === "club" ? "Email" : "UCI Email"}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@uci.edu"
+                    placeholder={selectedRole === "club" ? "you@yourclub.org" : "you@uci.edu"}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className={errors.email ? "border-destructive" : ""}
@@ -415,7 +447,15 @@ export default function SignupPage() {
                   )}
                 </div>
 
-                <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+                <TurnstileWidget onToken={setCaptchaToken} refreshKey={captchaRefresh} />
+                {errors.captcha && <p className="text-sm text-destructive">{errors.captcha}</p>}
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={isSubmitting || !canSubmitWithCaptcha(captcha, TURNSTILE_ENABLED)}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

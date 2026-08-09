@@ -1,90 +1,51 @@
 import { supabase } from "@/integrations/supabase/client";
+import { checkEmailResult } from "../../supabase/functions/_shared/email-result.ts";
 
 /**
- * Send cancellation emails to all confirmed attendees of an event
+ * Cancel-notify all confirmed attendees of an event.
+ *
+ * Emails go through the AUTHORITATIVE event_cancelled handler: the client sends
+ * only the eventId, and the edge function verifies the caller owns the event and
+ * derives every recipient from the DB (no client-chosen recipients or content).
+ * In-app notifications are still created client-side for the same attendees.
  */
 export async function sendEventCancellationEmails(
   eventId: string,
   eventTitle: string,
-  eventDate: string,
+  _eventDate: string,
   clubName: string
 ): Promise<{ success: boolean; sent: number; error?: string }> {
   try {
-    // Get all confirmed RSVPs with student info
-    const { data: rsvps, error: rsvpError } = await supabase
+    // 1. Authoritative bulk email send.
+    const { data, error } = await supabase.functions.invoke("send-email", {
+      body: { type: "event_cancelled", data: { eventId } },
+    });
+    // Shared checker: a 200 carrying { error }, or a bulk result with ok:false /
+    // failed > 0, is a delivery FAILURE — never reported as sent.
+    const emailResult = checkEmailResult(error, data);
+    const sent = emailResult.sent ?? 0;
+    const emailError = emailResult.ok ? undefined : emailResult.error;
+
+    // 2. In-app notifications for the same confirmed attendees (unchanged behavior).
+    const { data: rsvps } = await supabase
       .from("rsvps")
-      .select(`
-        id,
-        student_profiles:student_id (
-          user_id,
-          email,
-          full_name
-        )
-      `)
+      .select("student_profiles:student_id ( user_id )")
       .eq("event_id", eventId)
       .eq("status", "confirmed");
 
-    if (rsvpError) {
-      console.error("Error fetching RSVPs for cancellation:", rsvpError);
-      return { success: false, sent: 0, error: rsvpError.message };
+    for (const rsvp of rsvps ?? []) {
+      const uid = (rsvp.student_profiles as unknown as { user_id: string } | null)?.user_id;
+      if (!uid) continue;
+      await supabase.from("notifications").insert({
+        user_id: uid,
+        type: "event_cancelled",
+        title: "Event Cancelled",
+        message: `${eventTitle} by ${clubName} has been cancelled.`,
+        related_id: eventId,
+      });
     }
 
-    if (!rsvps || rsvps.length === 0) {
-      return { success: true, sent: 0 };
-    }
-
-    let sent = 0;
-    const errors: string[] = [];
-
-    for (const rsvp of rsvps) {
-      const studentProfile = rsvp.student_profiles as unknown as {
-        user_id: string;
-        email: string;
-        full_name: string | null;
-      } | null;
-
-      if (!studentProfile?.email) continue;
-
-      try {
-        const { error } = await supabase.functions.invoke("send-email", {
-          body: {
-            type: "event_cancelled",
-            to: studentProfile.email,
-            data: {
-              studentName: studentProfile.full_name || "there",
-              eventTitle,
-              eventDate,
-              clubName,
-            },
-          },
-        });
-
-        if (error) {
-          errors.push(`Failed to email ${studentProfile.email}: ${error.message}`);
-        } else {
-          sent++;
-        }
-
-        // Also create in-app notification
-        if (studentProfile.user_id) {
-          await supabase.from("notifications").insert({
-            user_id: studentProfile.user_id,
-            type: "event_cancelled",
-            title: "Event Cancelled",
-            message: `${eventTitle} by ${clubName} has been cancelled.`,
-            related_id: eventId,
-          });
-        }
-      } catch (err) {
-        errors.push(`Error for ${studentProfile.email}: ${err}`);
-      }
-    }
-
-    return {
-      success: errors.length === 0,
-      sent,
-      error: errors.length > 0 ? errors.join("; ") : undefined,
-    };
+    return { success: !emailError, sent, error: emailError };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     return { success: false, sent: 0, error: errorMessage };

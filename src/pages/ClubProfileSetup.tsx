@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -383,6 +384,10 @@ export default function ClubProfileSetup() {
                 </>
               )}
             </Button>
+          </div>
+
+          <div className="mt-10 border-t pt-8">
+            <ChangePasswordCard />
           </div>
         </div>
       </main>

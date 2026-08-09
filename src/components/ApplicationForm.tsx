@@ -149,15 +149,11 @@ export function ApplicationForm({
         return;
       }
 
-      // Send confirmation email to the student (non-blocking). Preference
-      // gating is enforced server-side in the send-email function.
-      if (studentEmail) {
-        sendApplicationConfirmation(
-          studentEmail,
-          studentName || "Student",
-          opportunity.title,
-          opportunity.club_profiles?.club_name || "the club"
-        ).catch(console.error);
+      // Send confirmation email to the student (non-blocking). Only the
+      // authoritative application id is sent; the edge function verifies the caller
+      // owns it and derives the recipient + content server-side (preference-gated).
+      if (inserted?.id) {
+        sendApplicationConfirmation(inserted.id).catch(console.error);
       }
 
       // Notify the owning club of the new application (non-blocking). Only the

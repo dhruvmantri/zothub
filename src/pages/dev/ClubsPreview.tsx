@@ -64,8 +64,9 @@ export default function ClubsPreview() {
             2 · Unclaimed club profile — the distinction lives here
           </h2>
           <p className="mb-4 text-[13.5px] text-ink-2">
-            Same club (“{u.club_name}”), now on its own page: claim banner (disabled CTA), source
-            line, and the imported-listing empty state.
+            Same club (“{u.club_name}”), now on its own page: claim banner (live CTA — opens the
+            claim request form; submitting is a no-op in this fixture harness), source line, and the
+            imported-listing empty state.
           </p>
 
           <div className="rounded-lg border border-line bg-surface p-6">
@@ -88,7 +89,12 @@ export default function ClubsPreview() {
             </div>
 
             <div className="mt-6">
-              <ClubClaimBanner clubName={u.club_name} sourceUrl={u.source_url} importedAt={u.imported_at} />
+              <ClubClaimBanner
+                clubName={u.club_name}
+                clubId={u.id}
+                sourceUrl={u.source_url}
+                importedAt={u.imported_at}
+              />
             </div>
 
             <div className="mt-6">

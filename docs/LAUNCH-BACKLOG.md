@@ -57,11 +57,23 @@ Create the test data/logins, then walk N1–N8. Several unblock once D1 is done.
     assets/code. **DP6** club-name placeholder. **N8** reconcile RSVP-email prefs.
     **S4** harden OTP password hashing. **DP7/DP8/DP9** low-priority.
 
-### Phase 4 — ZotSpot seeding · seed SHIPPED (2026-07-27); claim flow remaining
-12. **MB5** — seed + directory + unclaimed profiles are **live**. Remaining: the
-    **admin-reviewed claim flow** (RPC + UX; CTA ships disabled until built) and the
-    logo re-host. **No self-service removal of any kind** — an admin can unpublish a
-    seeded club when needed; concerns route through Help/Contact (MB4).
+### Phase 4 — ZotSpot seeding · seed SHIPPED (2026-07-27); claim flow BUILT (not deployed)
+12. **MB5** — seed + directory + unclaimed profiles are **live**. The
+    **admin-reviewed claim flow** is now **built + security-hardened + locally
+    verified** (edge functions `submit-club-claim` / `review-club-claim`, logged-out
+    CTA, `/admin` claims panel, migrations `20260727000200`/`00300`/`00400`/`00500`)
+    but **NOT deployed**. Security posture: claims are **logged-out-only** and always
+    create a separate club account; DB `@uci.edu` trigger kept authoritative with a
+    service-only one-time authorization for approved non-UCI clubs; pending club
+    signups are `published=false` until admin approval (publish trigger);
+    `email_verifications` RLS locked down; `send-email` = strict allowlist + service-
+    role-only / authoritative-derive tiers + content escaping; approve & reject share
+    one transactional lock (atomic/idempotent, partial-failure cleanup, honest email +
+    resend); atomic email-keyed rate limits + Turnstile. See
+    `docs/design/mb5-claim-flow.md` and `tests/e2e` (84/84 green). Remaining: the logo
+    re-host, and the **prod rollout** (rollout steps in the claim-flow doc §11).
+    **No self-service removal of any kind** — an admin can unpublish a seeded club
+    when needed; concerns route through Help/Contact (MB4).
 
 ---
 
@@ -211,11 +223,19 @@ Create the test data/logins, then walk N1–N8. Several unblock once D1 is done.
   live & published behind the `published` gate; unclaimed treatment (claim banner +
   source line + "Not on ZotHub yet" empty state) on each profile. Migration
   `20260727000100`; scripts `seed_clubs` / `publish_seeded_clubs` / `verify_seeded_clubs`.
-- **Remaining — the claim flow (NOT built; do not deploy yet):** a `claim_club()`
-  SECURITY DEFINER RPC + UX. **Auth = admin-reviewed** — a claim request routes through
-  the existing `/admin` approval queue; on approval, set `user_id` + `claimed_at` and
-  grant `user_roles` 'club'. The "Claim this club" CTA ships **disabled** ("Available
-  soon") until then (correct today — no dead button).
+- **Claim flow — ✅ BUILT + security-hardened + locally verified; ⛔ NOT deployed:**
+  **Auth = admin-reviewed, LOGGED-OUT-ONLY.** Public/edge implementation (not an RPC):
+  `submit-club-claim` (logged-out; a dedicated club email; requires `source='zotspot'`
+  AND `published=true`) → `/admin` `ClubClaimsPanel` → `review-club-claim` approve
+  creates a SEPARATE club account, binds `user_id` + `claimed_at` (+ saves the email)
+  and grants `user_roles` 'club'. The CTA is hidden from signed-in users. Hardening:
+  authoritative DB `@uci.edu` trigger + one-time `signup_email_authorizations` for
+  approved non-UCI clubs; pending club signups `published=false` until admin approval;
+  `email_verifications` RLS locked down; `send-email` strict allowlist + service-role /
+  authoritative-derive tiers + HTML escaping; approve & reject share one transactional
+  lock (atomic/idempotent, cleanup, truthful email status + resend); atomic email-keyed
+  rate limits + Turnstile; no account-existence enumeration. Verified on local Supabase
+  (`tests/e2e`, 84/84). Rollout steps: `docs/design/mb5-claim-flow.md` §11.
 - **No removal workflow — out of scope entirely:** no removal button/CTA, no
   removal-request form or DB workflow, no removal email, and nothing implying imported
   listings can be removed via self-service. Removal = an **admin unpublishing** a seeded

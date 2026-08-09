@@ -1,1 +1,30 @@
 project_id = "fguzpscguulkfctipeih"
+
+# Edge functions that must accept unauthenticated / server-to-server calls, so the
+# gateway JWT check is off and each function authorizes callers ITSELF:
+#   * send-otp / verify-otp — run during signup (no session); rely on the
+#     authoritative DB trigger + locked-down email_verifications RLS; atomic
+#     email-keyed rate limits + Turnstile (TURNSTILE_SECRET_KEY) for bot control.
+#   * submit-club-claim — public, LOGGED-OUT-ONLY; requires a published, unclaimed
+#     ZotSpot listing; atomic per-email rate limit + Turnstile; never leaks account
+#     existence.
+#   * review-club-claim — verifies the caller's admin role from their JWT; approve
+#     and reject share one transactional lock.
+#   * send-email — strict template allowlist (unknown → 400). SERVICE ROLE ONLY for
+#     email_otp / claim_* / new_club_post / reminders; all other templates are
+#     AUTHORITATIVE (verify caller + derive recipient/content from DB ownership, or a
+#     trusted service caller). Anonymous rejected; all dynamic content HTML-escaped.
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.submit-club-claim]
+verify_jwt = false
+
+[functions.review-club-claim]
+verify_jwt = false

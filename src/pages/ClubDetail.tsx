@@ -297,10 +297,13 @@ const ClubDetail = () => {
         </div>
 
         <div className="container mx-auto max-w-5xl px-4 py-8">
-          {isUnclaimed && (
+          {/* Claims are logged-out-only, so the banner is rendered only for signed-out
+              visitors — gated here too so no empty spacer is left behind. */}
+          {isUnclaimed && !user && (
             <div className="mb-6">
               <ClubClaimBanner
                 clubName={club.club_name}
+                clubId={club.id}
                 sourceUrl={club.source_url}
                 importedAt={club.imported_at}
               />
