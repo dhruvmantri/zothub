@@ -57,7 +57,7 @@ The product's most differentiated behaviour is how it acts when the stakes are h
 
 **Ruled out:** UCI-official (seal, blue/gold, implied endorsement); generic B2B SaaS; institutional-comprehensive-tedious, which is ZotSpot's register and our only felt advantage.
 
-> **Amendment (2026-07-25, maintainer).** This anti-goal was about *impersonation*, and that still holds: no UCI seal, no gold, no wordmark lift, no implied endorsement. What is now **in scope** is a **campus-adjacent blue accent** (a deep Pacific blue, deliberately not the registrar seal-blue) plus **a UCI campus image on the landing**, to make the product feel place-specific and worked-on rather than generic. The line: *"built for UCI," not "we are UCI."* Because the accent is a single token, a future objection is a one-variable swap. See `docs/design/00-handoff.md` §5 and `direction-11-v4-uci.html`. This supersedes the earlier crimson/near-monochrome accent direction.
+> **Amendment (2026-07-25, maintainer).** This anti-goal was about *impersonation*, and that still holds: no UCI seal, no gold, no wordmark lift, no implied endorsement. What is now **in scope** is a **campus-adjacent blue accent** (a deep Pacific blue, deliberately not the registrar seal-blue) plus **a UCI campus image on the landing**, to make the product feel place-specific and worked-on rather than generic. The line: *"built for UCI," not "we are UCI."* Because the accent is a single token, a future objection is a one-variable swap. See `docs/archive/00-handoff.md` §5 and `direction-11-v4-uci.html`. This supersedes the earlier crimson/near-monochrome accent direction.
 
 ---
 
@@ -142,6 +142,9 @@ Explicit so drift needs an argument:
 | Named typefaces | Mockup directions, tested at 12px and 48px |
 
 ## Carried open from earlier stages
+
+> Tracked in [`../BACKLOG.md`](../BACKLOG.md) as `RS1` / `RS2`. (The "Deferred" table above
+> was resolved by the mockups and the shipped design system.)
 
 | Item | Blocks |
 |---|---|

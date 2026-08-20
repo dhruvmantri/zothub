@@ -68,6 +68,8 @@ Decisions only. Rationale is compressed to the sentence that would stop us relit
 
 ## Still open
 
+> Tracked in [`../BACKLOG.md`](../BACKLOG.md) as `RS1` / `RS2`.
+
 | Item | Blocks |
 |---|---|
 | **Club recruiting walkthrough + artifacts** | Review-pipeline depth (§4) and the application review screen. Designing it without this is guessing. |

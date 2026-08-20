@@ -23,6 +23,18 @@
 
 ## ▶ Start here — recommended next workstream
 
+> ## ⚠️ THIS DOCUMENT IS ENGINEERING HISTORY. FOR CURRENT WORK SEE [`docs/BACKLOG.md`](./docs/BACKLOG.md).
+>
+> **Status as of 2026-08-11:** **WS10 and WS11 are DONE** — the design direction, the design
+> system (`docs/design/design-system.md`) and the full re-skin all shipped, along with the
+> ZotSpot seed and the admin-reviewed club claim flow. The text below recommending "start
+> WS10" is stale and kept only as a record of how the phase was framed.
+>
+> **WS12 is partially delivered and its remainder is tracked in `docs/BACKLOG.md`** —
+> support center (`MB4`), account deletion (`MB6`), onboarding polish (`MB8`), and
+> search/pagination depth (`MB3`). The next active phase is the **UI/UX usability pass**
+> (`UX0`). Do not start work from this file; start from the backlog.
+
 > **The correctness/data-hygiene backlog (WS1–WS8 + auth-orphan cleanup) is fully cleared and production-verified (2026-07-13). The project is now in a pre-launch experience phase.** The recommended next pass is **WS10 — Design Direction & Brand (mockup + spec)**, the first of three phases in the **Pre-Launch Experience Roadmap** (WS10 → WS11 → WS12; see the Backlog and `prd.md`'s "Pre-Launch Experience Roadmap"). Triage any newly-appeared production incident first (add it to the Confirmed bug & risk inventory), otherwise start WS10.
 >
 > **Phase overview (see per-workstream detail blocks below):**
@@ -409,6 +421,9 @@ Net-new surfaces/features, each tagged launch-blocking vs post-launch, verified 
 ---
 
 ## Lovable decommission checklist
+
+> Tracked as **`H2`** in [`docs/BACKLOG.md`](./docs/BACKLOG.md). The checklist below stays
+> here as the actual runbook.
 
 > **Do NOT decommission Lovable yet.** It no longer serves production traffic but is the current rollback path. Decommission is a deliberate future manual step, only once **all** of the following hold:
 

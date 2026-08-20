@@ -1,3 +1,7 @@
+> ⚠️ **ARCHIVED — historical record, not current.** Superseded by [`../BACKLOG.md`](../BACKLOG.md),
+> which is the single log of everything open. Internal references below may point at files
+> that have since moved or been replaced.
+
 # SUPERSEDED — 10-Day Execution Plan (retained as a record)
 
 > **This document is void as a schedule.** It was written when the maintainer's
@@ -14,12 +18,12 @@
 >
 > The scope boundary (bespoke tier vs. systematic tier) folds into Stage 3/6.
 > Everything framed as "Day N" is void. Active plan: the approved 10-stage
-> workflow; strategy input: [`01-positioning.md`](./01-positioning.md).
+> workflow; strategy input: [`01-positioning.md`](../strategy/01-positioning.md).
 
 **Original status:** Draft for review.
 **Date:** 2026-07-23
 **Build window:** ~Jul 24 – Aug 2, 2026 · **Outreach window:** Aug 3 – Sept 22 (Involvement Fair)
-**Strategy input:** [`01-positioning.md`](./01-positioning.md)
+**Strategy input:** [`01-positioning.md`](../strategy/01-positioning.md)
 
 ---
 

@@ -1,3 +1,7 @@
+> ⚠️ **ARCHIVED — historical record, not current.** Superseded by [`../BACKLOG.md`](../BACKLOG.md),
+> which is the single log of everything open. Internal references below may point at files
+> that have since moved or been replaced.
+
 # ZotHub Redesign — Handoff
 
 **Written:** 2026-07-23 · **Updated:** 2026-07-24 (round 2: maintainer decisions in, lab 2 + v3 pages built) · **Purpose:** give a fresh session (any tool, any context window) everything it needs to continue without re-deriving.

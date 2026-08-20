@@ -5,7 +5,7 @@
 **Stage:** 1 of 10 in the redesign workflow. Produces no code.
 **Purpose:** Give the redesign a brief to be judged against, so "does this design work?" has an answer other than taste.
 
-> **Amendments from review, in one place.** (1) Positioning accepted, but ZotHub does **not** cede discovery — it competes on usability and seeds supply by scraping ZotSpot into claimable club profiles. (2) **Name stays ZotHub**; portability is not this cycle's problem because a full rebrand precedes any second campus. The logo and favicon are still hard requirements to replace. (3) **Build window is 10 days**, then ~5 weeks of outreach before the Involvement Fair. (4) Events and student-to-student connection are **core**, not deferred. Execution detail: [`02-execution-plan.md`](./02-execution-plan.md).
+> **Amendments from review, in one place.** (1) Positioning accepted, but ZotHub does **not** cede discovery — it competes on usability and seeds supply by scraping ZotSpot into claimable club profiles. (2) **Name stays ZotHub**; portability is not this cycle's problem because a full rebrand precedes any second campus. The logo and favicon are still hard requirements to replace. (3) **Build window is 10 days**, then ~5 weeks of outreach before the Involvement Fair. (4) Events and student-to-student connection are **core**, not deferred. Execution detail: [`the 10-day execution plan`](../archive/notes-superseded-10-day-plan.md).
 
 ---
 
@@ -74,7 +74,7 @@ Scrape ZotSpot's public directory of active registered organizations and pre-pop
 - **Collapses club onboarding.** The pitch stops being "sign up and build a profile" and becomes "your page already exists — claim it." That is a far shorter ask of a volunteer officer, and it directly de-risks assumption **A4**.
 - **Makes outreach concrete.** Every conversation can open with a link to *their* page.
 
-**Sequencing:** built after the core redesign ships (see [`02-execution-plan.md`](./02-execution-plan.md)), during the outreach window.
+**Sequencing:** built after the core redesign ships (see [`the 10-day execution plan`](../archive/notes-superseded-10-day-plan.md)), during the outreach window.
 
 **Flags to handle when we build it, not now** — none is a blocker, all are cheap to get right and expensive to get wrong:
 - **Accuracy and consent.** An unclaimed page must be unmistakably unclaimed — no fabricated activity, no implied endorsement. If a club is misrepresented, recourse is admin-side (an admin can unpublish the seeded page), with questions routed through the Help/Contact surface — deliberately **not** a self-service removal control. A directory entry that misrepresents a real organization is the same credibility failure as the fabricated landing stats, just aimed at someone else.
@@ -161,7 +161,7 @@ This inverts the constraint in a useful way. The deadline isn't September 22 —
 
 **The one resequencing this forces:** the landing page and club-facing pitch must ship **first**, not last. Outreach can begin the moment a club officer has something credible to look at — it does not need the whole app finished. Front-loading the public surface buys roughly a week of extra outreach at no cost.
 
-**What 10 days actually requires** — and this is the honest version, because "no quality sacrifice" and "10 days" only coexist under one condition: **the quality bar holds, the scope shrinks.** Not all 30 screens get bespoke design. The launch surface is the core loop; everything else inherits the design system without individual attention. Full scope boundary and day-by-day in [`02-execution-plan.md`](./02-execution-plan.md).
+**What 10 days actually requires** — and this is the honest version, because "no quality sacrifice" and "10 days" only coexist under one condition: **the quality bar holds, the scope shrinks.** Not all 30 screens get bespoke design. The launch surface is the core loop; everything else inherits the design system without individual attention. Full scope boundary and day-by-day in [`the 10-day execution plan`](../archive/notes-superseded-10-day-plan.md).
 
 **The constraint effort can't buy down:** research that depends on *other people's calendars*. Five scheduled student interviews and a formal usability round cannot be compressed by working nights. Those stages get restructured — run concurrently and non-blocking, using fast proxies — rather than pretended away. See the execution plan.
 
@@ -199,7 +199,7 @@ Stating anti-goals so the redesign can refuse things without relitigating. **Rev
 - **Discovery is core.** Students should *prefer* browsing clubs here. The bet is usability, not exclusivity.
 - **Events are core.** ZotSpot's event surface skews toward departmental and university programming; **student-org events are underserved there**, which makes this a differentiator rather than a duplicate.
 - **Social texture is core, in a bounded way.** Students should be able to see who's actually in a club and talk to them — the human question ("what's it like to be in this club?") is the one no directory answers. This means *connection*, not a feed.
-  - **Scope note:** this is **net-new**. Today `messages` supports student ↔ club only; student ↔ member requires new access rules and UI. Sizing and sequencing in [`02-execution-plan.md`](./02-execution-plan.md) — it is a strong candidate to land right after launch rather than inside the 10 days.
+  - **Scope note:** this is **net-new**. Today `messages` supports student ↔ club only; student ↔ member requires new access rules and UI. Sizing and sequencing in [`the 10-day execution plan`](../archive/notes-superseded-10-day-plan.md) — it is a strong candidate to land right after launch rather than inside the 10 days.
 
 **The student promise, in their words:** discover → compare → apply → RSVP → chat, in the fewest steps anyone has managed on this campus.
 
@@ -240,7 +240,7 @@ The approved 10-stage workflow still holds as the *sequence of thinking*, but it
 - **Stages 5–7 compress into a single design push** with the landing page first, since outreach is blocked on it.
 - **Scope, not standards, absorbs the compression.** Core loop gets bespoke design; everything else inherits the system.
 
-Full day-by-day: [`02-execution-plan.md`](./02-execution-plan.md).
+Full day-by-day: [`the 10-day execution plan`](../archive/notes-superseded-10-day-plan.md).
 
 **Still open, carried into execution:** whether student ↔ member chat lands inside the 10 days or immediately after (net-new backend + access rules — see §8).
 

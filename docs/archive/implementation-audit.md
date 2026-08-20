@@ -1,3 +1,7 @@
+> ⚠️ **ARCHIVED — historical record, not current.** Superseded by [`../BACKLOG.md`](../BACKLOG.md),
+> which is the single log of everything open. Internal references below may point at files
+> that have since moved or been replaced.
+
 # ZotHub Redesign — Implementation Audit & Coverage Map
 
 **Written:** 2026-07-25 · **Branch:** `redesign/implementation` · **Method:** read the code, not the docs.

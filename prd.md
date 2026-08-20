@@ -2,7 +2,7 @@
 
 **Version:** 3.4
 **Last Updated:** 2026-07-13
-**Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed** and the project is in **normal product-development mode** (a short stability-monitoring window is running before Lovable decommission) — see `plan.md` for the active development plan.
+**Status:** **Live in production on owned infrastructure** (Vercel + self-owned Supabase); `zothub.app` DNS cutover complete and Supabase migration history reconciled. The migration/cutover is **fully closed**. The project is in the **pre-launch fix-up phase** — see **`docs/BACKLOG.md`** for all open work and **`docs/HANDOFF.md`** for the current phase brief. (`plan.md` is retained engineering history, not the active plan.)
 **Author:** Claude, reconciled against the live codebase
 
 ---
@@ -15,7 +15,9 @@
 Create a single, searchable hub where every UCI student has equal access to all campus opportunities, and every club has professional tools to recruit, manage, and engage their community.
 
 ### Relationship to `plan.md` and `README.md`
-This document (`prd.md`) is the **product spec and product source of truth** — vision, users, journeys, access model, implemented capabilities, product gaps, and launch readiness. `plan.md` is the **engineering execution plan** for normal product development (current state, the recommended next workstream, the ranked backlog). `README.md` is setup/deployment. Read this for *what the product is and where it falls short*; read `plan.md` for *what to build next*.
+This document (`prd.md`) is the **product spec and product source of truth** — vision, users, journeys, access model, implemented capabilities, product gaps, and launch readiness. **`docs/BACKLOG.md` is the single log of everything open** and is what to read for *what to build next*; `docs/HANDOFF.md` briefs the current phase. `plan.md` is **retained engineering history** (the WS1–WS12 record), not an active plan. `README.md` is setup/deployment.
+
+> ⚠️ **Status caveat:** the *Launch Readiness Criteria* below were written pre-redesign and show all boxes checked. They are **not** a current launch gate — `docs/BACKLOG.md` lists the real open launch blockers.
 
 ### Infrastructure note
 ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovable hosting. It now runs on a **self-owned Supabase project + Vercel hosting** — schema, data, storage, and all edge functions were migrated, `zothub.app` DNS is cut over to Vercel, and the Supabase migration history is reconciled (future DB changes use normal migration files + `supabase db push`). The migration is **fully closed**; full history is archived at `docs/archive/MIGRATION.md`. Lovable no longer serves production traffic but is retained temporarily as a rollback path (decommission is gated on `plan.md`'s checklist).
@@ -68,18 +70,36 @@ ZotHub previously ran on Lovable Cloud (a managed Supabase instance) with Lovabl
 
 The platform uses a **waitlist-gated signup flow**:
 
-1. A new user visits `/signup`, selects their role (student or club).
-2. They verify their email via a one-time-passcode flow (`send-otp` / `verify-otp` Edge Functions).
-3. A `waitlist` row is created with `status = 'pending'`.
-4. The user sees a "you're on the waitlist" screen (`/waitlist`) and can check back; the page polls for status changes.
-5. An admin reviews pending entries at `/admin` (`AdminDashboard`) and approves or rejects each one, optionally with a rejection reason.
-6. Approved users get full access to their role's dashboard. Rejected users land on `/waitlist-rejected`.
+> **Updated 2026-08-11 — this section previously described a pre-`S3` flow in which *both*
+> roles awaited manual approval. Students are now auto-approved.**
 
-**Why this matters operationally:** this is a UI-driven queue applying to **both students and clubs**. The admin queue must be checked regularly — an unapproved user is fully blocked, so a stale queue directly blocks growth. Whoever holds the admin role should treat `/admin` as a standing operational responsibility.
+1. A new user visits `/signup`, selects their role (student or club), and solves a
+   **Cloudflare Turnstile** challenge.
+2. They verify their email via a one-time-passcode flow (`send-otp` / `verify-otp` Edge
+   Functions). **Students must use `@uci.edu`**, enforced authoritatively by a DB trigger on
+   `auth.users`; **clubs may use any email** (many have no `uci.edu` address) and are
+   admitted only via a service-issued one-time authorization.
+3. **Students are auto-approved** — they receive their `user_roles` row and a `waitlist` row
+   already marked `approved`, and land straight in their dashboard. Reaching that point
+   already proves control of a UCI mailbox, so manual review added latency, not safety.
+4. **Clubs are queued** (`waitlist.status = 'pending'`) and see the `/waitlist` screen, which
+   polls for status changes. A pending club's `club_profiles` row is written
+   `published = false`, so it stays out of the public directory until approved.
+5. An admin reviews pending clubs at `/admin` and approves or rejects each, optionally with a
+   reason. Approval grants the `club` role and publishes the profile via a DB trigger.
+6. Rejected users land on `/waitlist-rejected`.
+
+**A third path — club claims:** a person can claim one of the 724 seeded ZotSpot club
+profiles. Claims are **logged-out only**, admin-reviewed, and on approval create a dedicated
+club account bound to that existing profile. See `docs/design/mb5-claim-flow.md`.
+
+**Why this matters operationally:** the queue now gates **clubs only** — which is also the
+supply side, so a stale queue directly throttles the metric that matters (opportunities
+posted). Whoever holds the admin role should treat `/admin` as a standing responsibility.
 
 **Discovery vs. interaction (WS5, 2026-07-12):** the *gated beta* applies to **account creation and interaction**, not to **browsing**. Logged-out visitors can publicly browse active clubs, opportunities, and events (and their detail pages); they must sign in (and be approved) to apply, RSVP, follow, bookmark, message, or access any dashboard/private data. Public discovery exposes only active/public rows and never a club's private email.
 
-**Planned evolution:** once the beta has validated core flows, the recommended next step is to relax this to **open `@uci.edu` signup** (keep OTP verification and the DB-level email-domain trigger as the only gates, remove the manual approval requirement) so growth isn't bottlenecked on manual review. Not urgent for initial launch.
+**Planned evolution:** the student half of this has already happened (auto-approval, `S3`). The remaining question is whether club approval stays manual after the beta — keep it while club quality still needs a human look, since clubs can post to students.
 
 ---
 
@@ -157,7 +177,7 @@ These are **confirmed** current gaps between the product spec above and what shi
 
 **Resolved this cycle (for reference):** the raw profile-validation error, the OTP-signup admin-approval/redirect-loop blocker, approval-required-RSVP failure, private-resume viewing, club-profile-save-that-saved-nothing, notifications page freeze, RSVP-approval persistence (RLS), re-RSVP-after-cancel, DB-level `@uci.edu` enforcement, DNS cutover, and the Supabase migration-history repair are all **done** (see `plan.md`'s Confirmed bug & risk inventory and phase history).
 
-**Process:** don't fix bugs ad hoc — add any newly found issue to `plan.md`'s Confirmed bug & risk inventory, then address it inside a coherent workstream.
+**Process:** don't fix bugs ad hoc — log any newly found issue in **`docs/BACKLOG.md`** with an impact tag, then address it inside a coherent phase.
 
 ---
 
@@ -282,6 +302,11 @@ Implement the spec and re-skin every surface in slices, folding each screen's UX
 
 ### Phase 3 — New Feature Build-out (WS12)
 Net-new surfaces and capabilities. **"No skimping" catalog — every item tagged for honest sequencing** ([launch-blocking] must ship before public launch; [post-launch] can follow):
+
+> **Tracking:** this catalog is the *specification*. Delivery status lives in
+> [`docs/BACKLOG.md`](./docs/BACKLOG.md), where the four `[launch-blocking]` items below now
+> carry IDs — Support Center `MB4`, account deletion `MB6`, `/privacy` contact line `MB7`,
+> onboarding polish `MB8`, and search depth `MB3`. Add new open items there, not here.
 
 - **In-product Support Center** *[launch-blocking]* — a Help/Support page: **FAQ**, **Contact Support** (to `zothub.uci@gmail.com`), **Report an Issue**, **troubleshooting resources**, and related user-help workflows. (Formerly the "user support experience" Planned Product Area.)
 - **Self-service account deletion** *[launch-blocking — privacy/compliance]* (currently manual).

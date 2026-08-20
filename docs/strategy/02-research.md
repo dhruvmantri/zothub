@@ -131,6 +131,9 @@ The severity-3 findings cluster somewhere else: **the system disagrees with itse
 
 ## 6. Outstanding
 
+> Tracked in [`../BACKLOG.md`](../BACKLOG.md) as `RS1` (club artifacts + recruiting
+> walkthrough) and `RS2` (student interviews / assumption A5).
+
 1. **Club artifacts + the recruiting walkthrough** (§4) — blocks A1, A2, and most of Stage 3's club journey work.
 2. **Student interviews** (§3) — blocks A2 and A5. Guide is ready to run as written.
 3. Synthesis into themes, JTBD statements, and a verdict on each open assumption — after 1 and 2.

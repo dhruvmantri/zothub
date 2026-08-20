@@ -2,7 +2,10 @@
 
 **Your gateway to UCI campus life** - Discover opportunities, connect with clubs, and make the most of your UCI experience.
 
-> 📋 **For engineering work:** see [`plan.md`](./plan.md) for the current active engineering plan and [`prd.md`](./prd.md) for the full product spec, known issues, and launch readiness criteria. Historical migration docs are archived under [`docs/archive/`](./docs/archive/).
+> 📋 **For engineering work:** [`docs/BACKLOG.md`](./docs/BACKLOG.md) is the **single log of
+> everything open** — what to implement, fix, remove, or decide. Start there.
+> [`prd.md`](./prd.md) is the product spec; [`plan.md`](./plan.md) is engineering history.
+> Superseded planning docs are archived under [`docs/archive/`](./docs/archive/).
 
 ## About ZotHub
 
@@ -81,7 +84,16 @@ This project is built with modern web technologies:
 
    Run the migrations in the \`supabase/migrations/\` directory in your Supabase project.
 
-   Also deploy the 4 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`) via the Supabase CLI, and set the \`RESEND_API_KEY\` secret — signup (OTP verification) and all outbound email depend on these. Note: **signup requires manual admin approval** via the \`/admin\` waitlist queue after OTP verification — see "Access Model" in \`prd.md\`.
+   Also deploy the 6 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`, \`submit-club-claim\`, \`review-club-claim\`) via the Supabase CLI. Signup (OTP verification), all outbound email, and the club-claim flow depend on these.
+
+   **Required Edge Function secrets** — set these *before* deploying, or signup fails closed:
+   - \`RESEND_API_KEY\` — all outbound email.
+   - \`TURNSTILE_SECRET_KEY\` — **required.** Without it, \`send-otp\` and \`submit-club-claim\` return **503** by design (fail-closed bot protection). The only supported bypass is \`CAPTCHA_DISABLED=true\`, which is for **local development only — never set it in production**.
+   - \`PUBLIC_SITE_URL\` — e.g. \`https://zothub.app\`; used to build password-set links.
+
+   Also allowlist \`<your-site>/reset-password\` under Supabase **Auth → redirect URLs**.
+
+   **Access model:** **students are auto-approved** once they verify their \`@uci.edu\` email by OTP. **Clubs** still go through the \`/admin\` waitlist queue for manual approval, and a pending club's profile stays unpublished (invisible in the public directory) until an admin approves it. See "Access Model" in \`prd.md\`.
 
 5. **Start the development server**
    \`\`\`bash
@@ -176,7 +188,7 @@ The application uses the following main tables:
 
 ## Deployment
 
-ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.app) (and [www.zothub.app](https://www.zothub.app)) — DNS cutover to Vercel is complete with valid TLS — backed by a self-owned Supabase project. This repo previously ran on Lovable Cloud/Lovable hosting during initial development; that migration is complete, the Supabase migration history has been reconciled (new migrations deploy via the normal `supabase db push` flow), and **Lovable no longer serves production traffic** (kept untouched for a short fallback window; decommission is a future manual step). See \`docs/archive/MIGRATION.md\` for migration history and \`plan.md\` for the current product-development plan.
+ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.app) (and [www.zothub.app](https://www.zothub.app)) — DNS cutover to Vercel is complete with valid TLS — backed by a self-owned Supabase project. This repo previously ran on Lovable Cloud/Lovable hosting during initial development; that migration is complete, the Supabase migration history has been reconciled (new migrations deploy via the normal `supabase db push` flow), and **Lovable no longer serves production traffic** (kept untouched for a short fallback window; decommission is a future manual step). See \`docs/archive/MIGRATION.md\` for migration history and \`docs/BACKLOG.md\` for current open work.
 
 1. Build the project:
    \`\`\`bash
@@ -189,7 +201,7 @@ ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.ap
 
 4. OAuth redirect URLs and Auth settings are configured in the Supabase project dashboard.
 
-Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`plan.md\` for current engineering status.
+Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`docs/BACKLOG.md\` for current open work.
 
 ## Database Migrations
 
@@ -206,9 +218,23 @@ Do **not** hand-apply SQL to production as the normal path, and never run \`supa
 
 | Variable | Description | Example |
 |----------|-------------|---------|
+### Client build (Vercel / \`.env\`)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
 | \`VITE_SUPABASE_PROJECT_ID\` | Your Supabase project ID | \`abc123xyz\` |
 | \`VITE_SUPABASE_PUBLISHABLE_KEY\` | Supabase anonymous/public key | \`eyJhbGc...\` |
 | \`VITE_SUPABASE_URL\` | Your Supabase project URL | \`https://abc.supabase.co\` |
+| \`VITE_TURNSTILE_SITE_KEY\` | Cloudflare Turnstile **site** key. **Required for production builds.** It is inlined at build time, so it must be set *before* the build — a production build without it renders a visible error and **blocks signup and club claims**. Must pair with \`TURNSTILE_SECRET_KEY\`. | \`0x4AAA...\` |
+
+### Edge Functions (Supabase secrets)
+
+| Variable | Description |
+|----------|-------------|
+| \`RESEND_API_KEY\` | All outbound email. |
+| \`TURNSTILE_SECRET_KEY\` | Turnstile **secret** key, from the same widget as the site key. **Required** — without it \`send-otp\` / \`submit-club-claim\` return 503. |
+| \`PUBLIC_SITE_URL\` | Public origin, e.g. \`https://zothub.app\`. Used to build password-set links. |
+| \`CAPTCHA_DISABLED\` | **Local development only.** \`true\` skips captcha verification. Never set in production. |
 
 ## Security
 

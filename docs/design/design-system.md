@@ -134,6 +134,11 @@ Re-tokened shadcn/Radix, not replaced. Compact = a **variant**, never a differen
 
 ## 6. Open / next
 
+> **Tracking moved.** This section is kept as the design record. Anything still actionable
+> is tracked in [`../BACKLOG.md`](../BACKLOG.md) — the maintainer's pending UI changes as
+> `DP9`, the accent-bubble call as `DP8`, and the broader usability pass as `UX0`. Do not
+> add new open items here.
+
 - **Icon/app-mark: the stacked wordmark** (decided 2026-07-25; `zot`/`hub` disc, italic-accent `hub`). Wordmark (inline italic hub) and mark (stacked disc) are both font-rendered lockups. For shipped assets, **outline from licensed Instrument Sans** (favicon/app-icon/social); disc `#101112`, letters `#F5F5F6`, accent `#5AA2E6`, 16px uses the tight cut. The other icon explorations live in `direction-11-icon-lab.html` (not chosen).
 - **Maintainer's pending UI changes** land in the **component library / screens** phase. Foundational ones (radius, spacing density, type sizes, button height) are token edits here; component/layout/interaction ones are built downstream.
 - **Component library is complete** — `current/component-library.html`, ten stateful/interactive sections: buttons · tags/badges/chips · forms · review row · severity-keyed confirmation · empty/loading/toast · **nav** · **avatars** · **messages** · **profile**. Both themes, every pair AA-verified by measurement in the browser. **Next:** assemble the product screens from these components — **club first-run is the priority journey** (signup → profile → post a role → receive/review, Positioning §3), then the apply flow, club dashboard (lands on Responses), Clubs/club page, Activity, Messages, Profile → then implementation (rewrite `src/index.css` tokens, self-host font, route-split).

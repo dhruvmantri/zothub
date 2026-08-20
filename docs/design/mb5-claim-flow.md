@@ -1,9 +1,10 @@
 # MB5 — Admin-reviewed club claim flow (as built)
 
-**Status:** BUILT + security-hardened + verified on a local Supabase stack
-(`tests/e2e`, 84/84 green). NOT committed or deployed. Builds on the live MB5 seed
-(724 unclaimed ZotSpot clubs; see `docs/LAUNCH-BACKLOG.md` MB5). This document
-reflects the implemented design and supersedes earlier drafts.
+**Status:** ✅ **SHIPPED TO PRODUCTION 2026-07-27** (commit `6c69a8d`) — security-hardened
+and verified on a local Supabase stack (`tests/e2e`, **115/115** green). Migrations pushed,
+the 5 edge functions deployed, Turnstile configured on both sides and verified live. Builds
+on the live MB5 seed (724 unclaimed ZotSpot clubs). This document is the **as-built record**;
+open follow-ups live in [`../BACKLOG.md`](../BACKLOG.md).
 
 ## 1. Objective
 Let a real club officer take ownership of an unclaimed (ZotSpot-seeded) club
@@ -131,7 +132,8 @@ hijacked session (a token-holding attacker could call `updateUser` directly). Th
 server-side control is GoTrue's **`secure_password_change`** (Auth settings); enable it
 server-side to make that guarantee real.
 
-## 11. Prod rollout (when ready; nothing is deployed)
+## 11. Prod rollout — ✅ COMPLETED 2026-07-27
+Kept as the record of what was done (and the runbook for a rebuild).
 Order: **migrations → functions → frontend.**
 
 1. Back up, then `supabase db push` (migrations `20260727000200`, `00300`, `00400`,
@@ -147,7 +149,8 @@ Order: **migrations → functions → frontend.**
 5. Build/deploy the frontend with **`VITE_TURNSTILE_SITE_KEY`** set (a production build
    without it renders a visible error and blocks signup/claim submission). Both keys must
    come from the **same** Turnstile widget.
-6. Optional: enable `secure_password_change` in Auth settings (see §10).
+6. Optional: enable `secure_password_change` in Auth settings (see §10). **Still open** —
+   tracked in `../BACKLOG.md`.
 
 ## 12. Non-goals
 No self-service removal (admin-unpublish only). No automated ownership verification.
