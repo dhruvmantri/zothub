@@ -12,6 +12,30 @@ zothub.app on Vercel + a self-owned Supabase project.
 3. `prd.md` — product spec. `docs/design/design-system.md` — tokens and design rules.
 4. `plan.md` and `docs/archive/*` — **history only.** Never take forward direction from them.
 
+## Documentation discipline — which file owns what
+
+**Every session updates the docs as it works, not at the end.** A change that is not written
+down did not happen. Update the owning file in the same session as the change — as many times
+as needed.
+
+| File | Owns | Never put here |
+|---|---|---|
+| **`docs/BACKLOG.md`** | Every open item, its status, its impact tag. **And every decision the maintainer has made** — in the *Decisions made* section, with the date. The single tracker. | Product rationale, setup steps, history. |
+| **`docs/HANDOFF.md`** | The current phase brief only: what this phase is, where the product actually is, the root causes in play. Rewritten at each phase change. | Per-item tracking (that is the backlog). |
+| **`CLAUDE.md`** | The working agreement: how to work in this repo, non-negotiables, architectural traps. | Anything time-bound or phase-specific. |
+| **`prd.md`** | What the product *is* — users, journeys, access model, spec. Product source of truth. | Delivery status, tracking, task lists. |
+| **`README.md`** | Setup, environment variables, deploy, migrations. Written for a stranger cloning the repo. | Roadmap, defects, opinions. |
+| **`docs/design/design-system.md`** | Tokens, type, spacing, the operating rules. **AA contrast is a merge gate.** | Page-level defects. |
+| **`plan.md`, `docs/archive/*`** | Frozen history. Read-only. | Anything new. |
+
+**Rules of the road**
+- **Never start a second tracker.** New issue → `docs/BACKLOG.md` with an impact tag.
+- **Record decisions, not just work.** When the maintainer answers a question, write the answer
+  and the date into the backlog's *Decisions made* section before building anything on it.
+- **Close the loop.** When an item ships, mark it ✅ in the backlog *and* fix any other doc that
+  still describes the old behaviour. Stale docs have already caused wasted work here.
+- **If two docs disagree, the backlog wins** — then immediately correct the loser.
+
 ## Non-negotiables
 
 **Production belongs to the maintainer.** Do not commit, stage, push, or deploy without
