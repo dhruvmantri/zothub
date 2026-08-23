@@ -40,6 +40,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ClubHome = lazy(() => import("./pages/club/ClubHome"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Help = lazy(() => import("./pages/Help"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Waitlist = lazy(() => import("./pages/Waitlist"));
 const WaitlistRejected = lazy(() => import("./pages/WaitlistRejected"));
@@ -62,12 +63,17 @@ const RouteFallback = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    {/* Light default, both themes genuinely designed (Foundation). The old
-        `forcedTheme="dark"` made the light theme unreachable. `data-theme` is
-        the attribute the token layer and the design mocks both key off. */}
+    {/* Both themes are genuinely designed (Foundation) and AA-verified, so the
+        device preference is honoured: `defaultTheme="system"` resolves to the
+        visitor's OS setting, falling back to light when they have expressed none.
+        `enableSystem` alone was not enough — next-themes only consults the OS when
+        defaultTheme is "system", so the previous `defaultTheme="light"` overrode it
+        and served light to dark-mode devices (maintainer decision, 2026-08-23).
+        The manual ThemeToggle still wins over both. `data-theme` is the attribute
+        the token layer and the design mocks both key off. */}
     <ThemeProvider
       attribute="data-theme"
-      defaultTheme="light"
+      defaultTheme="system"
       enableSystem
       disableTransitionOnChange
     >
@@ -90,6 +96,12 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/help" element={<Help />} />
+            {/* Aliases people type or that older copy referenced. One canonical
+                page (MB4), so these redirect rather than duplicating content. */}
+            <Route path="/faq" element={<Navigate to="/help" replace />} />
+            <Route path="/support" element={<Navigate to="/help" replace />} />
+            <Route path="/contact" element={<Navigate to="/help" replace />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/waitlist-rejected" element={<WaitlistRejected />} />

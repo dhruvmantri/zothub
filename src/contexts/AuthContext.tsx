@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { ADMIN_ALLOWED_EMAILS } from "@/lib/constants";
 
 type UserRole = "student" | "club" | "admin" | null;
 
@@ -99,84 +98,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Provision a brand-new Google-OAuth account (backlog A1).
+  //
+  // This used to insert the waitlist row and the profile row straight from the
+  // browser. The profile insert was ALWAYS rejected by RLS and the failure was
+  // never surfaced — `await supabase.from(...).insert(...)` with the result
+  // discarded — so every Google signup produced an account with no profile,
+  // silently, and (because it hard-coded status:"pending") queued students for a
+  // review that OTP students have not needed since S3.
+  //
+  // It cannot be fixed in the client: the profile policies require a role
+  // (20251223013805:73,:108) and the client cannot grant itself one, because the
+  // user_roles self-insert policy was dropped as a privilege-escalation fix (S1).
+  // Provisioning therefore happens in the `provision-oauth-user` edge function,
+  // which mirrors what verify-otp already does for the OTP path.
   const handleNewOAuthUser = async (userId: string) => {
     const intendedRole = localStorage.getItem("zothub_intended_role") as "student" | "club" | null;
-    
+
     if (!intendedRole) {
-      // No intended role - user needs to select one
+      // Signed in with no role chosen — e.g. an OAuth sign-IN that predates a
+      // role, or a returning user whose provisioning never completed. Leave the
+      // role null; routing handles this state.
       setRole(null);
       return;
     }
 
     try {
-      // Get user email from auth
-      const { data: { user } } = await supabase.auth.getUser();
-      const email = user?.email;
-
-      if (!email) {
-        console.error("No email found for user");
-        return;
-      }
-
-      // Validate UCI email (allow admin emails to bypass)
-      if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email.toLowerCase())) {
-        console.error("Non-UCI email attempted to sign up");
-        await supabase.auth.signOut();
-        return;
-      }
-
-      // Add to waitlist instead of user_roles (pending admin approval)
-      const { error: waitlistError } = await supabase
-        .from("waitlist")
-        .insert({ 
-          user_id: userId, 
-          email: email,
-          role: intendedRole,
-          status: "pending"
-        });
-
-      if (waitlistError) {
-        console.error("Error inserting waitlist entry:", waitlistError);
-        return;
-      }
-
-      // Create initial profile based on role
-      if (intendedRole === "student") {
-        await supabase
-          .from("student_profiles")
-          .insert({ 
-            user_id: userId, 
-            email: email,
-            full_name: user?.user_metadata?.full_name || null,
-            avatar_url: user?.user_metadata?.avatar_url || null
-          });
-      } else {
-        // Pending club → published=false so it stays out of the public directory
-        // and profile until an admin approves (the waitlist-approval trigger flips it).
-        await supabase
-          .from("club_profiles")
-          .insert({
-            user_id: userId,
-            email: email,
-            club_name: "My Club",
-            published: false
-          });
-      }
-
-      // Send waitlist confirmation email. Recipient is derived server-side from the
-      // signed-in caller's own account (authoritative self-send) — no client `to`.
-      await supabase.functions.invoke("send-email", {
-        body: {
-          type: "waitlist_confirmation",
-          data: { role: intendedRole },
-        },
+      const { data, error } = await supabase.functions.invoke("provision-oauth-user", {
+        body: { role: intendedRole },
       });
 
-      // Don't set role since they're on waitlist
-      setRole(null);
+      if (error) {
+        // Surfaced deliberately. The silent-failure version of this call is
+        // exactly what made A1 invisible for weeks.
+        console.error("Error provisioning OAuth account:", error);
+        setRole(null);
+        return;
+      }
+
+      // Students are auto-approved server-side, so set the role we were given
+      // rather than assuming the waitlist. Clubs come back autoApproved:false
+      // and stay role-less until an admin approves them.
+      if (data?.autoApproved && data?.role) {
+        setRole(data.role as UserRole);
+      } else {
+        setRole(null);
+      }
+
       localStorage.removeItem("zothub_intended_role");
     } catch (err) {
-      console.error("Error handling new OAuth user:", err);
+      console.error("Error provisioning OAuth account:", err);
+      setRole(null);
     }
   };
 

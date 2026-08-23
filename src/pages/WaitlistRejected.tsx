@@ -1,4 +1,4 @@
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWaitlist } from "@/hooks/useWaitlist";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,14 @@ export default function WaitlistRejected() {
 
           <div className="space-y-2 text-center text-sm text-ink-2">
             <p>
-              If you believe this was a mistake, please contact support.
+              If you believe this was a mistake,{" "}
+              <Link
+                to="/help"
+                className="text-accent-text underline underline-offset-2 hover:no-underline"
+              >
+                get in touch
+              </Link>
+              {" "}— a person reads every message.
             </p>
           </div>
 

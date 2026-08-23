@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 // Cloudflare Turnstile site key.
 //
@@ -142,7 +143,14 @@ export function TurnstileWidget({ onToken, refreshKey = 0 }: TurnstileWidgetProp
   if (misconfigured) {
     return (
       <p role="alert" className="text-[13px] text-bad">
-        Verification isn't configured, so this form can't be submitted. Please contact support.
+        Verification isn't configured, so this form can't be submitted.{" "}
+        <Link
+          to="/help"
+          className="text-accent-text underline underline-offset-2 hover:no-underline"
+        >
+          Get help
+        </Link>
+        {" "}and we'll sort it out.
       </p>
     );
   }

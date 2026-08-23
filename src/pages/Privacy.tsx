@@ -111,9 +111,8 @@ export default function Privacy() {
                 <h2 className="text-xl font-semibold text-foreground">Your Rights & Choices</h2>
               </div>
               <ul className="space-y-2 text-muted-foreground list-disc list-inside">
-                <li><strong className="text-foreground">Access:</strong> You can view and export your personal data from your profile settings.</li>
                 <li><strong className="text-foreground">Correction:</strong> You can update your profile information at any time.</li>
-                <li><strong className="text-foreground">Deletion:</strong> You can request account deletion by contacting us.</li>
+                <li><strong className="text-foreground">Deletion:</strong> You can request account deletion by emailing us at the address below. We handle these requests by hand.</li>
                 <li><strong className="text-foreground">Notifications:</strong> You can manage your email notification preferences in your account settings.</li>
                 <li><strong className="text-foreground">Unsubscribe:</strong> Every email includes an unsubscribe link to opt out of that notification type.</li>
               </ul>
@@ -142,7 +141,12 @@ export default function Privacy() {
                 <p className="text-foreground font-medium">ZotHub</p>
                 <p className="text-muted-foreground">University of California, Irvine</p>
                 <p className="text-muted-foreground">Irvine, CA 92697</p>
-                <p className="text-primary mt-2">privacy@zothub.app</p>
+                <a
+                  href="mailto:zothub.uci@gmail.com"
+                  className="mt-2 inline-block text-accent-text underline underline-offset-2 hover:no-underline"
+                >
+                  zothub.uci@gmail.com
+                </a>
               </div>
             </section>
 

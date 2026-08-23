@@ -28,3 +28,14 @@ verify_jwt = false
 
 [functions.review-club-claim]
 verify_jwt = false
+
+# Edge functions that REQUIRE an authenticated caller (gateway JWT check on, the
+# platform default — declared explicitly so the trust boundary is readable here
+# rather than only in the function body):
+#   * provision-oauth-user — finishes signup for a brand-new Google-OAuth account.
+#     Derives the user id and email from the caller's own JWT (never the body) and
+#     provisions with the service role, because the client provably cannot: the
+#     profile INSERT policies require a role and the user_roles self-insert policy
+#     was dropped as a privilege-escalation fix (S1). See backlog A1.
+[functions.provision-oauth-user]
+verify_jwt = true
