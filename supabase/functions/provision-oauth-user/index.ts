@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkEmailResult } from "../_shared/email-result.ts";
 
 // Provision a brand-new Google-OAuth account (backlog A1).
 //
@@ -100,17 +101,68 @@ const handler = async (req: Request): Promise<Response> => {
     const role: "student" | "club" = requestedRole;
 
     // ── 3. Defence in depth on the email domain ─────────────────────────────
-    // enforce_uci_email() already guaranteed this at INSERT time; re-checking is
-    // cheap and keeps the rule readable at the point it is relied upon.
-    if (!email.endsWith("@uci.edu") && !ADMIN_ALLOWED_EMAILS.includes(email)) {
-      console.error("provision-oauth-user: non-UCI email reached provisioning", email);
-      return json({ error: "Signups are restricted to @uci.edu email addresses" }, 403);
+    // This MIRRORS the authoritative BEFORE INSERT trigger on auth.users. That
+    // trigger admits three cases, not two (enforce_uci_email in
+    // 20260727000200_signup_email_gate, which SUPERSEDED 20260709000300):
+    //
+    //   1. an @uci.edu address, or
+    //   2. the admin allowlist, or
+    //   3. any address with a live signup_email_authorizations row — the
+    //      service-issued, one-time escape hatch used for club OTP signups and
+    //      approved club claims, since many clubs have no uci.edu address
+    //      (verify-otp, review-club-claim).
+    //
+    // Case 3 is why this check must NOT be a bare domain test: the trigger
+    // *consumes* the authorization at account-creation time, so by the time we
+    // run, a legitimately-admitted club shows only a consumed row. Checking for
+    // the row's existence (consumed or not) is the correct mirror — the account
+    // exists, so the trigger already passed it, and the row is the evidence.
+    //
+    // Getting this wrong is not theoretical: a bare domain test 403s a
+    // legitimately-created non-UCI club account.
+    const domainAllowed =
+      email.endsWith("@uci.edu") || ADMIN_ALLOWED_EMAILS.includes(email);
+
+    if (!domainAllowed) {
+      // NOTE: ILIKE treats % and _ as WILDCARDS, and both are legal in an email
+      // local part (john_doe@… is ordinary). An unescaped value would therefore
+      // let one address match a DIFFERENT address's authorization row. Escape
+      // them so this is a case-insensitive exact match, not a pattern match.
+      //
+      // This is not currently privilege-escalating — a non-UCI account can only
+      // exist if the trigger consumed an authorization for its exact address, so
+      // a false positive here only re-admits an account that already passed the
+      // authoritative gate. But relying on that reasoning to keep a pattern match
+      // safe is exactly how a real hole gets introduced later, so: escape it.
+      const emailPattern = email.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+      const { data: authorization } = await supabase
+        .from("signup_email_authorizations")
+        .select("id")
+        .ilike("email", emailPattern)
+        .limit(1)
+        .maybeSingle();
+
+      if (!authorization) {
+        console.error(
+          "provision-oauth-user: no UCI domain and no signup authorization for",
+          email,
+        );
+        return json({ error: "Signups are restricted to @uci.edu email addresses" }, 403);
+      }
     }
 
     // ── 4. Idempotency ───────────────────────────────────────────────────────
-    // Supabase fires onAuthStateChange more than once per sign-in, and `waitlist`
-    // has no unique constraint on user_id, so without this guard a single OAuth
-    // sign-in can produce duplicate waitlist rows and a duplicate signup email.
+    // Supabase fires onAuthStateChange more than once per sign-in, so this can be
+    // called repeatedly for one signup.
+    //
+    // What actually prevents duplicate ROWS is the database, not this guard:
+    // waitlist.user_id, student_profiles.user_id and club_profiles.user_id are all
+    // UNIQUE, and user_roles is UNIQUE (user_id, role). This early return exists to
+    // avoid a duplicate *signup email* and to give repeat callers a correct answer
+    // cheaply — it is a fast path, not the integrity mechanism. It is also
+    // inherently racy: two simultaneous first-calls both pass it, which is why
+    // step 5 below must treat a unique violation as success rather than failure.
     const { data: existingRole } = await supabase
       .from("user_roles")
       .select("role")
@@ -142,20 +194,48 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // ── 5. Grant the role (students only) ────────────────────────────────────
-    let autoApproved = role === "student";
+    // Concurrency matters here. Because step 4's guard is racy, several calls can
+    // reach this point for the same brand-new student. Exactly one wins the insert;
+    // the rest hit user_roles_user_id_role_key.
+    //
+    // A unique violation is SUCCESS, not failure — it means a sibling call granted
+    // the very role we wanted. Treating it as failure (as the first version of this
+    // function did) produced two bugs at once: losing callers were told
+    // autoApproved:false and got routed to /waitlist despite holding the role, and
+    // whichever caller happened to win the waitlist insert could write status
+    // 'pending' alongside a granted role — a contradictory state that also parked a
+    // phantom student in the admin queue. Both were reproduced under concurrency.
+    //
+    // So: decide autoApproved from whether the role is actually PRESENT afterwards,
+    // never from which insert won the race.
+    let autoApproved = false;
 
-    if (autoApproved) {
+    if (role === "student") {
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert({ user_id: userId, role });
 
-      if (roleError) {
-        // Fail safe, not open — same reasoning as verify-otp:213-222. Without a
-        // role row the account is authenticated but unauthorized, and an
-        // "approved" waitlist row would wave it past ProtectedRoute into a
-        // dashboard it cannot populate. Fall back to the admin queue.
+      if (!roleError) {
+        autoApproved = true;
+      } else if (roleError.code === "23505") {
+        // Unique violation — a concurrent call already granted it. Fine.
+        autoApproved = true;
+      } else {
+        // A real failure. Fail safe, not open — same reasoning as
+        // verify-otp:213-222: without a role row the account is authenticated but
+        // unauthorized, and an "approved" waitlist row would wave it past
+        // ProtectedRoute into a dashboard it cannot populate. Fall back to the
+        // admin queue so a human can finish the job.
         console.error("Error granting student role, falling back to queue:", roleError);
-        autoApproved = false;
+
+        // Confirm against the table rather than trusting the error: a transient
+        // failure on a row that does in fact exist must not demote the user.
+        const { data: existing } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        autoApproved = existing?.role === "student";
       }
     }
 
@@ -169,9 +249,11 @@ const handler = async (req: Request): Promise<Response> => {
       reviewed_at: autoApproved ? new Date().toISOString() : null,
     });
 
-    if (waitlistError) {
+    if (waitlistError && waitlistError.code !== "23505") {
+      // 23505 = a concurrent call already wrote the row (waitlist.user_id is
+      // UNIQUE). Not an error; anything else is worth logging.
       console.error("Error adding to waitlist:", waitlistError);
-      // Non-fatal: the role grant above is what actually gates access.
+      // Non-fatal either way: the role grant above is what actually gates access.
     }
 
     // ── 7. Profile row ───────────────────────────────────────────────────────
@@ -186,7 +268,8 @@ const handler = async (req: Request): Promise<Response> => {
         full_name: metadata.full_name ?? metadata.name ?? null,
         avatar_url: metadata.avatar_url ?? metadata.picture ?? null,
       });
-      if (profileError) {
+      // 23505 = a concurrent call already created it (user_id is UNIQUE).
+      if (profileError && profileError.code !== "23505") {
         console.error("Error creating student profile:", profileError);
       }
     } else {
@@ -200,7 +283,8 @@ const handler = async (req: Request): Promise<Response> => {
         club_name: email.split("@")[0],
         published: false,
       });
-      if (profileError) {
+      // 23505 = a concurrent call already created it (user_id is UNIQUE).
+      if (profileError && profileError.code !== "23505") {
         console.error("Error creating club profile:", profileError);
       }
     }
@@ -209,8 +293,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Auto-approved users get the welcome/approved email; queued users get
     // "you're on the list." Telling an already-admitted student they are on a
     // waitlist would be actively confusing (verify-otp:267-270).
+    // A 200 is not proof of delivery — Resend signals failure in the BODY, so the
+    // result goes through the one shared checker (CLAUDE.md: "never show
+    // sent/notified without it"). verify-otp:271-283 still discards its result;
+    // that is logged as E1 and is not a reason to repeat the mistake here.
+    let emailDelivered = false;
     try {
-      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -222,10 +311,19 @@ const handler = async (req: Request): Promise<Response> => {
           data: { role },
         }),
       });
+
+      const body = await res.json().catch(() => null);
+      const result = checkEmailResult(null, body, res.status);
+      emailDelivered = result.ok;
+
+      if (!result.ok) {
+        console.error("Signup email NOT delivered:", result.error);
+      }
     } catch (emailError) {
       console.error("Error sending signup email:", emailError);
-      // Non-fatal, continue.
     }
+    // Non-fatal: the account is provisioned either way, and the role grant is what
+    // gates access. Reported so the client never claims an email that did not send.
 
     console.log("provision-oauth-user: provisioned", role, "autoApproved:", autoApproved);
 
@@ -235,6 +333,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Lets the client route without re-querying: auto-approved users go
       // straight to their dashboard, queued users to /waitlist.
       autoApproved,
+      // Honest about the email, per the shared checker — never asserted, reported.
+      emailDelivered,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

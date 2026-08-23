@@ -99,10 +99,16 @@ ever code-verified. UI work is checked in the browser, in both themes, at mobile
 npx tsc -p tsconfig.app.json --noEmit   # 0 errors
 npm run build                            # must succeed
 node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
-bash tests/e2e/run.sh                    # 115/115; warns before wiping local data
+bash tests/e2e/run.sh                    # EXECUTED 115/115; warns before wiping local data
 ```
 
 Run the E2E suite before finishing anything auth-, email-, or claim-related.
+
+**It needs a Docker daemon.** Without one, 24 of the 115 assertions never execute (the
+`sqlReady()`-gated blocks: approval rollback, rate-limit fail-closed, pending-club backfill). The
+suite used to print `ALL GREEN` anyway — it now prints `EXECUTED n/115` and **exits 1 if any
+assertion did not run**, because a partial run of a security suite is an unknown, not a pass. In a
+cloud session start the daemon with `sudo dockerd`.
 
 ## Known architectural traps
 

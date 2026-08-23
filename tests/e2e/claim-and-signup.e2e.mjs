@@ -83,10 +83,23 @@ function sqlReady() {
   if (sqlAvailable === null) sqlAvailable = psql("select 1") === "1";
   return sqlAvailable;
 }
+// The suite's full assertion count. Asserted at the end, because three blocks are
+// gated on direct SQL to the local DB container (sqlReady()) and, when that is
+// unavailable, their assertions simply never execute.
+//
+// The old reporting made that indistinguishable from a pass: skip() counted
+// BLOCKS, not assertions, so a run that silently dropped 24 assertions printed
+// "PASSED 91, FAILED 0, SKIPPED 3" followed by "ALL GREEN ✅". That is where the
+// docs' "115/115" claim came from. Counting the total is strictly better than
+// per-block counts: it catches ANY assertion that fails to run, for any reason.
+//
+// If you add or remove an ok() assertion, update this number in the same commit.
+const EXPECTED_ASSERTIONS = 115;
+
 let skipped = 0;
 function skip(name, why) {
   skipped++;
-  console.log(`  ⚠ SKIPPED ${name} — ${why}`);
+  console.log(`  ⚠ SKIPPED BLOCK ${name} — ${why}`);
 }
 
 async function seedClub({ tag, source = "zotspot", published = true, userId = null }) {
@@ -530,10 +543,34 @@ async function main() {
     ok("approved + seeded clubs still in the public directory", ids.has(approvedId) && ids.has(seededId));
   }
 
+  const executed = passed + failures.length;
+  const missing = EXPECTED_ASSERTIONS - executed;
+
   console.log(`\n──────────────────────────────────────────`);
-  console.log(`PASSED ${passed}, FAILED ${failures.length}${skipped ? `, SKIPPED ${skipped}` : ""}`);
-  if (failures.length) { console.log("FAILURES:"); failures.forEach((f) => console.log(`  - ${f}`)); process.exit(1); }
-  console.log("ALL GREEN ✅");
+  console.log(
+    `PASSED ${passed}, FAILED ${failures.length}, ` +
+      `EXECUTED ${executed}/${EXPECTED_ASSERTIONS}` +
+      (skipped ? `, SKIPPED BLOCKS ${skipped}` : ""),
+  );
+
+  if (missing > 0) {
+    console.log(
+      `\n⚠ ${missing} assertion(s) NEVER RAN. A partial run is not a pass — ` +
+        `this suite covers security behaviour, so an unrun assertion is an unknown, ` +
+        `not a success. Usually this means Docker/the local DB container was ` +
+        `unavailable, so the sqlReady() blocks were skipped.`,
+    );
+  } else if (missing < 0) {
+    console.log(
+      `\n⚠ ${-missing} MORE assertion(s) ran than EXPECTED_ASSERTIONS claims. ` +
+        `Update EXPECTED_ASSERTIONS (currently ${EXPECTED_ASSERTIONS}) in this file.`,
+    );
+  }
+
+  if (failures.length) { console.log("FAILURES:"); failures.forEach((f) => console.log(`  - ${f}`)); }
+
+  if (failures.length || missing !== 0) process.exit(1);
+  console.log(`ALL GREEN ✅ — all ${EXPECTED_ASSERTIONS} assertions ran and passed.`);
 }
 
 main().catch((e) => { console.error("\nFATAL:", e); process.exit(1); });
