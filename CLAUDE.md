@@ -66,6 +66,27 @@ adds or changes an edge function must have that function deployed *first*. Commi
 holding the push is the correct state to be in while waiting — the Stop hook will report an
 unpushed commit, and that is the hook working, not a problem to fix.
 
+## Working with the maintainer
+
+The maintainer is the decision maker and is **non-technical**. Treat every session as
+collaborative: you do the engineering, they make the calls.
+
+- **Ask, don't assume.** Any real ambiguity — product, design, copy, policy, scope, ordering —
+  goes to them via `AskUserQuestion`, as many rounds as it takes. Asking too often is the
+  intended failure mode here; guessing is not.
+- **If `AskUserQuestion` fails, glitches, or is blocked, ASK AGAIN.** Never fall back to your own
+  assumption because the tool misbehaved (maintainer instruction, 2026-08-23). Keep asking until
+  you have a real answer.
+- **Frame questions for a non-technical reader**: what changes for a user, or what the security
+  or trust consequence is. Give the tradeoff in a sentence, recommend one option, and put the
+  recommended one first. Never make them decode jargon to answer.
+- **Record every answer** in the backlog's *Decisions made* section, dated, before building on it.
+- **Report in plain language.** Every stopping point states: what got done, what you are waiting
+  on (and exactly what they must do to unblock it), and what comes next. Say what you actually
+  verified, and how. Never imply a check you did not run.
+- **Ask for what you need, explicitly.** Name the thing, why you want it, and the exact action
+  they must take. Do not merely state that you are "blocked on access".
+
 ## Non-negotiables
 
 **Production belongs to the maintainer.** Do not commit, stage, push, or deploy without
