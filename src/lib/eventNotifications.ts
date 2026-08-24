@@ -2,18 +2,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkEmailResult } from "../../supabase/functions/_shared/email-result.ts";
 
 /**
- * Cancel-notify all confirmed attendees of an event.
+ * Cancel-notify all confirmed attendees of an event, by email.
  *
  * Emails go through the AUTHORITATIVE event_cancelled handler: the client sends
  * only the eventId, and the edge function verifies the caller owns the event and
  * derives every recipient from the DB (no client-chosen recipients or content).
- * In-app notifications are still created client-side for the same attendees.
+ *
+ * In-app notifications are NOT created here — the
+ * `notify_attendees_on_event_delete` trigger on `events` does that
+ * (migration 20260824000100). See the note in the body for why.
+ *
+ * Takes only the eventId: the title, date and club name it used to accept were
+ * needed solely by the removed client-side notification loop, since both the
+ * email handler and the trigger derive them from the database themselves.
  */
 export async function sendEventCancellationEmails(
-  eventId: string,
-  eventTitle: string,
-  _eventDate: string,
-  clubName: string
+  eventId: string
 ): Promise<{ success: boolean; sent: number; error?: string }> {
   try {
     // 1. Authoritative bulk email send.
@@ -26,24 +30,18 @@ export async function sendEventCancellationEmails(
     const sent = emailResult.sent ?? 0;
     const emailError = emailResult.ok ? undefined : emailResult.error;
 
-    // 2. In-app notifications for the same confirmed attendees (unchanged behavior).
-    const { data: rsvps } = await supabase
-      .from("rsvps")
-      .select("student_profiles:student_id ( user_id )")
-      .eq("event_id", eventId)
-      .eq("status", "confirmed");
-
-    for (const rsvp of rsvps ?? []) {
-      const uid = (rsvp.student_profiles as unknown as { user_id: string } | null)?.user_id;
-      if (!uid) continue;
-      await supabase.from("notifications").insert({
-        user_id: uid,
-        type: "event_cancelled",
-        title: "Event Cancelled",
-        message: `${eventTitle} by ${clubName} has been cancelled.`,
-        related_id: eventId,
-      });
-    }
+    // 2. In-app notifications are NO LONGER created here. They are created by the
+    //    `notify_attendees_on_event_delete` BEFORE DELETE trigger on `events`
+    //    (migration 20260824000100), which reads the confirmed attendees while the
+    //    cascade still has them.
+    //
+    //    This moved server-side because doing it from the browser required the
+    //    `notifications` INSERT policy to be open to every authenticated user —
+    //    which let anyone forge a notification for anyone, with any wording (S8).
+    //    The browser now has no INSERT privilege on that table at all.
+    //
+    //    Emails stay here: they go through the send-email edge function, which
+    //    verifies the caller and derives recipients server-side.
 
     return { success: !emailError, sent, error: emailError };
   } catch (err) {

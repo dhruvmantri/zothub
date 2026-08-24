@@ -55,43 +55,24 @@ export function useClubEvents(clubId: string | null) {
   }, [fetchEvents]);
 
   const deleteEvent = async (id: string) => {
-    // Fetch event details before deletion to send cancellation emails
-    const { data: eventData } = await supabase
-      .from("events")
-      .select("title, event_date, club_id")
-      .eq("id", id)
-      .single();
-
-    // Get club name for the cancellation email
-    let clubName = "Unknown Club";
-    if (eventData?.club_id) {
-      const { data: clubData } = await supabase
-        .from("club_profiles")
-        .select("club_name")
-        .eq("id", eventData.club_id)
-        .single();
-      if (clubData?.club_name) {
-        clubName = clubData.club_name;
-      }
+    // Email the confirmed attendees BEFORE the row goes, because the edge
+    // function derives the recipient list from the event's RSVPs and
+    // rsvps.event_id is ON DELETE CASCADE.
+    //
+    // The in-app notifications are handled by the notify_attendees_on_event_delete
+    // trigger on `events` (migration 20260824000100), so nothing here inserts them.
+    // That is also why this no longer pre-fetches the title, date and club name:
+    // they were only ever passed to the removed client-side notification loop —
+    // both the email handler and the trigger read them from the database.
+    const result = await sendEventCancellationEmails(id);
+    if (result.sent > 0) {
+      console.log(`Sent ${result.sent} cancellation emails`);
+    }
+    if (result.error) {
+      console.error("Some cancellation emails failed:", result.error);
     }
 
-    // Send cancellation emails to all confirmed attendees
-    if (eventData) {
-      const result = await sendEventCancellationEmails(
-        id,
-        eventData.title,
-        eventData.event_date,
-        clubName
-      );
-      if (result.sent > 0) {
-        console.log(`Sent ${result.sent} cancellation emails`);
-      }
-      if (result.error) {
-        console.error("Some cancellation emails failed:", result.error);
-      }
-    }
-
-    // Now delete the event
+    // Now delete the event. The trigger fires here.
     const { error } = await supabase
       .from("events")
       .delete()
