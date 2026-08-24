@@ -70,6 +70,10 @@ BEGIN
   JOIN student_profiles sp ON sp.id = r.student_id
   WHERE r.event_id = OLD.id
     AND r.status = 'confirmed'
+    -- Belt and braces: student_profiles.user_id is NOT NULL today, so this can
+    -- never filter anything (only club_profiles.user_id was made nullable, by
+    -- MB5 / 20260727000100). Kept deliberately — it costs nothing and the day that
+    -- column becomes nullable this stops the trigger inserting a NULL recipient.
     AND sp.user_id IS NOT NULL;
 
   RETURN OLD;
@@ -86,6 +90,11 @@ EXECUTE FUNCTION public.notify_attendees_on_event_delete();
 -- theirs explicitly; the SECURITY DEFINER triggers above are owned by the table
 -- owner and so are unaffected by either the policy or the grant.
 DROP POLICY IF EXISTS "System can insert notifications" ON public.notifications;
+-- Also drop the NEW name: guarding only the old one made a second apply fail with
+-- 'policy already exists'. The BEGIN/COMMIT wrapper rolled that back cleanly, so it
+-- was a re-runnability defect rather than a corruption risk — but it is exactly the
+-- DP10 fault this migration's header claims to avoid.
+DROP POLICY IF EXISTS "Service role can insert notifications" ON public.notifications;
 
 CREATE POLICY "Service role can insert notifications"
 ON public.notifications FOR INSERT
@@ -96,6 +105,14 @@ WITH CHECK (true);
 -- table-level privilege, and a missing policy is irrelevant if the privilege is
 -- absent. Revoke the privilege too, so neither alone can reopen this.
 REVOKE INSERT ON public.notifications FROM anon, authenticated;
+
+-- Note for future readers: 20260710000100's header says it inserts "via the
+-- existing 'System can insert notifications' policy". After this migration that
+-- policy no longer exists, and the trigger works regardless — table-owner
+-- SECURITY DEFINER functions bypass both the policy and the REVOKE (verified
+-- empirically, not assumed). That comment is stale, but the migration is already
+-- applied in production so it is left untouched rather than rewritten. Do not
+-- re-add a permissive policy on its account.
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 2. S7 — reminder_logs: stop anyone permanently muting another user's reminders
@@ -112,6 +129,7 @@ REVOKE INSERT ON public.notifications FROM anon, authenticated;
 -- The permissive policy was never needed.
 
 DROP POLICY IF EXISTS "System can insert reminder logs" ON public.reminder_logs;
+DROP POLICY IF EXISTS "Service role can insert reminder logs" ON public.reminder_logs;
 
 CREATE POLICY "Service role can insert reminder logs"
 ON public.reminder_logs FOR INSERT
@@ -120,7 +138,12 @@ WITH CHECK (true);
 
 REVOKE INSERT ON public.reminder_logs FROM anon, authenticated;
 
--- Users keep reading their own rows (policy from 20260121001924 is untouched).
+-- Users keep reading their own rows: the SELECT policy from 20260121001924 is
+-- untouched, and this migration revokes INSERT only. Caveat for anyone testing this
+-- locally: a fresh `supabase db reset` does NOT grant `authenticated` SELECT on this
+-- table, so that policy is unreachable on a local stack — the very "a permissive
+-- policy is unreachable without the table-level privilege" point made above, in
+-- reverse. Production has the grant. Do not use a local stack as evidence either way.
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 3. S9 — club-assets: constrain the public bucket
