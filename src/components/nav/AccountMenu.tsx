@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EntityAvatar } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { ThemeToggleGroup } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,6 +18,9 @@ interface AccountMenuProps {
   displayName: string;
   subtitle: string;
   avatarUrl?: string | null;
+  /** True while the profile is still resolving. Render a skeleton rather than the
+   *  email-derived fallback — showing "MA" and then correcting to "DM" is UX7. */
+  isLoading?: boolean;
 }
 
 /**
@@ -25,7 +29,7 @@ interface AccountMenuProps {
  * rounded-square for clubs — shape tells you which account you are in before
  * you read the name.
  */
-export function AccountMenu({ role, displayName, subtitle, avatarUrl }: AccountMenuProps) {
+export function AccountMenu({ role, displayName, subtitle, avatarUrl, isLoading = false }: AccountMenuProps) {
   const { signOut } = useAuth();
   const isClub = role === "club";
 
@@ -37,12 +41,22 @@ export function AccountMenu({ role, displayName, subtitle, avatarUrl }: AccountM
           aria-label="Account menu"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-lg py-1 pl-1 pr-1.5 text-ink-2 transition-colors duration-fast ease-zh hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-surface-3"
         >
-          <EntityAvatar
-            name={displayName}
-            src={avatarUrl}
-            kind={isClub ? "org" : "person"}
-            size="sm"
-          />
+          {isLoading ? (
+            <div
+              className={cn(
+                "size-8 shrink-0 animate-pulse bg-surface-3",
+                isClub ? "rounded-md" : "rounded-full",
+              )}
+              aria-hidden
+            />
+          ) : (
+            <EntityAvatar
+              name={displayName}
+              src={avatarUrl}
+              kind={isClub ? "org" : "person"}
+              size="sm"
+            />
+          )}
           <ChevronDown className="size-3.5 shrink-0 text-ink-3 transition-transform duration-fast ease-zh" aria-hidden />
         </button>
       </DropdownMenuTrigger>
@@ -51,8 +65,18 @@ export function AccountMenu({ role, displayName, subtitle, avatarUrl }: AccountM
           and it gives a long club name somewhere to go. */}
       <DropdownMenuContent align="end" className="w-[272px] p-1.5">
         <div className="border-b border-line px-3 pb-2.5 pt-2">
-          <p className="truncate text-sm font-semibold text-ink">{displayName}</p>
-          <p className="truncate text-xs text-ink-3">{subtitle}</p>
+          {isLoading ? (
+            <>
+              <div className="h-4 w-28 animate-pulse rounded bg-surface-3" aria-hidden />
+              <div className="mt-1 h-3 w-20 animate-pulse rounded bg-surface-3" aria-hidden />
+              <span className="sr-only">Loading your account</span>
+            </>
+          ) : (
+            <>
+              <p className="truncate text-sm font-semibold text-ink">{displayName}</p>
+              <p className="truncate text-xs text-ink-3">{subtitle}</p>
+            </>
+          )}
         </div>
 
         <DropdownMenuItem asChild>

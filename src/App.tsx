@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -52,7 +54,41 @@ const ClubsPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/dev/ClubsPreview"))
   : null;
 
-const queryClient = new QueryClient();
+// Step zero of adopting TanStack Query (UX15). A bare `new QueryClient()` inherits
+// v5's `staleTime: 0`, which means every mount refetches immediately — so adopting
+// the library WITHOUT this changes nothing a user can feel, and the "page never
+// changed" complaint (UX1) survives the whole migration.
+//
+// 60s is chosen against how this data actually behaves: club listings, events and
+// opportunities are edited by humans a few times a day, so a minute-old list is
+// never meaningfully wrong, while a minute is far longer than a browse session's
+// back-and-forth — which is exactly the navigation that felt slow.
+//
+// gcTime 5m keeps an unmounted page's data around long enough that going
+// Clubs -> a club -> back is instant rather than a refetch.
+//
+// refetchOnWindowFocus is off: a student alt-tabbing back should not see every
+// list flash. retry 1 because a second attempt fixes a blip without making a
+// genuine failure take four round-trips to surface.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+/**
+ * Scroll behaviour on navigation (UX14). Must render inside <BrowserRouter> to
+ * have router context, which is why it is a component rather than a call in App.
+ */
+const ScrollBehaviour = () => {
+  useScrollRestoration();
+  return null;
+};
 
 /** Full-screen fallback shown while a route chunk loads. */
 const RouteFallback = () => (
@@ -81,6 +117,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ScrollBehaviour />
           <AuthProvider>
           <Suspense fallback={<RouteFallback />}>
           <Routes>

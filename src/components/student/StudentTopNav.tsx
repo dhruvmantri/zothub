@@ -9,7 +9,9 @@ interface StudentTopNavProps {
 
 /** Discover · Clubs · Activity · Messages (Structure §2). */
 export function StudentTopNav({ unreadMessageCount, notificationCount }: StudentTopNavProps) {
-  const { displayName, subtitle, avatarUrl } = useAccountIdentity();
+  // isLoading is destructured deliberately: dropping it is exactly what made the
+  // avatar flash the email-derived initials on every route change (UX7).
+  const { displayName, subtitle, avatarUrl, isLoading } = useAccountIdentity();
 
   return (
     <TopNav
@@ -18,6 +20,7 @@ export function StudentTopNav({ unreadMessageCount, notificationCount }: Student
       displayName={displayName}
       subtitle={subtitle}
       avatarUrl={avatarUrl}
+      isLoading={isLoading}
       counts={{ messages: unreadMessageCount, responses: 0 }}
       notificationCount={notificationCount}
     />

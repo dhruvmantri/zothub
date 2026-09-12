@@ -12,6 +12,9 @@ export interface TopNavProps {
   displayName: string;
   subtitle: string;
   avatarUrl?: string | null;
+  /** Forwarded to AccountMenu so the avatar skeletons instead of flashing the
+   *  email-derived initials on every navigation (UX7). */
+  isLoading?: boolean;
   counts: { messages: number; responses: number };
   notificationCount: number;
 }
@@ -31,6 +34,7 @@ export function TopNav({
   displayName,
   subtitle,
   avatarUrl,
+  isLoading,
   counts,
   notificationCount,
 }: TopNavProps) {
@@ -103,6 +107,7 @@ export function TopNav({
             displayName={displayName}
             subtitle={subtitle}
             avatarUrl={avatarUrl}
+            isLoading={isLoading}
           />
         </div>
       </div>

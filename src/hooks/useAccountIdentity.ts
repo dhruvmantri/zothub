@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfileLookup } from "@/hooks/useProfileLookup";
+import { useProfile } from "@/hooks/useProfileLookup";
 
 export interface AccountIdentity {
   displayName: string;
@@ -15,42 +13,19 @@ export interface AccountIdentity {
 /**
  * Who the signed-in account is, for the nav avatar and account menu.
  *
- * Reuses the existing `useProfileLookup` resolver (club first, then student)
- * rather than adding another profile query — it is already cached and already
- * handles both shapes. Falls back to the email local-part so the nav still
- * reads as a person before the profile lands.
+ * Now reads through the shared TanStack Query cache (UX15) instead of running its
+ * own `useEffect` + `useState`. That is the actual fix for UX7: the old version
+ * re-resolved the profile on every mount, and the nav remounts per route, so the
+ * avatar showed the email-derived initials ("MA") and then corrected itself
+ * ("DM") on EVERY navigation. The profile is now resolved once and reused, so
+ * `isLoading` is true only on the genuine first load of a session.
+ *
+ * Consumers must still honour `isLoading` — rendering the fallback while loading
+ * is what produced the flash in the first place.
  */
-type ResolvedIdentity = Omit<AccountIdentity, "isLoading">;
-
 export function useAccountIdentity(): AccountIdentity {
   const { user, role } = useAuth();
-  const { fetchProfileInfo } = useProfileLookup();
-  const [identity, setIdentity] = useState<ResolvedIdentity | null>(null);
-  const [settled, setSettled] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) {
-      setIdentity(null);
-      setSettled(true);
-      return;
-    }
-    setSettled(false);
-    fetchProfileInfo(user.id).then((p) => {
-      if (cancelled) return;
-      if (p) {
-        setIdentity({
-          displayName: p.name,
-          subtitle: p.isClub ? "Club" : "Student · UCI",
-          avatarUrl: p.avatar ?? null,
-        });
-      }
-      setSettled(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, fetchProfileInfo]);
+  const { data: profile, isPending } = useProfile(user?.id);
 
   // A club's email local-part ("skhan7") is not its name — only fall back to it
   // for students, where the handle often reads as a person. Clubs get a neutral
@@ -58,12 +33,21 @@ export function useAccountIdentity(): AccountIdentity {
   const fallbackName =
     role === "club" ? "Your club" : user?.email?.split("@")[0] || "You";
 
-  const resolved: ResolvedIdentity =
-    identity ?? {
-      displayName: fallbackName,
-      subtitle: role === "club" ? "Club" : "Student · UCI",
-      avatarUrl: null,
+  if (profile) {
+    return {
+      displayName: profile.name,
+      subtitle: profile.isClub ? "Club" : "Student · UCI",
+      avatarUrl: profile.avatar ?? null,
+      isLoading: false,
     };
+  }
 
-  return { ...resolved, isLoading: !settled && !identity };
+  return {
+    displayName: fallbackName,
+    subtitle: role === "club" ? "Club" : "Student · UCI",
+    avatarUrl: null,
+    // Signed out is a settled state, not a loading one — otherwise every
+    // logged-out surface renders a permanent skeleton.
+    isLoading: Boolean(user) && isPending,
+  };
 }

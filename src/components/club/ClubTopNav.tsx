@@ -11,7 +11,9 @@ interface ClubTopNavProps {
 
 /** Postings · Responses · Messages · My Club (Structure §5). */
 export function ClubTopNav({ unreadMessageCount, notificationCount, applicationCount }: ClubTopNavProps) {
-  const { displayName, subtitle, avatarUrl } = useAccountIdentity();
+  // isLoading is destructured deliberately: dropping it is exactly what made the
+  // avatar flash the email-derived initials on every route change (UX7).
+  const { displayName, subtitle, avatarUrl, isLoading } = useAccountIdentity();
 
   return (
     <TopNav
@@ -20,6 +22,7 @@ export function ClubTopNav({ unreadMessageCount, notificationCount, applicationC
       displayName={displayName}
       subtitle={subtitle}
       avatarUrl={avatarUrl}
+      isLoading={isLoading}
       counts={{ messages: unreadMessageCount, responses: applicationCount }}
       notificationCount={notificationCount}
     />
