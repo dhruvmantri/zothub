@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Clock, Globe, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
@@ -9,39 +9,17 @@ import { Tag } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntityAvatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/discover/EmptyState";
-import { supabase } from "@/integrations/supabase/client";
+import { ErrorState } from "@/components/discover/ErrorState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
 import { useBookmarks } from "@/hooks/useBookmarks";
-import { toast } from "sonner";
+import { useOpportunityDetail } from "@/hooks/useOpportunityDetail";
 import { ApplicationForm } from "@/components/ApplicationForm";
 import { ShareButton } from "@/components/ShareButton";
 import { SuccessModal } from "@/components/SuccessModal";
 import { opportunityTypeLabel } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { Bookmark, BookmarkCheck } from "lucide-react";
-import type { FormQuestion } from "@/types";
-
-interface OpportunityDetail {
-  id: string;
-  title: string;
-  type: string;
-  description: string | null;
-  requirements: string | null;
-  deadline: string | null;
-  application_questions: FormQuestion[] | null;
-  show_application_count: boolean;
-  created_at: string;
-  club_id: string;
-  club_profiles: {
-    id: string;
-    club_name: string;
-    logo_url: string | null;
-    description: string | null;
-    website_url: string | null;
-  };
-  applications: { id: string }[];
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -54,144 +32,38 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
+  // Only for the success modal's two buttons. The READ no longer navigates:
+  // a queryFn that redirects on a missing row teleports people mid-read, and
+  // it runs on background refetches and retries too (O13).
   const navigate = useNavigate();
   const { user, role } = useAuth();
 
+  // Stays an effect with its ref guard (M20): in a query a cache hit would
+  // stop counting views; in a retrying mutation StrictMode would inflate them.
   useTrackView("opportunity", id);
 
-  const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasApplied, setHasApplied] = useState(false);
+  const { opportunity, isPending, isError, isFetching, refetch, hasApplied } =
+    useOpportunityDetail(id);
+
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const isOpportunityBookmarked = id ? isBookmarked(id) : false;
 
-  useEffect(() => {
-    if (id) {
-      fetchOpportunity();
-      if (user) {
-        checkExistingApplication();
-      }
-    }
-  }, [id, user]);
-
-  const fetchOpportunity = async () => {
-    if (!id) return;
-
-    try {
-      // application_questions is only needed by the (auth-only) application form,
-      // so it is requested only when logged in — anon has no column grant for it.
-      const { data, error } = (await supabase
-        .from("opportunities")
-        .select(
-          `id, title, type, description, requirements, deadline, ${user ? "application_questions, " : ""}show_application_count, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url), applications (id)`
-        )
-        .eq("id", id)
-        .eq("is_active", true)
-        .maybeSingle()) as unknown as {
-          data:
-            | {
-                id: string;
-                title: string;
-                type: string;
-                description: string | null;
-                requirements: string | null;
-                deadline: string | null;
-                application_questions?: unknown;
-                show_application_count: boolean | null;
-                created_at: string;
-                club_id: string;
-                club_profiles: OpportunityDetail["club_profiles"];
-                applications: { id: string }[];
-              }
-            | null;
-          error: { message: string } | null;
-        };
-
-      if (error) {
-        console.error("Error fetching opportunity:", error);
-        toast.error("Failed to load opportunity");
-        return;
-      }
-
-      if (!data) {
-        toast.error("Opportunity not found");
-        navigate("/opportunities");
-        return;
-      }
-
-      let parsedQuestions: FormQuestion[] | null = null;
-      if (data.application_questions && Array.isArray(data.application_questions)) {
-        parsedQuestions = (data.application_questions as unknown[]).map((q: unknown) => {
-          const question = q as Record<string, unknown>;
-          return {
-            id: String(question.id || ""),
-            type: (question.type as FormQuestion["type"]) || "short_text",
-            question: String(question.question || ""),
-            required: Boolean(question.required),
-            options: Array.isArray(question.options) ? (question.options as string[]) : undefined,
-            placeholder: question.placeholder ? String(question.placeholder) : undefined,
-          };
-        });
-      }
-
-      setOpportunity({
-        id: data.id,
-        title: data.title,
-        type: data.type,
-        description: data.description,
-        requirements: data.requirements,
-        deadline: data.deadline,
-        application_questions: parsedQuestions,
-        show_application_count: data.show_application_count ?? true,
-        created_at: data.created_at,
-        club_id: data.club_id,
-        club_profiles: data.club_profiles as OpportunityDetail["club_profiles"],
-        applications: data.applications as { id: string }[],
-      });
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const checkExistingApplication = async () => {
-    if (!user || !id) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from("student_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!profile) return;
-
-      const { data, error } = await supabase
-        .from("applications")
-        .select("id")
-        .eq("opportunity_id", id)
-        .eq("student_id", profile.id)
-        .maybeSingle();
-
-      if (!error && data) setHasApplied(true);
-    } catch (err) {
-      console.error("Error checking application:", err);
-    }
-  };
-
   const handleApplicationSuccess = () => {
-    setHasApplied(true);
+    // `hasApplied` is no longer local state — ApplicationForm patches the
+    // shared applications cache and invalidates it (M3), which flips this page
+    // AND the Applied badge on the roles list from the one write. Setting a
+    // local flag here as well would be a second source of truth for the same
+    // fact, and the two would disagree the moment the refetch disagreed.
     setShowApplicationForm(false);
     setShowSuccessModal(true);
   };
 
   const deadlinePassed = !!opportunity?.deadline && new Date(opportunity.deadline) < new Date();
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <RoleBasedLayout>
         <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -202,6 +74,18 @@ export default function OpportunityDetail() {
             <Skeleton className="h-6 w-32" />
           </div>
           <Skeleton className="mt-8 h-40 w-full rounded-lg" />
+        </div>
+      </RoleBasedLayout>
+    );
+  }
+
+  // A failed load is NOT a closed role. Checked before the not-found branch so
+  // a network hiccup can never tell a student that a posting has closed.
+  if (isError) {
+    return (
+      <RoleBasedLayout>
+        <div className="container mx-auto max-w-3xl px-4 py-16">
+          <ErrorState noun="this role" onRetry={() => refetch()} isRetrying={isFetching} />
         </div>
       </RoleBasedLayout>
     );
