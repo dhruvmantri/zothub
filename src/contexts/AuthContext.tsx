@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 type UserRole = "student" | "club" | "admin" | null;
@@ -17,6 +18,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // AuthProvider sits inside QueryClientProvider (App.tsx), so this resolves.
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
@@ -205,6 +208,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setRole(null);
     localStorage.removeItem("zothub_intended_role");
+
+    // Drop every cached query. Nothing did this before, which was harmless only
+    // while the app had no cache at all — the pre-UX15 code refetched everything
+    // on mount. Now that reads are cached for gcTime (5 minutes), the previous
+    // account's rows would otherwise stay resident in the same tab after signing
+    // out: profile, bookmarks, applications, unread counts.
+    //
+    // Per-user query keys stop account B from *reading* account A's entry, but
+    // they do not evict it. This does, and it is what makes the user-scoped keys
+    // added by the migration safe.
+    //
+    // clear() rather than removeQueries per key: a key added later and not listed
+    // here would silently survive, and the failure mode of forgetting one is a
+    // privacy leak rather than a visible bug.
+    queryClient.clear();
   };
 
   return (

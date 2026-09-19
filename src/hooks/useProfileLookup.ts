@@ -1,7 +1,8 @@
 import { useCallback } from "react";
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { profileKeys } from "@/lib/queryKeys";
 
 export interface ProfileInfo {
   id: string;
@@ -30,10 +31,9 @@ export interface ProfileInfo {
  * flashing the wrong initials on every navigation (UX7).
  */
 
-export const profileKeys = {
-  all: ["profile"] as const,
-  byUser: (userId: string) => ["profile", "byUser", userId] as const,
-};
+// Re-exported from the single registry (src/lib/queryKeys.ts) so the keys cannot
+// drift from the mutations in other files that must invalidate them.
+export { profileKeys } from "@/lib/queryKeys";
 
 /** The resolver itself — plain async, so it can be reused by both hooks below. */
 export async function resolveProfile(userId: string): Promise<ProfileInfo | null> {
@@ -173,9 +173,4 @@ export function useProfileLookup() {
   }, [queryClient]);
 
   return { fetchProfileInfo, fetchProfileInfoBatch, clearCache };
-}
-
-/** Drop every cached profile — call on sign-out so the next account starts clean. */
-export function clearProfileCache(queryClient: QueryClient) {
-  queryClient.removeQueries({ queryKey: profileKeys.all });
 }
