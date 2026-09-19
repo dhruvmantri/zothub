@@ -1,123 +1,76 @@
-# ZotHub — Handoff: pre-launch fix-up phase
+# ZotHub — Handoff
 
-**Read this first**, then [`BACKLOG.md`](./BACKLOG.md). Rewritten **2026-08-23**, replacing the
-2026-08-11 version, which had gone stale in six specific ways (it listed `MB6` as a launch
-blocker, treated `D1a` as live, posed `UX15` as an open question, claimed no `CLAUDE.md` existed,
-described the repo as clean at a commit two commits back, and asserted a 115/115 test pass that
-was not true).
+**Read this first, then `BACKLOG.md`.** Rewritten 2026-09-19.
 
 | File | What it is |
 |---|---|
-| **[`BACKLOG.md`](./BACKLOG.md)** | **The single log of everything open, and every decision made.** If any other doc disagrees, this one wins. |
-| [`../CLAUDE.md`](../CLAUDE.md) | The working agreement: doc ownership, git identity, non-negotiables, architectural traps. |
-| [`../prd.md`](../prd.md) | Product definition. Spec, not a tracker. |
-| [`design/design-system.md`](./design/design-system.md) | Tokens, type, spacing, the 6 operating rules. **AA contrast is a merge gate.** |
-| [`archive/`](./archive/), `../plan.md` | Frozen history. Never take direction from them. |
+| **[`BACKLOG.md`](./BACKLOG.md)** | **The single log of everything open, and every maintainer decision (dated).** If any doc disagrees, this wins. |
+| [`../CLAUDE.md`](../CLAUDE.md) | Working agreement: git identity, deploy order, doc discipline, how to work with the maintainer. |
+| [`../prd.md`](../prd.md) | Product spec. [`design/design-system.md`](./design/design-system.md) — tokens, **AA contrast is a merge gate**. |
+| [`../plan.md`](../plan.md), [`archive/`](./archive/) | History only. Never take direction from them. |
 
 ---
 
-## 1. What this phase is
+## 1. State
 
-**Finish the app, then plan the launch.** Maintainer decision, 2026-08-23: **full quality bar, no
-date pressure** — everything in the backlog, plus whatever a fresh audit turns up. Test data is
-purged immediately before launch (`D1`), and go-to-market is deliberately not being designed yet.
+- **`main` @ `f36c4e3`**, clean, pushed. CI (`.github/workflows/checks.yml`) green on every push — tsc + lint + 14 unit tests + build-fails-without-`VITE_TURNSTILE_SITE_KEY`.
+- **Production is live and verified** (zothub.app). Verified by downloading the live JS bundles and grepping them — Chromium here cannot reach https (proxy CA untrusted; the workaround is correctly blocked, do not retry it). Local dev + Playwright works fine.
+- Gate: `npx tsc -p tsconfig.app.json --noEmit` (0) · `npx eslint src` (**0 errors, 34 warnings = baseline, do not grow it**) · 14/14 unit tests · `npm run build`.
+- E2E (`bash tests/e2e/run.sh`) needs a Docker daemon: `sudo dockerd`, plus a `nofile`-clamping `docker` shim (sandbox hard cap 20000) and a pre-warmed Deno module cache. Prints `EXECUTED n/115` and **exits 1 if any assertion did not run**.
 
-The organising goal is unchanged: **the landing page is the quality bar.** Every other surface
-should match it for polish, consistency and honesty.
+## 2. Architecture decided this session
 
-## 2. Where the product actually is
+- **TanStack Query adopted properly** (UX15). `App.tsx`: `staleTime 60s`, `gcTime 5m`, `refetchOnWindowFocus false`, `retry 1`. A bare `new QueryClient()` inherits `staleTime: 0` — without this the whole migration is a no-op.
+- **`src/lib/queryKeys.ts` is the single key registry, imports nothing** (writers and readers live in different files; hanging keys off hooks would make imports cyclic). Shape `[table, discriminator, ...ids]` — **root is the TABLE the rows come from, never the page**, so a table-shaped write invalidates every cached read of it. Public vs owner-scoped reads never share a key. `authScope(user?.id)` = the viewer **id**, never a boolean.
+- **Always key on `user.id` (string), never the `user` object** — `AuthContext` replaces it on every `TOKEN_REFRESHED`.
+- **`queryFn` must THROW** — supabase-js *resolves* `{data,error}`, so the old log-and-return shape caches `undefined` as success.
+- **`isPending` for skeletons**, but `Boolean(gate) && isPending` on any `enabled:` query (otherwise it stays pending forever and disables controls for signed-out users).
+- **Migration is wave-ordered** because files share keys. See §5.
 
-Live at [zothub.app](https://zothub.app) on Vercel + self-owned Supabase. **725 clubs, 0 with a
-logo, 5 opportunities (all test junk), 0 active events, 0 claimed clubs, 3 real accounts.**
+## 3. Files changed, and why
 
-**Read that again before designing anything:** those 5 opportunities are test data deleted right
-before launch, so **discovery ships EMPTY.** Design the empty state as the default launch
-experience (`UX17a/b/c`).
+| File | Why |
+|---|---|
+| `src/lib/queryKeys.ts`, `src/lib/queryFns.ts` | New. Key registry + fetchers shared by 2+ files. |
+| `src/contexts/AuthContext.tsx` | `queryClient.clear()` on sign-out (**A2** — nothing did; previous account's data survived 5 min). Google-OAuth provisioning moved to the edge function. |
+| `supabase/functions/provision-oauth-user/` | New. **A1** — Google signup created no profile, silently (RLS rejected the browser insert; result never checked). |
+| `supabase/migrations/20260824000100_…` | **S7/S8/S9** — closed forged notifications, reminder-muting, unbounded uploads. Applied to prod. |
+| `src/pages/Help.tsx` + `/faq`,`/support`,`/contact` redirects | **MB4**. Closed 3 dead "contact support" ends. |
+| `src/pages/Privacy.tsx` | **D3/MB7/UX4** — removed a false data-export promise; real contact address. |
+| `src/hooks/useScrollRestoration.ts` | **UX14**. Tracks position *continuously* — reading it at teardown reads the **new** page's clamped value. |
+| `src/hooks/useProfileLookup.ts`, `useAccountIdentity.ts`, nav components | **UX7** — the "cache" was component-local and died every route. |
+| `src/hooks/useBookmarks.ts`, `useStudentProfileId.ts`, `useNavigationCounts.ts` | Wave 1. Includes `NavigationCountsSync` mounted once in `App.tsx`. |
+| `src/pages/Clubs.tsx`, `Landing.tsx`, `components/discover/ErrorState.tsx` | Wave 2 + the error-vs-empty fix. |
+| `src/pages/StudentDashboard.tsx` | **A3** — `handleUnfollow` bypasses `useBookmarks`; now invalidates. |
 
-### Shipped this phase (2026-08-23)
+## 4. Open / TODO
 
-- **`A1` — Google OAuth signup was broken and silent.** It created an account with no profile,
-  because the browser's profile INSERT was rejected by RLS and the result was never checked.
-  Fixed by a new `provision-oauth-user` edge function. ⚠️ **The function still needs deploying**
-  (`supabase functions deploy provision-oauth-user`) — the frontend is live but inert until then.
-- **`MB4`** — `/help` ships, and the three surfaces that promised "contact support" with nowhere
-  to go now link to it. **`D3`/`MB7`/`UX4`** — the privacy policy no longer promises a data export
-  that does not exist, and its contact address is real and clickable.
-- **`UX20`** — a dark-mode device was being served the light theme.
-- **`T1`/`S10`** — a deploy gate exists, and a production build now refuses to complete without
-  the env vars that are inlined into it.
-- **`S7`/`S8`/`S9`** — migration `20260824000100` written and locally verified. ⚠️ **Not applied.**
+- **`R2`** — reminder cron schedule unversioned (prod-only state). **`S5`/`R1`** — `send-reminders` is unescaped and marks failed sends as delivered. **Must land before the first real club or student is onboarded** (maintainer chose to leave the cron ON; harmless at 0 users, permanent per-student failure after).
+- **`UX21`** — detail keys MUST carry `authScope(user?.id)` or a logged-out cache entry lets a student RSVP with **empty answers**. Mandatory in wave 4.
+- `MB5-logo` (589 logos, approved), `MB2` (student avatars), `MB8`, `MB3`, `S4`, `DP11`, `T4`, `O1–O15` in the reconciled contract.
+- `N1`–`N7` never exercised with real data. `RS1`/`RS2` research never done.
 
-## 3. The root causes still in play
-
-Fix these and a dozen symptoms go with them. **Do not fix the symptoms one page at a time.**
-
-**(a) There is no data layer.** TanStack Query is wired and **0 `useQuery`/`useMutation` calls
-exist**; 21 of 31 pages hand-roll `useEffect` + `isLoading`. **Decided: adopt it properly**
-(`UX15`). ⚠️ **Step zero is `App.tsx:54` — a bare `new QueryClient()`. Without
-`defaultOptions.staleTime`, adoption inherits v5's `staleTime: 0` and fixes nothing.** Also
-undocumented until now: `App.tsx:77` sets `v7_startTransition`, which keeps the outgoing page
-painted and is the switch most directly controlling the "page never changed" feel.
-
-**(b) Auth-state CTAs silently bounce.** `Signup.tsx:56-64` redirects authenticated visitors to
-their dashboard, so every marketing CTA pointing at `/signup` misroutes signed-in users. Sweep
-every CTA label against its target in **all four** auth states — there is a fourth: signed-in
-with no role.
-
-**(c) Shared components exist, but no shared compositions.** `components/discover/` has the
-parts and **no toolbar**, which is why Clubs / Events / Opportunities drifted. Build it once.
-
-**(d) Hooks expose the right signal; consumers ignore it.** `useAccountIdentity` exposes
-`isLoading` precisely so nav can skeleton; both TopNavs drop it. Worse, `useProfileLookup` holds
-its "cache" in component-local state, so a single club-dashboard navigation fires ≥4
-`club_profiles` lookups.
-
-## 4. Order of work — fixed by dependency, not by size
+## 5. THE PLAN TO LAUNCH
 
 ```
-1. Trust & legal            ✅ done
-2. Security migrations      🔄 written + verified, awaiting `db push`
-3. Deploy gate              ✅ done
-4. Data layer (UX15)        ← NEXT. staleTime first, then identity, then pages,
-                              then realtime→invalidateQueries, AuthContext LAST
-5. nav (UX2+UX6) → canonical URLs (UX8) → shared toolbar (UX11/13)
-     → CTA sweep (UX9/10/12) → empty + error states (UX17a/b/c, UX5)
-6. D1 purge test data       ← LAST, because it makes step 5's screens the default
+1. Trust & legal        ✅ live & verified
+2. Security holes       ✅ live · S6 closed (cron token is the ANON key — no action)
+3. Deploy gate (CI)     ✅ live & verified green
+4. Speed (UX15)         🔄 waves 0,1,2 done · 3,4 left
+5. Nav → URLs → toolbar → CTAs → empty states
+6. Logos, avatars, onboarding polish
+7. Verification N1–N7 (needs test accounts)
+8. S5/R1/R2 email hardening   ← BEFORE first real user
+9. D1 purge test data         ← LAST, immediately before launch
 ```
-**CTAs must come after the URL rename, or every CTA is rewritten twice. Empty states must come
-before the purge.**
 
-## 5. Rules that carry over
+**NEXT TASK, exactly:** **Wave 3** — migrate `src/pages/Events.tsx` (+ `CreateEvent`/`EditEvent` invalidation) and `src/pages/Opportunities.tsx` (+ `CreateOpportunity`/`EditOpportunity`/`useClubOpportunities`). They are parallel-safe with each other; both depend on wave 1 (done). Then **wave 4**: `ClubDetail`, `OpportunityDetail`+`ApplicationForm`, `EventDetail`+`useEventRSVP`+`RSVPForm` — each cluster must be ONE change, never split.
 
-Full detail in [`../CLAUDE.md`](../CLAUDE.md). The ones that have already cost time here:
+**The full migration contract is committed at [`ux15-migration-contract.md`](./ux15-migration-contract.md)** — unified key scheme, invalidation map `M1`–`M21`, 12 resolved conflicts, 15 traps ranked by how likely each is to cause a *silent* regression, and an out-of-scope list so waves 3–4 do not scope-creep. It was produced by a 9-file survey + reconciliation and caught several bugs that would otherwise have shipped (including `UX21` and `A3`). **Read it before touching any remaining page** — do not improvise the keys.
 
-- **Deploy order is migrations → functions → frontend**, because Vercel auto-deploys on push to
-  `main`. One reasoned exception is recorded in the backlog; the rule stands for anything with
-  live users.
-- **Every commit is authored by the maintainer.** A SessionStart hook resets the git identity
-  every session, so override per commit.
-- **Verify by running.** `UX20` and the 207 phantom lint errors were both found by running
-  things, not reading them. UI is checked in a browser, both themes, at mobile widths.
-- **A 200 is not proof of email delivery.** Use the one shared checker.
+## 6. Hard-won lessons — do not relearn
 
-## 6. How to verify
-
-```bash
-npm run verify                  # typecheck + lint + 14 unit tests
-npm run build                   # fails if VITE_* env vars are missing — by design
-bash tests/e2e/run.sh           # EXECUTED 115/115; needs a Docker daemon
-```
-**The E2E suite needs Docker** — without it 24 of 115 assertions never run. It used to print
-`ALL GREEN` anyway; it now prints `EXECUTED n/115` and exits 1 if any assertion was skipped. In a
-cloud session: `sudo dockerd`. Two sandbox accommodations are required there and are not in the
-repo: a `nofile` clamp on the docker invocation, and a pre-warmed Deno module cache (without them
-`supabase start` fails and every function returns `503 BOOT_ERROR`).
-
-## 7. Useful state
-
-- `scripts/grant_readonly_role.sql` — **maintainer-run**, creates a SELECT-only role so live-state
-  questions can be settled without a write credential. Carries its own revoke block.
-- `scripts/purge_test_data.sql` — the `D1` runbook. Transactional, with a rollback guard.
-- `scripts/verify_prod_state.sql` — SELECT-only. Q4 settles `S6` (is a service-role JWT sitting in
-  plaintext in the cron job definition?), which is **still unanswered and still a launch blocker**.
-- `/dev/clubs-preview` — DEV-only fixture harness, stripped from production builds.
+- **Verify in a browser, and check the TEST is right before believing it.** Two false failures this session: `page.goto()` is a full reload and wipes an in-memory cache; and with the local DB down every query *fails*, and failures aren't cached. Both reported "broken" for working code.
+- **Deploy order** migrations → functions → frontend. Vercel auto-deploys on push to `main`.
+- **Every commit authored `dhruvmantri <mantrid@uci.edu>`** via `git -c user.name=... --author=...`. No `Co-Authored-By`, no model name in any pushed artifact. A SessionStart hook resets the global identity every session, so override per commit.
+- **Ask, don't assume** — `AskUserQuestion`, framed for a non-technical reader, recommended option first. If the tool glitches, **ask again**; never fall back to a guess. Record answers in `BACKLOG.md` *Decisions made* before building.
