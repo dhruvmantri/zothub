@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Bookmark, BookmarkCheck, Calendar, Clock, MapPin, Users } from "lucide-react";
 import { format } from "date-fns";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useEventDetail } from "@/hooks/useEventDetail";
 import { useEventRSVP } from "@/hooks/useEventRSVP";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
@@ -15,30 +14,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntityAvatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/discover/EmptyState";
-import { toast } from "sonner";
+import { ErrorState } from "@/components/discover/ErrorState";
 import { RSVPForm } from "@/components/RSVPForm";
 import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { ShareButton } from "@/components/ShareButton";
 import { cn } from "@/lib/utils";
-import type { FormQuestion } from "@/types";
-
-interface EventDetail {
-  id: string;
-  title: string;
-  description: string | null;
-  event_date: string;
-  location: string | null;
-  capacity: number | null;
-  banner_url: string | null;
-  rsvp_questions: FormQuestion[] | null;
-  requires_approval: boolean | null;
-  club_profiles: {
-    id: string;
-    club_name: string;
-    logo_url: string | null;
-  };
-  rsvps: { id: string; student_id: string; status: string | null }[];
-}
 
 /**
  * Event detail is bucket B — the mocks never drew it. Built by extending the
@@ -54,72 +34,48 @@ export default function EventDetail() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
 
+  // Stays an effect with its ref guard (M20): in a query a cache hit would stop
+  // counting views; in a retrying mutation StrictMode would inflate them.
   useTrackView("event", id);
 
-  const [event, setEvent] = useState<EventDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { event, isPending, isError, isFetching, refetch } = useEventDetail(id);
 
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const isEventBookmarked = id ? isBookmarked(id) : false;
 
-  const fetchEvent = useCallback(async () => {
-    if (!id) return;
-
-    try {
-      // rsvp_questions is only needed by the (auth-only) RSVP form, so it is
-      // requested only when logged in — anon has no column grant for it.
-      const { data, error } = (await supabase
-        .from("events")
-        .select(
-          `id, title, description, event_date, location, capacity, banner_url, requires_approval, ${user ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url), rsvps (id, student_id, status)`
-        )
-        .eq("id", id)
-        .single()) as unknown as {
-          data: (Omit<EventDetail, "rsvp_questions"> & { rsvp_questions?: unknown }) | null;
-          error: { message: string } | null;
-        };
-
-      if (error) throw error;
-      if (!data) throw new Error("Event not found");
-
-      setEvent({
-        ...data,
-        rsvp_questions: Array.isArray(data.rsvp_questions)
-          ? (data.rsvp_questions as unknown as FormQuestion[])
-          : null,
-      });
-    } catch (error) {
-      console.error("Error fetching event:", error);
-      toast.error("Failed to load event");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user]);
-
-  useEffect(() => {
-    fetchEvent();
-  }, [fetchEvent]);
-
+  // No refetch callback any more: the hook invalidates the shared cache, which
+  // updates this page AND the events list from one write (M9-M13).
   const {
-    studentProfileId,
     hasRSVP,
     rsvpStatus,
     rsvpLoading,
     showRSVPForm,
     setShowRSVPForm,
     handleRSVP,
-    handleRSVPFormSuccess,
+    submitRSVPWithAnswers,
     confirmedRsvps,
     spotsLeft,
-  } = useEventRSVP(id, event, fetchEvent);
+  } = useEventRSVP(id, event);
 
-  if (loading) {
+  if (isPending) {
     return (
       <RoleBasedLayout>
         <div className="container mx-auto max-w-5xl px-4 py-8">
           <Skeleton className="mb-6 h-9 w-40 rounded-pill" />
           <Skeleton className="h-12 w-3/4" />
           <Skeleton className="mt-8 h-40 w-full rounded-lg" />
+        </div>
+      </RoleBasedLayout>
+    );
+  }
+
+  // A failed load is NOT a cancelled event. Checked before the not-found branch
+  // so an outage can never tell someone an event was called off.
+  if (isError) {
+    return (
+      <RoleBasedLayout>
+        <div className="container mx-auto max-w-3xl px-4 py-16">
+          <ErrorState noun="this event" onRetry={() => refetch()} isRetrying={isFetching} />
         </div>
       </RoleBasedLayout>
     );
@@ -388,7 +344,7 @@ export default function EventDetail() {
         </div>
       </div>
 
-      {showRSVPForm && event && studentProfileId && (
+      {showRSVPForm && event && (
         <RSVPForm
           event={{
             id: event.id,
@@ -397,9 +353,9 @@ export default function EventDetail() {
             club_profiles: event.club_profiles,
           }}
           questions={event.rsvp_questions || []}
-          studentProfileId={studentProfileId}
+          onSubmit={submitRSVPWithAnswers}
+          isSubmitting={rsvpLoading}
           onClose={() => setShowRSVPForm(false)}
-          onSuccess={handleRSVPFormSuccess}
         />
       )}
     </RoleBasedLayout>

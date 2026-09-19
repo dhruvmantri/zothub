@@ -1,6 +1,4 @@
 import { useState, useCallback } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,27 +10,36 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Loader2, CalendarCheck } from "lucide-react";
-import { sendRSVPConfirmation } from "@/lib/emailService";
 import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
+import type { RSVPAnswer } from "@/hooks/useEventRSVP";
 import type { FormQuestion, EventForForm } from "@/types";
 
+/**
+ * Collects the club's RSVP questions. It no longer writes.
+ *
+ * The upsert used to live here AND in useEventRSVP, with
+ * `requires_approval ? "pending" : "confirmed"` spelled out in three places.
+ * A write whose cache invalidation lives in another file is exactly how a
+ * stale attendee count survives a migration (contract M11), so this now
+ * validates, formats and hands the answers up; useEventRSVP owns the single
+ * mutation, the status decision and the confirmation email.
+ */
 interface RSVPFormProps {
   event: EventForForm;
   questions: FormQuestion[];
-  studentProfileId: string;
+  /** Receives the formatted answers. The caller owns the write. */
+  onSubmit: (answers: RSVPAnswer[]) => void;
+  isSubmitting: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export function RSVPForm({
   event,
   questions,
-  studentProfileId,
+  onSubmit,
+  isSubmitting,
   onClose,
-  onSuccess,
 }: RSVPFormProps) {
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -49,12 +56,7 @@ export function RSVPForm({
     }
   }, [errors]);
 
-  const handleSubmit = async () => {
-    if (!user) {
-      toast.error("Please log in to RSVP");
-      return;
-    }
-
+  const handleSubmit = () => {
     if (questions.length > 0) {
       const validation = validateAnswers(answers);
       if (!validation.isValid) {
@@ -64,64 +66,13 @@ export function RSVPForm({
       }
     }
 
-    setIsSubmitting(true);
-
-    try {
-      // Format answers for storage
-      const formattedAnswers = questions.map((q) => ({
+    onSubmit(
+      questions.map((q) => ({
         question_id: q.id,
         question: q.question,
         answer: answers[q.id] || (q.type === "multiple_choice" ? [] : ""),
-      }));
-
-      const status = event.requires_approval ? "pending" : "confirmed";
-
-      // Upsert, not insert: a previously-cancelled RSVP leaves a row behind, so
-      // a plain insert would hit the (event_id, student_id) unique key. Upsert
-      // reuses the existing row (re-RSVP after cancel) and records the answers.
-      const { data: rsvpRow, error } = await supabase
-        .from("rsvps")
-        .upsert(
-          {
-            event_id: event.id,
-            student_id: studentProfileId,
-            answers: formattedAnswers,
-            status,
-          },
-          { onConflict: "event_id,student_id" }
-        )
-        .select("id")
-        .single();
-
-      if (error) {
-        console.error("Error submitting RSVP:", error);
-        toast.error(
-          error.message?.toLowerCase().includes("full capacity")
-            ? "This event is at full capacity."
-            : "Failed to submit RSVP"
-        );
-        return;
-      }
-
-      if (event.requires_approval) {
-        toast.success("RSVP submitted! Awaiting approval from the organizer.");
-      } else {
-        toast.success("RSVP confirmed! See you there!");
-      }
-
-      // Send confirmation email (non-blocking). Recipient + event data are
-      // derived server-side from the rsvpId and gated on event_reminders.
-      if (rsvpRow?.id) {
-        sendRSVPConfirmation(rsvpRow.id).catch(console.error);
-      }
-
-      onSuccess();
-    } catch (err) {
-      console.error("Error:", err);
-      toast.error("An error occurred");
-    } finally {
-      setIsSubmitting(false);
-    }
+      })),
+    );
   };
 
   return (

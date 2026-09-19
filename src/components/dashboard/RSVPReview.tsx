@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EntityAvatar } from "@/components/ui/avatar";
@@ -34,6 +35,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { eventKeys } from "@/lib/queryKeys";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -73,6 +75,7 @@ interface Event {
 
 export function RSVPReview() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [rsvps, setRsvps] = useState<RSVP[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -221,6 +224,19 @@ export function RSVPReview() {
         return;
       }
 
+      // M12, extended. Approving or declining changes the CONFIRMED attendee
+      // count that this club's own browser has cached for the event's public
+      // page and for the events list. The student's copy is a different
+      // browser and cannot be reached from here — they learn over the
+      // rsvp-status realtime channel, which is why that handler invalidates
+      // rather than relying on staleness.
+      //
+      // The whole `events` prefix because this screen spans every event the
+      // club runs and the bulk path below updates several at once; a club
+      // reviewing RSVPs is infrequent enough that precision is not worth the
+      // risk of missing an id.
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+
       // Find the RSVP to get details for email
       const rsvp = rsvps.find(r => r.id === rsvpId);
 
@@ -282,6 +298,10 @@ export function RSVPReview() {
         toast.error("Could not update these RSVPs. Please refresh and try again.");
         return;
       }
+
+      // M12 — same as the single-RSVP path above, and the reason that one uses
+      // the whole prefix: this updates RSVPs across several events at once.
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
 
       // Send email notifications only for the RSVPs that actually changed
       if (newStatus === "confirmed" || newStatus === "cancelled") {
