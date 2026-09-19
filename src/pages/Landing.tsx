@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { clubKeys } from "@/lib/queryKeys";
+import { fetchAllClubsPublic } from "@/lib/queryFns";
 
 /**
  * Honest about state (Foundation §2). The hero shows **live counts only** —
@@ -17,44 +18,37 @@ import { supabase } from "@/integrations/supabase/client";
  * Nothing here describes the product's *stage* either — no "we're just getting
  * started", no "coming soon".
  */
-function useLiveCounts() {
-  const [counts, setCounts] = useState<{ roles: number; events: number; clubs: number } | null>(null);
+/**
+ * The club count for the hero.
+ *
+ * Was three counts (roles / events / clubs). The roles and events counts are
+ * removed by maintainer decision (2026-09-19, refining UX5): both will read a
+ * flat **0** from launch day until clubs start posting, and "0 open roles · 0
+ * upcoming events" is the first thing every visitor would read. The club count
+ * stays because 725 is true, durable, and the one number that argues for the
+ * product rather than against it.
+ *
+ * It now shares clubKeys.list() with /clubs instead of firing its own copy of
+ * the same RPC. Before, a Landing -> Clubs navigation downloaded all ~725 rows
+ * twice, once of them purely to take `.length`.
+ *
+ * `select` narrows the cached array to a number, so this component re-renders
+ * only when the count changes — not whenever any club row does. It is declared
+ * at module scope because an inline arrow is a new identity every render, which
+ * would re-run the selector each time.
+ */
+const selectClubCount = (rows: unknown[]): number => rows.length;
 
-  useEffect(() => {
-    let cancelled = false;
-    const now = new Date().toISOString();
-
-    Promise.all([
-      supabase
-        .from("opportunities")
-        .select("id", { count: "exact", head: true })
-        .eq("is_active", true)
-        .or(`deadline.is.null,deadline.gte.${now}`),
-      supabase
-        .from("events")
-        .select("id", { count: "exact", head: true })
-        .eq("is_active", true)
-        .gte("event_date", now),
-      supabase.rpc("get_all_clubs_public"),
-    ])
-      .then(([roles, events, clubs]) => {
-        if (cancelled) return;
-        setCounts({
-          roles: roles.count ?? 0,
-          events: events.count ?? 0,
-          clubs: Array.isArray(clubs.data) ? clubs.data.length : 0,
-        });
-      })
-      .catch(() => {
-        /* Counts are decoration on top of the hero — never block it. */
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return counts;
+function useClubCount(): number | null {
+  const { data } = useQuery({
+    queryKey: clubKeys.list(),
+    queryFn: fetchAllClubsPublic,
+    select: selectClubCount,
+  });
+  // null (not 0) while loading — Count renders its own placeholder for null, and
+  // flashing a confident "0 clubs" on the hero would be worse than showing
+  // nothing. Counts are decoration on the hero and must never block it.
+  return data ?? null;
 }
 
 /**
@@ -73,7 +67,7 @@ function Count({ value, one, many }: { value: number | null; one: string; many: 
 }
 
 export default function Landing() {
-  const counts = useLiveCounts();
+  const clubCount = useClubCount();
 
   return (
     <RoleBasedLayout>
@@ -150,11 +144,11 @@ export default function Landing() {
               </Button>
             </div>
 
-            {/* Live counts — the honest alternative to social proof. */}
+            {/* One live count — the honest alternative to social proof. The
+                roles and events counts were removed (see useClubCount): both
+                read 0 until clubs start posting. */}
             <div className="mt-9 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <Count value={counts?.roles ?? null} one="open role" many="open roles" />
-              <Count value={counts?.events ?? null} one="upcoming event" many="upcoming events" />
-              <Count value={counts?.clubs ?? null} one="club" many="clubs" />
+              <Count value={clubCount} one="club" many="clubs" />
             </div>
           </div>
         </div>

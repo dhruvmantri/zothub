@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { FilterChip } from "@/components/discover/FilterChip";
 import { EmptyState } from "@/components/discover/EmptyState";
+import { ErrorState } from "@/components/discover/ErrorState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,81 +18,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { CLUB_CATEGORIES } from "@/lib/constants";
+import { clubKeys, eventKeys, opportunityKeys, EMPTY_COUNT_MAP } from "@/lib/queryKeys";
+import {
+  fetchAllClubsPublic,
+  fetchOpenOpportunityCountsByClub,
+  fetchUpcomingEventCountsByClub,
+} from "@/lib/queryFns";
 
 type SortOption = "name-asc" | "name-desc" | "most-active";
 
+/** Module-level so the fallback identity is stable — `?? []` allocates a new
+ *  array every render and busts every useMemo below, silently cancelling the
+ *  caching win this migration exists to deliver. */
+const EMPTY_CLUBS: Club[] = [];
+
 export default function ClubsPage() {
-  const [clubs, setClubs] = useState<Club[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Genuine UI state. None of it may enter a query key: putting `searchQuery`
+  // in the key would turn every keystroke into a 725-row network round trip.
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
 
-  useEffect(() => {
-    fetchClubs();
-  }, []);
+  const clubsQuery = useQuery({
+    queryKey: clubKeys.list(),
+    queryFn: fetchAllClubsPublic,
+  });
 
-  const fetchClubs = async () => {
-    try {
-      const { data: clubsData, error: clubsError } = await supabase.rpc("get_all_clubs_public");
+  // Deliberately two queries rather than one merged read: if the counts fail,
+  // the directory still renders (undecorated) instead of going blank. That
+  // tolerance is the existing behaviour and is preserved here — a single merged
+  // fetcher would have had to swallow errors to keep it, which reintroduces the
+  // "permanently successful query" bug this migration is trying to avoid.
+  const oppCountsQuery = useQuery({
+    queryKey: opportunityKeys.countsByClub(),
+    queryFn: fetchOpenOpportunityCountsByClub,
+  });
+  const eventCountsQuery = useQuery({
+    queryKey: eventKeys.countsByClub(),
+    queryFn: fetchUpcomingEventCountsByClub,
+  });
 
-      if (clubsError) {
-        console.error("Error fetching clubs:", clubsError);
-        toast.error("Failed to load clubs");
-        return;
-      }
+  const clubs = useMemo<Club[]>(() => {
+    const rows = clubsQuery.data;
+    if (!rows) return EMPTY_CLUBS;
+    const opps = oppCountsQuery.data ?? EMPTY_COUNT_MAP;
+    const events = eventCountsQuery.data ?? EMPTY_COUNT_MAP;
+    return rows.map((club) => ({
+      ...club,
+      opportunity_count: opps[club.id] ?? 0,
+      event_count: events[club.id] ?? 0,
+    }));
+  }, [clubsQuery.data, oppCountsQuery.data, eventCountsQuery.data]);
 
-      const now = new Date().toISOString();
-      const { data: oppCounts, error: oppError } = await supabase
-        .from("opportunities")
-        .select("club_id")
-        .eq("is_active", true)
-        .or(`deadline.is.null,deadline.gte.${now}`);
+  // `isPending`, not `isFetching`: with a warm cache this is false immediately,
+  // so the skeleton never reappears on a background refetch. Gating on
+  // `isFetching` would reintroduce UX1 in a new form.
+  const isLoading = clubsQuery.isPending;
 
-      const { data: eventCounts, error: eventError } = await supabase
-        .from("events")
-        .select("club_id")
-        .eq("is_active", true)
-        .gte("event_date", new Date().toISOString());
-
-      const oppCountMap: Record<string, number> = {};
-      if (!oppError && oppCounts) {
-        oppCounts.forEach((opp) => {
-          oppCountMap[opp.club_id] = (oppCountMap[opp.club_id] || 0) + 1;
-        });
-      }
-
-      const eventCountMap: Record<string, number> = {};
-      if (!eventError && eventCounts) {
-        eventCounts.forEach((event) => {
-          eventCountMap[event.club_id] = (eventCountMap[event.club_id] || 0) + 1;
-        });
-      }
-
-      setClubs(
-        (clubsData || []).map((club) => ({
-          ...club,
-          opportunity_count: oppCountMap[club.id] || 0,
-          event_count: eventCountMap[club.id] || 0,
-        })),
-      );
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Only offer categories that some club actually uses. The old list hard-coded
-   * nine labels ("Creative", "Service"…) that did not exist in
-   * CLUB_CATEGORIES at all, so most real categories were unfilterable and
-   * several chips could never match anything. Deriving from the data means the
-   * filter bar can never drift from the taxonomy again.
-   */
   const categories = useMemo(() => {
     const used = new Set(clubs.map((c) => c.category).filter(Boolean) as string[]);
     return [
@@ -220,6 +205,14 @@ export default function ClubsPage() {
                 </div>
               ))}
             </div>
+          ) : clubsQuery.isError ? (
+            // A failed load is NOT an empty directory. Checked before the
+            // empty branch so a network failure can never render "No clubs yet".
+            <ErrorState
+              noun="the clubs"
+              onRetry={() => clubsQuery.refetch()}
+              isRetrying={clubsQuery.isFetching}
+            />
           ) : filteredAndSortedClubs.length > 0 ? (
             <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredAndSortedClubs.map((club) => (
