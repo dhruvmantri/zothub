@@ -114,7 +114,7 @@ type SortOption = "newest" | "deadline" | "popular";
 
 export default function OpportunitiesPage() {
   const { user } = useAuth();
-  const { studentProfileId } = useStudentProfileId();
+  const { studentProfileId, isLoading: isStudentProfileLoading } = useStudentProfileId();
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,6 +149,21 @@ export default function OpportunitiesPage() {
 
   const opportunities = opportunitiesQuery.data ?? EMPTY_OPPORTUNITIES;
   const appliedOpportunityIds = appliedQuery.data ?? EMPTY_ID_SET;
+
+  // UX23. "Not applied" and "we don't know yet" are different answers, and
+  // collapsing them renders a live Apply on a role the student already applied
+  // to — tap it and the unique constraint answers with a raw 23505. A cold
+  // signed-in load runs two serialised reads (student_profiles -> applications)
+  // before the truth is in, so the window is real, not theoretical.
+  //
+  // Only signed-in viewers have an unknown: a visitor has applied to nothing,
+  // and a club account resolves to no student profile — both are settled
+  // answers, not pending ones. An ERRORED read also counts as settled: we
+  // cannot do better than letting them try, and a permanently dead button
+  // would be worse than a rare duplicate-apply message.
+  const isApplicationStatePending =
+    Boolean(user) &&
+    (isStudentProfileLoading || (Boolean(studentProfileId) && appliedQuery.isPending));
 
   // `isPending`, not `isFetching`: with a warm cache this is false immediately,
   // so the skeleton never reappears on a background refetch (the UX1 fix). It
@@ -235,7 +250,9 @@ export default function OpportunitiesPage() {
       clubLogo: opp.club_profiles?.logo_url,
       saved: isBookmarked(opp.id),
       onSave: () => toggleBookmark(opp.id),
-      action: applied ? { label: "Applied", disabled: true } : { label: "Apply" },
+      action: applied
+        ? { label: "Applied", disabled: true }
+        : { label: "Apply", disabled: isApplicationStatePending },
     };
   });
 
@@ -374,6 +391,7 @@ export default function OpportunitiesPage() {
                         isBookmarked={isBookmarked(opportunity.id)}
                         onBookmark={() => toggleBookmark(opportunity.id)}
                         hasApplied={appliedOpportunityIds.has(opportunity.id)}
+                        isApplicationStatePending={isApplicationStatePending}
                       />
                     ))}
                   </div>

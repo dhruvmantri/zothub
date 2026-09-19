@@ -10,6 +10,7 @@ npx vite --host 127.0.0.1 --port 8080          # in one shell
 node tests/browser/wave3-verify.mjs            # in another
 node tests/browser/wave3-signedin.mjs
 node tests/browser/wave3-signin-transition.mjs
+node tests/browser/wave3-ux23.mjs
 ```
 
 Each script prints `PASS`/`FAIL` per check and exits non-zero if any failed.
@@ -34,4 +35,5 @@ like a broken cache.
 |---|---|
 | `wave3-verify.mjs` | Signed out: cold-load request counts, away-and-back is 0 requests and no skeleton, the `UX22` sign-in prompt on both pages, and the `ErrorState` including that **Try again** actually recovers. |
 | `wave3-signedin.mjs` | As a student (injected session): the Applied badge is right, the applications read fires once, nothing refetches on a round trip, and the sign-in prompt correctly does **not** appear. |
+| `wave3-ux23.mjs` | `UX23`: with the applications read artificially slowed, the Apply button must be a **disabled `<button>`**, not a live `<a>`, until we know whether this student already applied. Removing the guard in `Opportunities.tsx` must make this fail; that is how it was proven. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |

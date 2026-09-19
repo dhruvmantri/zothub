@@ -147,6 +147,16 @@ export interface OpportunityCardProps {
   isBookmarked?: boolean;
   onBookmark?: () => void;
   hasApplied?: boolean;
+  /**
+   * True while the viewer's applications are still being resolved.
+   *
+   * Without it the card renders a live "Apply" during that window, so a student
+   * who taps fast on a role they already applied to gets a raw
+   * "You have already applied to this opportunity" from the unique constraint.
+   * The button is disabled rather than hidden or relabelled: the layout must not
+   * shift when the answer lands. Maintainer decision, 2026-09-19 (UX23).
+   */
+  isApplicationStatePending?: boolean;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -164,6 +174,7 @@ export function OpportunityCard({
   isBookmarked,
   onBookmark,
   hasApplied,
+  isApplicationStatePending = false,
 }: OpportunityCardProps) {
   const closesAt = deadlineAt ? new Date(deadlineAt) : null;
   const closed = !!closesAt && closesAt.getTime() < Date.now();
@@ -202,6 +213,12 @@ export function OpportunityCard({
           ) : closed ? (
             <Button variant="secondary" size="sm" className="relative z-10 flex-1" disabled>
               Closed
+            </Button>
+          ) : isApplicationStatePending ? (
+            /* We do not yet know whether this student has applied. Keep the
+               word and the size, lose the affordance — see UX23. */
+            <Button variant="ink" size="sm" className="relative z-10 flex-1" disabled>
+              Apply
             </Button>
           ) : (
             /* The in-app primary verb is ink, not accent — blue is reserved for
