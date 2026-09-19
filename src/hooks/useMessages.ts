@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
+import { navCountKeys } from "@/lib/queryKeys";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileLookup, ProfileInfo } from "./useProfileLookup";
 
@@ -35,6 +38,7 @@ export interface Conversation {
 
 export function useMessages() {
   const { user, role } = useAuth();
+  const queryClient = useQueryClient();
   const { fetchProfileInfo, fetchProfileInfoBatch } = useProfileLookup();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -161,6 +165,12 @@ export function useMessages() {
         .eq("receiver_id", user.id)
         .eq("is_read", false);
 
+      // Opening a thread clears its unread messages, so the nav envelope badge
+      // is now wrong. It used to self-correct because the badge refetched on
+      // every navigation; with the count cached for 60s and the subscription
+      // hoisted, this invalidation is what actually updates it.
+      queryClient.invalidateQueries({ queryKey: navCountKeys.messages(user.id) });
+
       // Update unread count in conversations
       setConversations(prev => 
         prev.map(conv => 
@@ -172,7 +182,7 @@ export function useMessages() {
     } catch (error) {
       console.error("Error fetching messages:", error);
     }
-  }, [user]);
+  }, [user, queryClient]);
 
   // Send a message
   const sendMessage = useCallback(async (receiverId: string, content: string) => {
@@ -362,6 +372,10 @@ export function useMessages() {
               .from("messages")
               .update({ is_read: true })
               .eq("id", newMessage.id);
+
+            // Read on arrival because the thread is open — the badge must not
+            // tick up for a message the user is already looking at.
+            queryClient.invalidateQueries({ queryKey: navCountKeys.messages(user.id) });
           } else {
             // Update unread count
             setConversations(prev => {
@@ -403,7 +417,7 @@ export function useMessages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, selectedConversation, fetchProfileInfo]);
+  }, [user, selectedConversation, fetchProfileInfo, queryClient]);
 
   return {
     conversations,

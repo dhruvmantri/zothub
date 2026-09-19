@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
+import { NavigationCountsSync } from "@/hooks/useNavigationCounts";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -119,6 +120,11 @@ const App = () => (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ScrollBehaviour />
           <AuthProvider>
+            {/* Mounted ONCE, outside <Routes>, so the nav-count websocket
+                channels survive navigation. They previously lived inside the
+                per-page layouts and were torn down and rebuilt on every route
+                change. Renders nothing. */}
+            <NavigationCountsSync />
           <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />

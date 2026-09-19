@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
+import { navCountKeys } from "@/lib/queryKeys";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface Notification {
@@ -23,6 +26,21 @@ export interface NotificationPreferences {
 
 export function useNotifications() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  /**
+   * Refresh the nav bell badge after changing read state.
+   *
+   * These five mutations previously relied entirely on the realtime echo to
+   * update the badge — which worked only because the badge refetched on every
+   * navigation anyway. With the counts cached for 60s and the subscriptions
+   * hoisted, the echo is the ONLY path left, and it is not guaranteed to be
+   * prompt. TanStack dedupes this invalidation and the echo into one refetch,
+   * so calling both costs nothing.
+   */
+  const refreshNotificationBadge = useCallback(() => {
+    if (user) queryClient.invalidateQueries({ queryKey: navCountKeys.notifications(user.id) });
+  }, [queryClient, user]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,6 +141,7 @@ export function useNotifications() {
         .eq("user_id", user.id);
 
       if (error) throw error;
+      refreshNotificationBadge();
 
       setNotifications((prev) =>
         prev.map((n) =>
@@ -146,6 +165,7 @@ export function useNotifications() {
         .eq("user_id", user.id);
 
       if (error) throw error;
+      refreshNotificationBadge();
 
       setNotifications((prev) =>
         prev.map((n) =>
@@ -169,6 +189,7 @@ export function useNotifications() {
         .eq("is_read", false);
 
       if (error) throw error;
+      refreshNotificationBadge();
 
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, is_read: true }))
@@ -192,6 +213,7 @@ export function useNotifications() {
         .eq("user_id", user.id);
 
       if (error) throw error;
+      refreshNotificationBadge();
 
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       if (notification && !notification.is_read) {
@@ -212,6 +234,7 @@ export function useNotifications() {
         .eq("user_id", user.id);
 
       if (error) throw error;
+      refreshNotificationBadge();
 
       setNotifications([]);
       setUnreadCount(0);
