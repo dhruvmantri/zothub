@@ -4,7 +4,10 @@ import { format } from "date-fns";
 import { Bookmark, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
+import { bookmarkKeys, studentActivityKeys } from "@/lib/queryKeys";
 import { StudentLayout } from "@/components/student/StudentLayout";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,7 @@ type Section = "applications" | "going" | "saved" | "following";
 
 export default function StudentActivity() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [section, setSection] = useState<Section>("applications");
   const [applications, setApplications] = useState<ApplicationData[]>([]);
@@ -264,6 +268,15 @@ export default function StudentActivity() {
       if (error) throw error;
 
       setFollowedClubs((prev) => prev.filter((c) => c.id !== clubId));
+
+      // This handler writes `bookmarks` directly instead of going through
+      // useBookmarks, so nothing else would learn the follow is gone. Before the
+      // cache existed that was invisible — every page refetched on mount. Now,
+      // unfollowing here and then opening that club's page would show
+      // "Following" for up to gcTime. Invalidate what the hook owns.
+      queryClient.invalidateQueries({ queryKey: bookmarkKeys.byType(user.id, "club") });
+      queryClient.invalidateQueries({ queryKey: studentActivityKeys.byUser(user.id) });
+
       toast.success("Unfollowed");
     } catch (err) {
       console.error("Error unfollowing:", err);
