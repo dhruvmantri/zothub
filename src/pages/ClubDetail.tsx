@@ -7,142 +7,55 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrackView } from "@/hooks/useTrackView";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useClubDetail, useInvalidateClubTeam } from "@/hooks/useClubDetail";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntityAvatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/discover/EmptyState";
+import { ErrorState } from "@/components/discover/ErrorState";
 import { ContactClubDialog } from "@/components/ContactClubDialog";
 import { ClubClaimBanner } from "@/components/clubs/ClubClaimBanner";
 import { toast } from "sonner";
 import { opportunityTypeLabel } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { TeamMember } from "@/types";
-
-interface ClubDetailData {
-  id: string;
-  user_id: string | null;
-  club_name: string;
-  category: string | null;
-  description: string | null;
-  logo_url: string | null;
-  banner_url: string | null;
-  website_url: string | null;
-  linkedin_url: string | null;
-  instagram_url: string | null;
-  discord_url: string | null;
-  // ZotSpot-seed provenance (MB5). NULL across these = an organic ZotHub club.
-  source: string | null;
-  source_url: string | null;
-  imported_at: string | null;
-  claimed_at: string | null;
-}
-
-interface ClubOpportunity {
-  id: string;
-  title: string;
-  type: string;
-  description: string | null;
-  deadline: string | null;
-}
-
-interface ClubEvent {
-  id: string;
-  title: string;
-  description: string | null;
-  event_date: string;
-  location: string | null;
-}
 
 const ClubDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user, role } = useAuth();
   const navigate = useNavigate();
 
+  // Stays an effect with its own ref guard, deliberately: wrapping a view
+  // counter in a query means a cache hit stops counting views, and wrapping it
+  // in a retrying mutation inflates them under StrictMode (contract M20).
   useTrackView("club", id);
 
-  const [club, setClub] = useState<ClubDetailData | null>(null);
-  const [opportunities, setOpportunities] = useState<ClubOpportunity[]>([]);
-  const [events, setEvents] = useState<ClubEvent[]>([]);
-  const [teamMembers, setTeamMembers] = useState<
-    Pick<TeamMember, "id" | "name" | "role" | "display_order" | "user_id">[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    club,
+    opportunities,
+    events,
+    team,
+    isPending,
+    isClubError,
+    isOpportunitiesError,
+    isEventsError,
+    isRefetching,
+    refetchClub,
+    refetchOpportunities,
+    refetchEvents,
+  } = useClubDetail(id);
+
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   const { isBookmarked, toggleBookmark, isLoading: isFollowLoading } = useBookmarks("club");
   const isFollowing = id ? isBookmarked(id) : false;
 
-  const fetchTeamMembers = async () => {
-    if (!id) return;
-    const { data: teamData, error: teamError } = await supabase
-      .from("club_team_members")
-      .select("id, name, role, display_order, user_id")
-      .eq("club_id", id)
-      .eq("status", "active")
-      .order("display_order", { ascending: true });
-
-    if (!teamError) setTeamMembers(teamData || []);
-  };
-
-  useEffect(() => {
-    const fetchClubData = async () => {
-      if (!id) return;
-
-      setIsLoading(true);
-      try {
-        // user_id is public (anon-granted for RLS) and also signals whether a
-        // seeded club is still unclaimed (NULL owner); source_* / claimed_at back
-        // the unclaimed treatment. All are on the public anon column allowlist
-        // (migration 20260727000100). NOTE: that migration must be APPLIED before
-        // this select ships, or these columns won't exist yet.
-        const { data: clubData, error: clubError } = (await supabase
-          .from("club_profiles")
-          .select(
-            `id, club_name, category, description, logo_url, banner_url, website_url, linkedin_url, instagram_url, discord_url, user_id, source, source_url, imported_at, claimed_at`,
-          )
-          .eq("id", id)
-          .single()) as unknown as {
-            data: ClubDetailData | null;
-            error: { message: string } | null;
-          };
-
-        if (clubError) throw clubError;
-        setClub(clubData);
-
-        const { data: oppsData, error: oppsError } = await supabase
-          .from("opportunities")
-          .select("id, title, type, description, deadline")
-          .eq("club_id", id)
-          .eq("is_active", true)
-          .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`)
-          .order("created_at", { ascending: false });
-
-        if (!oppsError) setOpportunities(oppsData || []);
-
-        const { data: eventsData, error: eventsError } = await supabase
-          .from("events")
-          .select("id, title, description, event_date, location")
-          .eq("club_id", id)
-          .eq("is_active", true)
-          .gte("event_date", new Date().toISOString())
-          .order("event_date", { ascending: true });
-
-        if (!eventsError) setEvents(eventsData || []);
-
-        await fetchTeamMembers();
-      } catch (error) {
-        console.error("Error fetching club data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchClubData();
-  }, [id, user]);
-
-  // Realtime team roster — untouched wiring.
+  // Realtime team roster. The handler INVALIDATES rather than refetching by
+  // hand — and invalidating matters: with `staleTime: 60s` merely marking the
+  // data stale would not refetch, so a member added or removed would not appear
+  // for a minute despite the change arriving instantly on the socket (T10).
+  const invalidateTeam = useInvalidateClubTeam(id);
   useEffect(() => {
     if (!id) return;
 
@@ -151,14 +64,14 @@ const ClubDetail = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "club_team_members", filter: `club_id=eq.${id}` },
-        () => fetchTeamMembers(),
+        () => invalidateTeam(),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id]);
+  }, [id, invalidateTeam]);
 
   const handleFollowToggle = () => {
     if (!user) {
@@ -169,13 +82,29 @@ const ClubDetail = () => {
     if (id) toggleBookmark(id);
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <RoleBasedLayout>
         <div className="container mx-auto max-w-5xl px-4 py-8">
           <Skeleton className="h-40 w-full rounded-lg" />
           <Skeleton className="mt-6 h-10 w-1/3" />
           <Skeleton className="mt-3 h-4 w-2/3" />
+        </div>
+      </RoleBasedLayout>
+    );
+  }
+
+  // A failed load is NOT a missing club. Checked first, so an outage can never
+  // tell someone their club's page was removed.
+  if (isClubError) {
+    return (
+      <RoleBasedLayout>
+        <div className="container mx-auto max-w-3xl px-4 py-16">
+          <ErrorState
+            noun="this club"
+            onRetry={() => refetchClub()}
+            isRetrying={isRefetching}
+          />
         </div>
       </RoleBasedLayout>
     );
@@ -315,7 +244,15 @@ const ClubDetail = () => {
                 <h2 className="mb-3 text-[18px] font-semibold tracking-[-0.018em] text-ink">
                   Open roles
                 </h2>
-                {opportunities.length === 0 ? (
+                {isOpportunitiesError ? (
+                  /* Never render "Not recruiting right now" for a read that
+                     failed — that is a claim about the club, not about us. */
+                  <ErrorState
+                    noun="this club's open roles"
+                    onRetry={() => refetchOpportunities()}
+                    isRetrying={isRefetching}
+                  />
+                ) : opportunities.length === 0 ? (
                   isUnclaimed ? (
                     <EmptyState
                       title="Not on ZotHub yet —"
@@ -366,11 +303,18 @@ const ClubDetail = () => {
                 )}
               </section>
 
-              {events.length > 0 && (
+              {(events.length > 0 || isEventsError) && (
                 <section>
                   <h2 className="mb-3 text-[18px] font-semibold tracking-[-0.018em] text-ink">
                     Upcoming events
                   </h2>
+                  {isEventsError && (
+                    <ErrorState
+                      noun="this club's events"
+                      onRetry={() => refetchEvents()}
+                      isRetrying={isRefetching}
+                    />
+                  )}
                   <ul className="flex flex-col gap-3">
                     {events.map((event) => {
                       const date = new Date(event.event_date);
@@ -417,14 +361,17 @@ const ClubDetail = () => {
 
             {/* Members — people are circles, so the roster reads as people
                 next to the club's own square mark. */}
-            {teamMembers.length > 0 && (
+            {/* No error state for the roster, deliberately. A missing aside
+                asserts nothing; "Not recruiting right now" on a failed read
+                would assert something false about the club. That is the line. */}
+            {team.length > 0 && (
               <aside>
                 <div className="rounded-lg border border-line bg-surface p-5 shadow-e1">
                   <h2 className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-3">
                     Members
                   </h2>
                   <ul className="mt-3 flex flex-col gap-3">
-                    {teamMembers.map((member) => (
+                    {team.map((member) => (
                       <li key={member.id} className="flex items-center gap-3">
                         <EntityAvatar name={member.name} kind="person" size="sm" />
                         <div className="min-w-0 flex-1">

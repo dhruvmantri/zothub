@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { supabase } from "@/integrations/supabase/client";
+import { clubKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +50,7 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 export default function ClubProfileSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -158,6 +161,18 @@ export default function ClubProfileSetup() {
         toast.error(`Failed to save profile: ${error.message}`);
         return;
       }
+
+      // M17. The club directory and this club's public page both cache the row
+      // that was just rewritten — the name, logo, description and every social
+      // link. Without this a club saves its profile, opens its own public page
+      // and sees the old version for up to a minute, which reads as the save
+      // having failed. Fires BEFORE the navigate below for the same reason.
+      //
+      // The whole `clubs` prefix rather than a targeted key: the upsert is
+      // keyed on user_id and never returns the club's id, so there is no id
+      // here to target. A profile save is rare, so refetching the directory is
+      // a fair price for not guessing.
+      queryClient.invalidateQueries({ queryKey: clubKeys.all });
 
       toast.success("Profile saved successfully!");
       navigate("/club/dashboard/overview");

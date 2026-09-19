@@ -11,6 +11,7 @@ node tests/browser/wave3-verify.mjs            # in another
 node tests/browser/wave3-signedin.mjs
 node tests/browser/wave3-signin-transition.mjs
 node tests/browser/wave3-ux23.mjs
+node tests/browser/wave4a-clubdetail.mjs
 ```
 
 Each script prints `PASS`/`FAIL` per check and exits non-zero if any failed.
@@ -29,6 +30,12 @@ history. This produced two false failures before it was written down.
 a database that happens to be down produces request counts that look exactly
 like a broken cache.
 
+**Count the query, not the endpoint.** Two different pages can read the same
+table for different reasons — `/clubs` decorates its cards with per-club counts
+from the same `/opportunities` and `/events` endpoints a club's page uses. A
+counter keyed on the endpoint alone attributes one page's queries to another and
+reports a cache miss that never happened. Discriminate on the query string.
+
 ## What each one covers
 
 | Script | Covers |
@@ -36,4 +43,5 @@ like a broken cache.
 | `wave3-verify.mjs` | Signed out: cold-load request counts, away-and-back is 0 requests and no skeleton, the `UX22` sign-in prompt on both pages, and the `ErrorState` including that **Try again** actually recovers. |
 | `wave3-signedin.mjs` | As a student (injected session): the Applied badge is right, the applications read fires once, nothing refetches on a round trip, and the sign-in prompt correctly does **not** appear. |
 | `wave3-ux23.mjs` | `UX23`: with the applications read artificially slowed, the Apply button must be a **disabled `<button>`**, not a live `<a>`, until we know whether this student already applied. Removing the guard in `Opportunities.tsx` must make this fail; that is how it was proven. |
+| `wave4a-clubdetail.mjs` | Wave 4a: the four club reads fire once each and zero on return; not-found, whole-page failure and a single failed section are three visibly different screens; a failed roles read must never render "Not recruiting right now". |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |
