@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Search, X, Bookmark, Heart } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
@@ -7,6 +8,8 @@ import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { DiscoverList, type DiscoverListRow } from "@/components/discover/DiscoverList";
 import { FilterChip } from "@/components/discover/FilterChip";
 import { EmptyState } from "@/components/discover/EmptyState";
+import { ErrorState } from "@/components/discover/ErrorState";
+import { SignInToSaveState } from "@/components/discover/SignInToSaveState";
 import { ViewToggle, useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,13 +22,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { formatDeadline, normalizeOpportunityType, opportunityTypeLabel } from "@/lib/formatters";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useStudentProfileId } from "@/hooks/useStudentProfileId";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchAppliedOpportunityIds } from "@/lib/queryFns";
+import { applicationKeys, opportunityKeys, EMPTY_ID_SET } from "@/lib/queryKeys";
 
-interface Opportunity {
+interface OpportunityRow {
   id: string;
   title: string;
   type: string;
@@ -38,6 +43,58 @@ interface Opportunity {
   };
   applications: { id: string }[];
 }
+
+/** Module-level so the fallback identity is stable. `data ?? []` allocates a
+ *  fresh array every render, busting the filter/sort memo below and silently
+ *  cancelling the caching win (contract T5). */
+const EMPTY_OPPORTUNITIES: OpportunityRow[] = [];
+
+/**
+ * The open-roles read.
+ *
+ * `now` is computed HERE, inside the fetcher, and never enters the query key
+ * (contract T1) — a key holding a fresh timestamp is unique per render, so the
+ * page would issue a request per render while looking perfectly correct.
+ *
+ * It THROWS rather than logging and returning (contract T2): supabase-js
+ * RESOLVES with `{data, error}`, so the old
+ * `if (error) { console.error(); return; }` shape would have cached `undefined`
+ * as a SUCCESSFUL result for 60 seconds — no retry, no error state, and a page
+ * confidently announcing that no club is recruiting. And no toast in here (T8):
+ * with `retry: 1` it fires twice per failure and again on every background
+ * refetch. Failure is surfaced from render, via `isError`.
+ */
+async function fetchOpportunitiesList(): Promise<OpportunityRow[]> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("opportunities")
+    .select(`
+      id,
+      title,
+      type,
+      description,
+      deadline,
+      club_id,
+      club_profiles (
+        club_name,
+        logo_url
+      ),
+      applications (
+        id
+      )
+    `)
+    .eq("is_active", true)
+    .or(`deadline.is.null,deadline.gte.${now}`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`Failed to load opportunities: ${error.message}`);
+  return data ?? [];
+}
+
+/** Module-level, so TanStack can memoise the derived Set. An inline arrow would
+ *  build a new Set on every render and bust every memo that depends on it. */
+const selectAppliedIdSet = (ids: string[]): Set<string> => new Set(ids);
 
 /**
  * Categories are the six real opportunity types plus All, Saved and Following.
@@ -57,11 +114,10 @@ type SortOption = "newest" | "deadline" | "popular";
 
 export default function OpportunitiesPage() {
   const { user } = useAuth();
+  const { studentProfileId } = useStudentProfileId();
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(
     // /student/feed redirects here, so an old bookmark still lands on the
@@ -69,15 +125,37 @@ export default function OpportunitiesPage() {
     searchParams.get("filter") === "following" ? "following" : "all",
   );
   const [sortOption, setSortOption] = useState<SortOption>("newest");
-  const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
   const [view, setView] = useDiscoverView("discover");
 
-  useEffect(() => {
-    fetchOpportunities();
-    if (user) {
-      fetchAppliedOpportunities();
-    }
-  }, [user]);
+  // None of the UI state above may enter the key: putting `searchQuery` in it
+  // would turn every keystroke into a network round trip. Filtering and sorting
+  // stay client-side over the cached rows, which is what makes them instant.
+  const opportunitiesQuery = useQuery({
+    queryKey: opportunityKeys.list(),
+    queryFn: fetchOpportunitiesList,
+  });
+
+  // ONE key serves both the Applied badge here and `hasApplied` on the detail
+  // page (contract C5) — same RLS policy, same rows, and list -> detail is now a
+  // cache hit rather than a repeat of the same query. Keyed on the
+  // student_profiles id, which is NOT auth.users.id; `useStudentProfileId`
+  // resolves and caches that once per session for the whole app.
+  const appliedQuery = useQuery({
+    queryKey: applicationKeys.byStudent(studentProfileId ?? "anon"),
+    queryFn: () => fetchAppliedOpportunityIds(studentProfileId!),
+    enabled: Boolean(studentProfileId),
+    select: selectAppliedIdSet,
+  });
+
+  const opportunities = opportunitiesQuery.data ?? EMPTY_OPPORTUNITIES;
+  const appliedOpportunityIds = appliedQuery.data ?? EMPTY_ID_SET;
+
+  // `isPending`, not `isFetching`: with a warm cache this is false immediately,
+  // so the skeleton never reappears on a background refetch (the UX1 fix). It
+  // deliberately does NOT wait on `appliedQuery` — that only decorates a button,
+  // and holding the whole list behind it would make a signed-in student wait
+  // longer than a visitor for the same rows.
+  const isLoading = opportunitiesQuery.isPending;
 
   const selectCategory = (value: string) => {
     setSelectedCategory(value);
@@ -85,70 +163,6 @@ export default function OpportunitiesPage() {
     // student arrives at by link rather than by tapping a chip.
     if (value === "following") setSearchParams({ filter: "following" }, { replace: true });
     else if (searchParams.has("filter")) setSearchParams({}, { replace: true });
-  };
-
-  const fetchOpportunities = async () => {
-    try {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from("opportunities")
-        .select(`
-          id,
-          title,
-          type,
-          description,
-          deadline,
-          club_id,
-          club_profiles (
-            club_name,
-            logo_url
-          ),
-          applications (
-            id
-          )
-        `)
-        .eq("is_active", true)
-        .or(`deadline.is.null,deadline.gte.${now}`)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error("Error fetching opportunities:", error);
-        toast.error("Failed to load opportunities");
-        return;
-      }
-
-      setOpportunities(data || []);
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchAppliedOpportunities = async () => {
-    if (!user) return;
-
-    try {
-      const { data: studentProfile } = await supabase
-        .from("student_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!studentProfile) return;
-
-      const { data: applications } = await supabase
-        .from("applications")
-        .select("opportunity_id")
-        .eq("student_id", studentProfile.id);
-
-      if (applications) {
-        setAppliedOpportunityIds(new Set(applications.map((a) => a.opportunity_id)));
-      }
-    } catch (err) {
-      console.error("Error fetching applied opportunities:", err);
-    }
   };
 
   const categories = useMemo(
@@ -202,6 +216,11 @@ export default function OpportunitiesPage() {
 
   const activeCategory = categories.find((c) => c.value === selectedCategory);
   const hasFilters = searchQuery !== "" || selectedCategory !== "all";
+
+  // A signed-out visitor tapping "Saved" cannot have saved anything, so the
+  // ordinary empty state would blame them for not doing something they were
+  // never able to do. Maintainer decision, 2026-09-19 — docs/BACKLOG.md UX22.
+  const needsAccountToSave = selectedCategory === "saved" && !user;
 
   const listRows: DiscoverListRow[] = filteredOpportunities.map((opp) => {
     const applied = appliedOpportunityIds.has(opp.id);
@@ -312,6 +331,18 @@ export default function OpportunitiesPage() {
                 </div>
               ))}
             </div>
+          ) : opportunitiesQuery.isError ? (
+            // A failed load is NOT an empty board. Checked before the empty
+            // branch so a network hiccup can never render "No open roles right
+            // now" — which would be the app confidently telling a student that
+            // no club on campus is recruiting.
+            <ErrorState
+              noun="the roles"
+              onRetry={() => opportunitiesQuery.refetch()}
+              isRetrying={opportunitiesQuery.isFetching}
+            />
+          ) : needsAccountToSave ? (
+            <SignInToSaveState noun="roles" />
           ) : (
             <>
               <p className="mb-5 text-sm text-ink-3">
@@ -388,7 +419,7 @@ export default function OpportunitiesPage() {
                       </Button>
                     ) : (
                       <Button variant="outline" asChild>
-                        <a href="/clubs">Browse clubs</a>
+                        <Link to="/clubs">Browse clubs</Link>
                       </Button>
                     )
                   }

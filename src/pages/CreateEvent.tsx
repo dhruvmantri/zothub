@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
+import { eventKeys } from "@/lib/queryKeys";
 import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import { SuccessModal } from "@/components/SuccessModal";
 import {
@@ -32,6 +34,7 @@ import {
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdEventId, setCreatedEventId] = useState<string | null>(null);
@@ -118,6 +121,16 @@ export default function CreateEvent() {
         toast.error("Failed to create event");
         return;
       }
+
+      // M7. One prefix invalidation covers every cached read of the `events`
+      // table — the public Events list, a club's upcoming-events panel, and the
+      // per-club counts that decorate the Clubs directory. Without it, the club
+      // that just posted would not see its own event on the public list for up
+      // to 60 seconds, which reads as the post having failed.
+      //
+      // Fires BEFORE the navigate/success modal below, so the page it lands on
+      // cannot serve a pre-insert list.
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
 
       if (asDraft) {
         toast.success("Event saved as draft");

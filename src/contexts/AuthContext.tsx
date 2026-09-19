@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // The last identity the cache was populated for. Sign-OUT clears the cache
+  // (see signOut below); sign-IN has to as well, and nothing did.
+  //
+  // Not every cached read carries the viewer in its key: the two public list
+  // keys deliberately do not (they are shared by every visitor), yet their rows
+  // embed RLS-filtered `applications` / `rsvps` arrays. So browsing logged out,
+  // signing in and returning within `staleTime` would serve the anon-shaped
+  // rows to an authenticated viewer with no network request at all.
+  //
+  // Gated on the id actually CHANGING, not on the SIGNED_IN event: supabase
+  // re-emits that event on session restore and, in some versions, on tab focus.
+  // Clearing on the event itself would throw the cache away repeatedly — the
+  // exact behaviour this migration exists to remove.
+  const cachedForUserId = useRef<string | null>(null);
+  const resetCacheOnIdentityChange = (nextUserId: string | null) => {
+    if (cachedForUserId.current === nextUserId) return;
+    // Nothing to evict on the very first resolve of a signed-out visitor.
+    if (cachedForUserId.current !== null || nextUserId !== null) {
+      queryClient.clear();
+    }
+    cachedForUserId.current = nextUserId;
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -33,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         if (!isMounted) return;
         
+        resetCacheOnIdentityChange(session?.user?.id ?? null);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -56,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!isMounted) return;
       
+      resetCacheOnIdentityChange(session?.user?.id ?? null);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -223,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // here would silently survive, and the failure mode of forgetting one is a
     // privacy leak rather than a visible bug.
     queryClient.clear();
+    cachedForUserId.current = null;
   };
 
   return (

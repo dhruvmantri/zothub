@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { opportunityKeys } from "@/lib/queryKeys";
 import type { DashboardOpportunity } from "@/types";
 
 export function useClubOpportunities(clubId: string | null) {
+  const queryClient = useQueryClient();
   const [opportunities, setOpportunities] = useState<DashboardOpportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,6 +69,14 @@ export function useClubOpportunities(clubId: string | null) {
     }
 
     toast.success("Opportunity deleted");
+
+    // M6. This hook still keeps its own owner-scoped state (it is not part of
+    // wave 3), so `fetchOpportunities()` refreshes the dashboard. The
+    // invalidation is for everything ELSE that caches this table: the public
+    // roles list and the Clubs directory counts. Without it a deleted role
+    // stays visible — and applyable — on /opportunities for up to 60 seconds.
+    queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
+
     fetchOpportunities();
     return true;
   };

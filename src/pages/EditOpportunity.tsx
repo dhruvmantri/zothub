@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
 } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
+import { opportunityKeys } from "@/lib/queryKeys";
 import {
   Briefcase,
   FileText,
@@ -38,6 +40,7 @@ export default function EditOpportunity() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -150,6 +153,13 @@ export default function EditOpportunity() {
         toast.error("Failed to update opportunity");
         return;
       }
+
+      // M5. Must fire BEFORE the navigate below, or the page it lands on serves
+      // the pre-edit row straight from cache and the edit looks discarded. The
+      // update can also flip `is_active` or move the deadline, either of which
+      // adds or removes the role from the public list and from the Clubs
+      // directory counts — the `opportunities` prefix reaches all of them.
+      queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
 
       toast.success(asDraft ? "Opportunity saved as draft" : "Opportunity updated successfully!");
       navigate("/club/dashboard/opportunities");

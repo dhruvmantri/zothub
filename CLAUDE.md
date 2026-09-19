@@ -125,6 +125,19 @@ bash tests/e2e/run.sh                    # EXECUTED 115/115; warns before wiping
 
 Run the E2E suite before finishing anything auth-, email-, or claim-related.
 
+**UI and data-layer work is proven in a browser** (`tests/browser/`, see its README):
+
+```bash
+npx vite --host 127.0.0.1 --port 8080     # one shell
+node tests/browser/wave3-verify.mjs       # another; PASS/FAIL per check, exits non-zero on any failure
+```
+
+Two rules those scripts exist to enforce, both learned the expensive way:
+**never navigate with `page.goto()` when testing a cache** (a full document load wipes an
+in-memory cache by definition, so the test fails for a reason unrelated to the code), and
+**mock the REST responses** (a *failing* query is not cached and does retry, so a database
+that happens to be down produces request counts that look exactly like a broken cache).
+
 **It needs a Docker daemon.** Without one, 24 of the 115 assertions never execute (the
 `sqlReady()`-gated blocks: approval rollback, rate-limit fail-closed, pending-club backfill). The
 suite used to print `ALL GREEN` anyway — it now prints `EXECUTED n/115` and **exits 1 if any

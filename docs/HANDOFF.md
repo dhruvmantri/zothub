@@ -56,7 +56,7 @@
 1. Trust & legal        ✅ live & verified
 2. Security holes       ✅ live · S6 closed (cron token is the ANON key — no action)
 3. Deploy gate (CI)     ✅ live & verified green
-4. Speed (UX15)         🔄 waves 0,1,2 done · 3,4 left
+4. Speed (UX15)         🔄 waves 0,1,2,3 done · only wave 4 left
 5. Nav → URLs → toolbar → CTAs → empty states
 6. Logos, avatars, onboarding polish
 7. Verification N1–N7 (needs test accounts)
@@ -64,7 +64,7 @@
 9. D1 purge test data         ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** **Wave 3** — migrate `src/pages/Events.tsx` (+ `CreateEvent`/`EditEvent` invalidation) and `src/pages/Opportunities.tsx` (+ `CreateOpportunity`/`EditOpportunity`/`useClubOpportunities`). They are parallel-safe with each other; both depend on wave 1 (done). Then **wave 4**: `ClubDetail`, `OpportunityDetail`+`ApplicationForm`, `EventDetail`+`useEventRSVP`+`RSVPForm` — each cluster must be ONE change, never split.
+**NEXT TASK, exactly:** **Wave 4** — the three detail pages, each cluster ONE change, never split: (4a) `ClubDetail.tsx`; (4b) `OpportunityDetail.tsx` + `ApplicationForm`; (4c) `EventDetail.tsx` + `useEventRSVP` + `RSVPForm` (`M9`–`M13`). **`UX21` is mandatory in 4b and 4c**: the detail keys must carry `authScope(user?.id)` — the viewer **id**, not an `"auth"`/`"anon"` boolean — or a student who browsed logged-out and then signed in can RSVP or apply with **empty answers** to something whose club requires them. Note `M3` (the `ApplicationForm` invalidation listed under 4b) **already shipped in wave 3** and must not be added twice. 4a also carries the maintainer's `O12` decision (wait for all four reads, no progressive fill) and 4b carries `O13` (render the not-found screen, do not redirect). Wave 3 is done: `Events.tsx`, `Opportunities.tsx`, `M3`–`M8`, plus an `M6` mirror in `useClubEvents` that the contract's map had missed.
 
 **The full migration contract is committed at [`ux15-migration-contract.md`](./ux15-migration-contract.md)** — unified key scheme, invalidation map `M1`–`M21`, 12 resolved conflicts, 15 traps ranked by how likely each is to cause a *silent* regression, and an out-of-scope list so waves 3–4 do not scope-creep. It was produced by a 9-file survey + reconciliation and caught several bugs that would otherwise have shipped (including `UX21` and `A3`). **Read it before touching any remaining page** — do not improvise the keys.
 

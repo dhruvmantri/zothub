@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { SuccessModal } from "@/components/SuccessModal";
 import { ShareButton } from "@/components/ShareButton";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
+import { opportunityKeys } from "@/lib/queryKeys";
 import {
   Briefcase,
   FileText,
@@ -39,6 +41,7 @@ import {
 export default function CreateOpportunity() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdOpportunityId, setCreatedOpportunityId] = useState<string | null>(null);
@@ -131,6 +134,16 @@ export default function CreateOpportunity() {
         toast.error("Failed to create opportunity");
         return;
       }
+
+      // M4. One prefix invalidation covers every cached read of the
+      // `opportunities` table — the public roles list, a club's open-roles
+      // panel, and the per-club counts that decorate the Clubs directory.
+      // Without it, the club that just posted would not see its own role on the
+      // public list for up to 60 seconds, which reads as the post having failed.
+      //
+      // Fires BEFORE the navigate/success modal below, so the page it lands on
+      // cannot serve a pre-insert list.
+      queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
 
       if (asDraft) {
         toast.success("Opportunity saved as draft");

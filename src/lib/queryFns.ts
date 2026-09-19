@@ -72,3 +72,24 @@ export async function fetchUpcomingEventCountsByClub(): Promise<Record<string, n
   if (error) throw new Error(`Failed to load event counts: ${error.message}`);
   return countByClub(data);
 }
+
+/**
+ * Every opportunity id this student has applied to.
+ *
+ * ONE read serves two consumers (contract C5): the Applied badge on the roles
+ * list, and `hasApplied` on a role's detail page. They were two separate
+ * queries against the same rows under the same RLS policy, so opening a role
+ * from the list repeated a query the list had already made. Now the navigation
+ * is a cache hit.
+ *
+ * `studentProfileId` is `student_profiles.id`, NOT `auth.users.id` — the
+ * applications table keys on the former. Resolve it with `useStudentProfileId`.
+ */
+export async function fetchAppliedOpportunityIds(studentProfileId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("applications")
+    .select("opportunity_id")
+    .eq("student_id", studentProfileId);
+  if (error) throw new Error(`Failed to load your applications: ${error.message}`);
+  return (data ?? []).map((row) => row.opportunity_id).filter(Boolean) as string[];
+}

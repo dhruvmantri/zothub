@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendEventCancellationEmails } from "@/lib/eventNotifications";
+import { eventKeys } from "@/lib/queryKeys";
 import type { DashboardEvent } from "@/types";
 
 export function useClubEvents(clubId: string | null) {
+  const queryClient = useQueryClient();
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -85,6 +88,14 @@ export function useClubEvents(clubId: string | null) {
     }
 
     toast.success("Event deleted");
+
+    // The events mirror of M6. The contract's invalidation map listed the
+    // opportunity delete but not this one; it is the same defect. Cancelling an
+    // event is a hard DELETE, so without this the cancelled event stays on the
+    // public /events list — still RSVP-able — for up to 60 seconds, while its
+    // attendees have already been emailed that it is off.
+    queryClient.invalidateQueries({ queryKey: eventKeys.all });
+
     fetchEvents();
     return true;
   };

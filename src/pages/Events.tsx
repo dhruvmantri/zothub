@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Search, X, Bookmark, Heart } from "lucide-react";
 import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
@@ -8,16 +9,19 @@ import { EventCard } from "@/components/cards/OpportunityCard";
 import { DiscoverList, type DiscoverListRow } from "@/components/discover/DiscoverList";
 import { FilterChip } from "@/components/discover/FilterChip";
 import { EmptyState } from "@/components/discover/EmptyState";
+import { ErrorState } from "@/components/discover/ErrorState";
+import { SignInToSaveState } from "@/components/discover/SignInToSaveState";
 import { ViewToggle, useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { formatDate, formatTime } from "@/lib/formatters";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { eventKeys } from "@/lib/queryKeys";
 
-interface Event {
+interface EventRow {
   id: string;
   title: string;
   description: string | null;
@@ -33,6 +37,57 @@ interface Event {
   rsvps: { id: string }[];
 }
 
+/** Module-level so the fallback identity is stable. `data ?? []` allocates a
+ *  fresh array every render, which busts the filter memo below and silently
+ *  cancels the caching win this migration exists to deliver (contract T5). */
+const EMPTY_EVENTS: EventRow[] = [];
+
+/**
+ * The upcoming-events read.
+ *
+ * `now` is computed HERE, inside the fetcher, and never enters the query key
+ * (contract T1). A key containing a fresh `new Date().toISOString()` is unique
+ * on every render: permanent cache miss, a request per render, and the page
+ * still looks completely correct.
+ *
+ * It THROWS rather than logging and returning (contract T2). supabase-js
+ * RESOLVES with `{data, error}`, so copying the old
+ * `if (error) { console.error(); return; }` shape would cache `undefined` as a
+ * SUCCESSFUL result for 60 seconds — no retry, no error state, and an empty
+ * page that confidently claims there are no events. No toast in here either
+ * (T8): with `retry: 1` it would fire twice per failure and again on every
+ * background refetch. Failure is surfaced from render, via `isError`.
+ */
+async function fetchUpcomingEvents(): Promise<EventRow[]> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("events")
+    .select(`
+      id,
+      title,
+      description,
+      event_date,
+      location,
+      capacity,
+      banner_url,
+      club_id,
+      club_profiles (
+        club_name,
+        logo_url
+      ),
+      rsvps (
+        id
+      )
+    `)
+    .eq("is_active", true)
+    .gte("event_date", now)
+    .order("event_date", { ascending: true })
+    .limit(50);
+
+  if (error) throw new Error(`Failed to load events: ${error.message}`);
+  return data ?? [];
+}
+
 /** "Following" is inserted after All when the student actually follows a club. */
 const BASE_FILTERS = [
   { value: "saved", label: "Saved" },
@@ -46,20 +101,30 @@ const BASE_FILTERS = [
  * the mono date chip doing the work of telling you it is an event.
  */
 export default function EventsPage() {
+  const { user } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDateFilter, setSelectedDateFilter] = useState(
     searchParams.get("filter") === "following" ? "following" : "all",
   );
   const [view, setView] = useDiscoverView("discover");
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  // None of the UI state above may enter the key: putting `searchQuery` in it
+  // would turn every keystroke into a network round trip. Filtering stays
+  // client-side over the cached rows, which is what makes it instant.
+  const eventsQuery = useQuery({
+    queryKey: eventKeys.upcoming(),
+    queryFn: fetchUpcomingEvents,
+  });
+
+  const events = eventsQuery.data ?? EMPTY_EVENTS;
+
+  // `isPending`, not `isFetching`: with a warm cache this is false immediately,
+  // so the skeleton never reappears on a background refetch. That is the UX1
+  // fix — gating on `isFetching` would reintroduce it in a new form.
+  const isLoading = eventsQuery.isPending;
 
   const selectFilter = (value: string) => {
     setSelectedDateFilter(value);
@@ -75,47 +140,6 @@ export default function EventsPage() {
     ],
     [followedClubIds],
   );
-
-  const fetchEvents = async () => {
-    try {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from("events")
-        .select(`
-          id,
-          title,
-          description,
-          event_date,
-          location,
-          capacity,
-          banner_url,
-          club_id,
-          club_profiles (
-            club_name,
-            logo_url
-          ),
-          rsvps (
-            id
-          )
-        `)
-        .eq("is_active", true)
-        .gte("event_date", now)
-        .order("event_date", { ascending: true })
-        .limit(50);
-
-      if (error) {
-        console.error("Error fetching events:", error);
-        toast.error("Failed to load events");
-        return;
-      }
-
-      setEvents(data || []);
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -153,6 +177,12 @@ export default function EventsPage() {
   }, [events, searchQuery, selectedDateFilter, isBookmarked, followedClubIds]);
 
   const hasFilters = searchQuery !== "" || selectedDateFilter !== "all";
+
+  // A signed-out visitor tapping "Saved" cannot have saved anything, so the
+  // ordinary empty state ("you haven't saved any events yet") would blame them
+  // for not doing something they were never able to do. Maintainer decision,
+  // 2026-09-19 — see docs/BACKLOG.md UX22.
+  const needsAccountToSave = selectedDateFilter === "saved" && !user;
 
   const listRows: DiscoverListRow[] = filteredEvents.map((event) => ({
     id: event.id,
@@ -248,6 +278,16 @@ export default function EventsPage() {
                 </div>
               ))}
             </div>
+          ) : eventsQuery.isError ? (
+            // A failed load is NOT an empty calendar. Checked before the empty
+            // branch so a network hiccup can never render "No events coming up".
+            <ErrorState
+              noun="the events"
+              onRetry={() => eventsQuery.refetch()}
+              isRetrying={eventsQuery.isFetching}
+            />
+          ) : needsAccountToSave ? (
+            <SignInToSaveState noun="events" />
           ) : (
             <>
               <p className="mb-5 text-sm text-ink-3">
@@ -320,7 +360,7 @@ export default function EventsPage() {
                       </Button>
                     ) : (
                       <Button variant="outline" asChild>
-                        <a href="/opportunities">Browse roles</a>
+                        <Link to="/opportunities">Browse roles</Link>
                       </Button>
                     )
                   }

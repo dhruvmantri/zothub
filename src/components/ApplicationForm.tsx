@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { applicationSchema, validateInput, formatValidationErrors, sanitizeText 
 import { sendApplicationConfirmation, sendNewApplicationNotification } from "@/lib/emailService";
 import { DynamicQuestionForm, useDynamicQuestionForm } from "@/components/forms/DynamicQuestionForm";
 import { FileUpload } from "@/components/ui/file-upload";
+import { applicationKeys, opportunityKeys } from "@/lib/queryKeys";
 import type { FormQuestion, OpportunityForForm } from "@/types";
 
 interface ApplicationFormProps {
@@ -33,6 +35,7 @@ export function ApplicationForm({
   onSuccess,
 }: ApplicationFormProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [resumeUrl, setResumeUrl] = useState("");
@@ -148,6 +151,43 @@ export function ApplicationForm({
         }
         return;
       }
+
+      // M3, brought forward from wave 4b deliberately.
+      //
+      // The roles list now CACHES which roles you have applied to. Without this,
+      // submitting an application and going back to /opportunities would show
+      // "Apply" again on the role you just applied to — for up to 60 seconds,
+      // and up to 5 minutes across a remount. Reloading used to paper over it;
+      // caching removes that escape hatch, so the invalidation has to ship in
+      // the same change as the cached read, not in a later wave.
+      //
+      // The cache holds the RAW `string[]`; the list page derives its Set via a
+      // `select`. Patching it here is what flips the badge instantly; the
+      // invalidation that follows is what reconciles with the server.
+      //
+      // `prev === undefined` means this student's applications have never been
+      // fetched in this session — reachable by opening a role straight from a
+      // shared link and applying without ever visiting the list. Returning
+      // `undefined` is a deliberate NO-OP (query-core's setQueryData bails on
+      // `data === undefined`), because SEEDING the entry here would create a
+      // complete-looking `[thisRoleId]` that omits every earlier application:
+      // the list would then render an enabled "Apply" on roles already applied
+      // to, and tapping one fails with a 23505 "you have already applied".
+      // Leaving the entry absent lets the invalidation below fetch the truth.
+      queryClient.setQueryData<string[]>(
+        applicationKeys.byStudent(profile.id),
+        (prev) =>
+          prev === undefined
+            ? undefined
+            : prev.includes(opportunity.id)
+              ? prev
+              : [...prev, opportunity.id],
+      );
+      queryClient.invalidateQueries({ queryKey: applicationKeys.byStudent(profile.id) });
+      // The applicant count is rendered on both the list card and the detail
+      // page. `details()` is the PREFIX, so it marks both viewer variants stale.
+      queryClient.invalidateQueries({ queryKey: opportunityKeys.details(opportunity.id) });
+      queryClient.invalidateQueries({ queryKey: opportunityKeys.list() });
 
       // Send confirmation email to the student (non-blocking). Only the
       // authoritative application id is sent; the edge function verifies the caller

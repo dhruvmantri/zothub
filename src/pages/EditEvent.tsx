@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
+import { eventKeys } from "@/lib/queryKeys";
 import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import {
   Calendar,
@@ -31,6 +33,7 @@ export default function EditEvent() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -135,6 +138,13 @@ export default function EditEvent() {
         toast.error("Failed to update event");
         return;
       }
+
+      // M8. Must fire BEFORE the navigate below, or the page it lands on serves
+      // the pre-edit row straight from cache and the edit looks like it was
+      // discarded. The update can also flip `is_active`, which adds or removes
+      // the event from the public list and from the Clubs directory counts —
+      // the `events` prefix reaches all of those in one call.
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
 
       toast.success(asDraft ? "Event saved as draft" : "Event updated successfully!");
       navigate("/club/dashboard/events");
