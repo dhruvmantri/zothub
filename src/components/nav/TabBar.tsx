@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 
 import type { NavItem } from "@/components/nav/navConfig";
+import { NavMenu } from "@/components/nav/NavMenu";
 import { cn } from "@/lib/utils";
 
 export interface TabBarProps {
@@ -28,20 +29,18 @@ export function TabBar({ items, counts }: TabBarProps) {
         const active = item.match(pathname);
         const count = item.count ? counts[item.count] : 0;
         const Icon = item.icon;
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2",
-              "text-[11px] font-semibold transition-colors duration-fast ease-zh",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-              active
-                ? "text-accent-text shadow-[inset_0_2px_0_hsl(var(--accent))]"
-                : "text-ink-3 hover:text-ink-2",
-            )}
-          >
+
+        const tabClass = cn(
+          "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2",
+          "text-[11px] font-semibold transition-colors duration-fast ease-zh",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          active
+            ? "text-accent-text shadow-[inset_0_2px_0_hsl(var(--accent))]"
+            : "text-ink-3 hover:text-ink-2",
+        );
+
+        const face = (
+          <>
             <span className="relative inline-flex">
               <Icon className="size-[22px]" aria-hidden />
               {count > 0 && (
@@ -51,6 +50,28 @@ export function TabBar({ items, counts }: TabBarProps) {
               )}
             </span>
             {item.label}
+          </>
+        );
+
+        // A grouping item opens its menu ABOVE the bar. There is no hover on a
+        // phone, so this is tap-to-open — the same component, without the
+        // pointer behaviour it cannot use here.
+        if (item.children?.length) {
+          return (
+            <NavMenu key={item.label} item={item} variant="tab" className={tabClass}>
+              {face}
+            </NavMenu>
+          );
+        }
+
+        return (
+          <Link
+            key={item.to}
+            to={item.to!}
+            aria-current={active ? "page" : undefined}
+            className={tabClass}
+          >
+            {face}
           </Link>
         );
       })}

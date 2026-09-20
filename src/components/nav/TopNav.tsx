@@ -4,6 +4,7 @@ import { Bell, MessageSquare } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { AccountMenu } from "@/components/nav/AccountMenu";
 import { MESSAGES_PATH, messagesMatch } from "@/components/nav/navConfig";
+import { NavMenu } from "@/components/nav/NavMenu";
 import type { NavItem } from "@/components/nav/navConfig";
 import { cn } from "@/lib/utils";
 
@@ -52,19 +53,29 @@ export function TopNav({
           {items.map((item) => {
             const active = item.match(pathname);
             const count = item.count ? counts[item.count] : 0;
+
+            const linkClass = cn(
+              // px keeps even the shortest label ("Clubs") over 44px wide.
+              "relative inline-flex items-center whitespace-nowrap px-1.5 text-sm transition-colors duration-fast ease-zh",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              active
+                ? "font-semibold text-ink shadow-[inset_0_-2px_0_hsl(var(--accent))]"
+                : "font-medium text-ink-2 hover:text-ink",
+            );
+
+            // An item with children groups destinations instead of being one.
+            if (item.children?.length) {
+              return (
+                <NavMenu key={item.label} item={item} variant="top" className={linkClass} />
+              );
+            }
+
             return (
               <Link
                 key={item.to}
-                to={item.to}
+                to={item.to!}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  // px keeps even the shortest label ("Clubs") over 44px wide.
-                  "relative inline-flex items-center whitespace-nowrap px-1.5 text-sm transition-colors duration-fast ease-zh",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  active
-                    ? "font-semibold text-ink shadow-[inset_0_-2px_0_hsl(var(--accent))]"
-                    : "font-medium text-ink-2 hover:text-ink",
-                )}
+                className={linkClass}
               >
                 {item.label}
                 {count > 0 && (

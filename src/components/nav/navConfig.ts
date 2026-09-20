@@ -32,7 +32,8 @@ import {
  *     applying to the event, so the one word covers both sections of that page.
  */
 export interface NavItem {
-  to: string;
+  /** Absent when the item only groups children — see `children`. */
+  to?: string;
   label: string;
   /** Mobile tab bar only — the desktop bar is text, so blue stays scarce. */
   icon: LucideIcon;
@@ -40,6 +41,16 @@ export interface NavItem {
   count?: "messages" | "responses";
   /** Active when the path matches exactly, or when it is a prefix. */
   match: (pathname: string) => boolean;
+  /**
+   * Turns the item into a MENU rather than a destination.
+   *
+   * A club's "Discover" groups three pages that are equally the point —
+   * Opportunities, Events and Clubs — so picking one of them as the thing the
+   * label navigates to would be arbitrary, and the other two would be reachable
+   * only after landing somewhere the club did not ask for (maintainer
+   * decision, 2026-09-20).
+   */
+  children?: NavItem[];
 }
 
 const startsWith =
@@ -93,10 +104,18 @@ export const CLUB_NAV: NavItem[] = [
     // than building a second discovery surface; the cards there render a
     // neutral "View" for clubs, since they can neither apply, RSVP nor save
     // (maintainer decision, 2026-09-20).
-    to: "/opportunities",
+    //
+    // A MENU, not a link: the three pages under it are equally the point, so
+    // making the label navigate to one of them would be an arbitrary choice
+    // that buries the other two behind a page the club never asked for.
     label: "Discover",
     icon: Compass,
     match: startsWith("/opportunities", "/events", "/clubs"),
+    children: [
+      { to: "/opportunities", label: "Opportunities", icon: Compass, match: startsWith("/opportunities") },
+      { to: "/events", label: "Events", icon: CalendarDays, match: startsWith("/events") },
+      { to: "/clubs", label: "Clubs", icon: Building2, match: startsWith("/clubs") },
+    ],
   },
   {
     // Lands on the club's own Overview (stats + recent items), with Team,

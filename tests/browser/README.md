@@ -15,6 +15,7 @@ node tests/browser/wave4a-clubdetail.mjs
 node tests/browser/wave4b-ux21.mjs
 node tests/browser/wave4c-event-rsvp.mjs
 node tests/browser/o5-counts.mjs
+node tests/browser/nav-club-discover-menu.mjs
 ```
 
 Each script prints `PASS`/`FAIL` per check and exits non-zero if any failed.
@@ -61,4 +62,5 @@ working code. Scope to the container you mean.
 | `wave4b-ux21.mjs` | `UX21`, the data-loss bug: browse a role logged out, sign in, come back — the application form must carry the club's required question. An empty form here means a student submits a blank application the club cannot tell apart. |
 | `wave4c-event-rsvp.mjs` | `UX21` on the event side, plus the RSVP mutation cluster: the form hands its answers up, the hook writes them once with the right status, and the write invalidates the event so the attendee count refetches. Its negative run writes `answers: []` — a blank RSVP recorded as a confirmed attendance. |
 | `o5-counts.mjs` | `O5-counts`: a logged-out visitor sees the real applicant count rather than 0, a club's "show applicant count" switch is honoured on the LIST (it was ignored there), zero is hidden rather than rendered, and "spots left" comes from confirmed RSVPs — so a sold-out event no longer advertises every seat as free. |
+| `nav-club-discover-menu.mjs` | The club `Discover` nav menu: it must open on hover WITHOUT navigating anywhere itself, survive the pointer moving onto it, open from the keyboard and close on Escape, and open by tap on a phone where hover does not exist. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |
