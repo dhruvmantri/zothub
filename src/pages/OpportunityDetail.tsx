@@ -111,7 +111,7 @@ export default function OpportunityDetail() {
   }
 
   const club = opportunity.club_profiles;
-  const applicantCount = opportunity.applications?.length || 0;
+  const applicantCount = opportunity.applications_count;
 
   return (
     <RoleBasedLayout>
@@ -148,7 +148,10 @@ export default function OpportunityDetail() {
                 {/* Tags live in their own slot, never on the title's line. */}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Tag variant="neutral">{opportunityTypeLabel(opportunity.type)}</Tag>
-                  {opportunity.show_application_count && (
+                  {/* Hidden at zero as well as when the club turned it off: "0 people
+                  have applied" on a new posting reads as a verdict rather than
+                  a fact (maintainer decisions, 2026-09-20). */}
+              {opportunity.show_application_count && applicantCount > 0 && (
                     <span className="text-[13px] text-ink-3">
                       <span className="font-data">{applicantCount}</span>{" "}
                       {applicantCount === 1 ? "person has" : "people have"} applied

@@ -35,7 +35,7 @@ const BASE_ROW = {
   id: OPP_ID, title: "Marketing Lead", type: "leadership",
   description: "Run the socials.", requirements: null, deadline: null,
   show_application_count: true, created_at: new Date().toISOString(),
-  club_id: "c1", club_profiles: CLUB, applications: [],
+  club_id: "c1", club_profiles: CLUB, applications_count: 0,
 };
 const QUESTIONS = [{ id: "q1", type: "short_text", question: QUESTION, required: true }];
 

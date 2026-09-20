@@ -26,7 +26,7 @@ const EVENTS = [
     banner_url: null,
     club_id: "c1",
     club_profiles: { club_name: "Hack at UCI", logo_url: null },
-    rsvps: [{ id: "r1" }],
+    confirmed_rsvps_count: 1,
   },
   {
     id: "e2",
@@ -38,7 +38,7 @@ const EVENTS = [
     banner_url: null,
     club_id: "c2",
     club_profiles: { club_name: "Design at UCI", logo_url: null },
-    rsvps: [],
+    confirmed_rsvps_count: 0,
   },
 ];
 
@@ -51,7 +51,8 @@ const OPPS = [
     deadline: new Date(Date.now() + 86400000 * 14).toISOString(),
     club_id: "c1",
     club_profiles: { club_name: "Hack at UCI", logo_url: null },
-    applications: [{ id: "a1" }, { id: "a2" }],
+    applications_count: 2,
+    show_application_count: true,
   },
 ];
 

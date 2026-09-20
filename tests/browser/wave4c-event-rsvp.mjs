@@ -39,7 +39,7 @@ const EVENT = {
   id: EVENT_ID, title: "Kickoff Night", description: "Come along.",
   event_date: new Date(Date.now() + 86400000 * 5).toISOString(),
   location: "DBH 6011", capacity: 100, banner_url: null,
-  requires_approval: false, club_profiles: CLUB, rsvps: [],
+  requires_approval: false, club_profiles: CLUB, confirmed_rsvps_count: 0,
 };
 const QUESTIONS = [{ id: "q1", type: "short_text", question: QUESTION, required: true }];
 

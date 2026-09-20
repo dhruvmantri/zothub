@@ -18,13 +18,19 @@ const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: USER_ID, aud: "au
 const user = { id: USER_ID, aud: "authenticated", role: "authenticated", email: "s@uci.edu", app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: exp, refresh_token: "r", user };
 
-// Anon sees no applications rows; the signed-in student sees one.
+// The fixture deliberately returns a DIFFERENT count by auth state, purely so
+// the cache clearing is observable. That is no longer how the real column
+// behaves: since the O5-counts migration the count is viewer-independent, and a
+// logged-out visitor sees the true number. This script is about A4 — that
+// signing in does not serve the previous, logged-out copy — and it just needs
+// some field that differs to watch.
 let authed = false;
 const opps = () => [{
   id: "o1", title: "Marketing Lead", type: "leadership", description: "Run the socials.",
   deadline: new Date(Date.now() + 86400000 * 14).toISOString(), club_id: "c1",
   club_profiles: { club_name: "Hack at UCI", logo_url: null },
-  applications: authed ? [{ id: "a1" }, { id: "a2" }, { id: "a3" }] : [],
+  applications_count: authed ? 3 : 0,
+  show_application_count: true,
 }];
 
 const counts = { opportunities: 0 };
@@ -54,8 +60,11 @@ await page.route("**/rest/v1/**", (route) => {
 
 await page.goto(`${BASE}/opportunities`, { waitUntil: "networkidle" });
 await page.getByRole("heading", { name: "Marketing Lead" }).first().waitFor({ timeout: 15000 });
-check("logged out, the anon-shaped count renders", (await page.getByText(/0 applied/).count()) > 0,
-  `applicants text: ${(await page.getByText(/applied/).allInnerTexts()).join(" | ")}`);
+// Zero is now HIDDEN rather than rendered as "0 applied" (maintainer decision,
+// 2026-09-20): a brand-new posting should look new, not ignored.
+check("logged out, a zero count is hidden entirely",
+  (await page.getByText(/applied/).count()) === 0,
+  `applicants text: ${(await page.getByText(/applied/).allInnerTexts()).join(" | ") || "(none — correct)"}`);
 const beforeLogin = counts.opportunities;
 
 // Sign in for real, through the form — this fires supabase's SIGNED_IN event.

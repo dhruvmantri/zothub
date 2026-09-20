@@ -24,7 +24,7 @@ const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, exp
 const OPPS = [{
   id: "o1", title: "Marketing Lead", type: "leadership", description: "Run the socials.",
   deadline: new Date(Date.now() + 86400000 * 14).toISOString(), club_id: "c1",
-  club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications: [{ id: "a1" }],
+  club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications_count: 1, show_application_count: true,
 }];
 
 const APPLICATIONS_DELAY_MS = 2500;

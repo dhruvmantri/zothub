@@ -407,6 +407,7 @@ export type Database = {
           banner_url: string | null
           capacity: number | null
           club_id: string
+          confirmed_rsvps_count: number
           created_at: string
           description: string | null
           event_date: string
@@ -423,6 +424,7 @@ export type Database = {
           banner_url?: string | null
           capacity?: number | null
           club_id: string
+          confirmed_rsvps_count?: number
           created_at?: string
           description?: string | null
           event_date: string
@@ -439,6 +441,7 @@ export type Database = {
           banner_url?: string | null
           capacity?: number | null
           club_id?: string
+          confirmed_rsvps_count?: number
           created_at?: string
           description?: string | null
           event_date?: string
@@ -563,6 +566,7 @@ export type Database = {
       opportunities: {
         Row: {
           application_questions: Json | null
+          applications_count: number
           club_id: string
           created_at: string
           deadline: string | null
@@ -578,6 +582,7 @@ export type Database = {
         }
         Insert: {
           application_questions?: Json | null
+          applications_count?: number
           club_id: string
           created_at?: string
           deadline?: string | null
@@ -593,6 +598,7 @@ export type Database = {
         }
         Update: {
           application_questions?: Json | null
+          applications_count?: number
           club_id?: string
           created_at?: string
           deadline?: string | null

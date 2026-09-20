@@ -189,7 +189,10 @@ export function OpportunityCard({
       meta={
         <>
           {deadline}
-          {showApplicants && applicants !== undefined && (
+          {/* Hidden at zero: "0 applied" on a brand-new posting reads as
+              "nobody wants this" rather than "this is new", and at launch that
+              is nearly every card (maintainer decision, 2026-09-20). */}
+          {showApplicants && applicants !== undefined && applicants > 0 && (
             <>
               {" · "}
               <span className="font-data">{applicants}</span> applied

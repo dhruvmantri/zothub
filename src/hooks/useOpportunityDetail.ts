@@ -25,7 +25,10 @@ export interface OpportunityDetailData {
     description: string | null;
     website_url: string | null;
   };
-  applications: { id: string }[];
+  /** Trigger-maintained (O5-counts). Replaces counting an embedded
+   *  `applications` array that RLS filtered to the viewer's own rows, so a
+   *  logged-out visitor read 0 on every role however busy it was. */
+  applications_count: number;
 }
 
 /** The stored questions are untyped JSON; normalise once, here. */
@@ -64,7 +67,7 @@ async function fetchOpportunityDetail(
   const { data, error } = (await supabase
     .from("opportunities")
     .select(
-      `id, title, type, description, requirements, deadline, ${isAuthed ? "application_questions, " : ""}show_application_count, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url), applications (id)`,
+      `id, title, type, description, requirements, deadline, ${isAuthed ? "application_questions, " : ""}show_application_count, applications_count, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url)`,
     )
     .eq("id", opportunityId)
     .eq("is_active", true)
@@ -84,7 +87,11 @@ async function fetchOpportunityDetail(
   return {
     ...data,
     application_questions: parseQuestions(data.application_questions),
-    show_application_count: data.show_application_count ?? true,
+    // `?? false`, matching the database default and EditOpportunity. It was
+    // `?? true` here, which showed the applicant count on roles whose club had
+    // never opted in — the detail-page half of the inconsistency this change
+    // fixes (maintainer decision, 2026-09-20: honour the switch everywhere).
+    show_application_count: data.show_application_count ?? false,
   };
 }
 

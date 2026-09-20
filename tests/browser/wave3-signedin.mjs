@@ -27,10 +27,10 @@ const session = {
 const OPPS = [
   { id: "o1", title: "Marketing Lead", type: "leadership", description: "Run the socials.",
     deadline: new Date(Date.now() + 86400000 * 14).toISOString(), club_id: "c1",
-    club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications: [{ id: "a1" }] },
+    club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications_count: 1, show_application_count: true },
   { id: "o2", title: "Treasurer", type: "leadership", description: null,
     deadline: null, club_id: "c1",
-    club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications: [] },
+    club_profiles: { club_name: "Hack at UCI", logo_url: null }, applications_count: 0, show_application_count: true },
 ];
 
 const counts = { opportunities: 0, applications: 0, student_profiles: 0, clubs: 0 };

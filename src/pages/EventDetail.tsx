@@ -201,15 +201,29 @@ export default function EventDetail() {
                     ...(event.location
                       ? [{ Icon: MapPin, label: "Location", value: event.location, data: false }]
                       : []),
-                    {
-                      Icon: Users,
-                      label: "Attending",
-                      value:
-                        event.capacity !== null
-                          ? `${confirmedRsvps} going · ${Math.max(spotsLeft ?? 0, 0)} spots left`
-                          : `${confirmedRsvps} going`,
-                      data: true,
-                    },
+                    // Hidden at zero (maintainer decision, 2026-09-20): "0 going"
+                    // on a new event reads as a verdict on it. With a capacity
+                    // the row still earns its place by saying how many seats are
+                    // free; without one there is nothing to say yet, so the row
+                    // goes rather than announcing the zero.
+                    ...(confirmedRsvps > 0
+                      ? [{
+                          Icon: Users,
+                          label: "Attending",
+                          value:
+                            event.capacity !== null
+                              ? `${confirmedRsvps} going · ${Math.max(spotsLeft ?? 0, 0)} spots left`
+                              : `${confirmedRsvps} going`,
+                          data: true,
+                        }]
+                      : event.capacity !== null
+                        ? [{
+                            Icon: Users,
+                            label: "Attending",
+                            value: `${Math.max(spotsLeft ?? 0, 0)} spots left`,
+                            data: true,
+                          }]
+                        : []),
                   ].map(({ Icon, label, value, data }) => (
                     <div key={label} className="flex items-center gap-3">
                       <Icon aria-hidden className="size-[18px] shrink-0 text-ink-3" />

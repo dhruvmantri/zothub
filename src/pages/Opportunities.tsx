@@ -41,7 +41,15 @@ interface OpportunityRow {
     club_name: string;
     logo_url: string | null;
   };
-  applications: { id: string }[];
+  /** Maintained by a database trigger (O5-counts). Every application ever
+   *  submitted, including rejected ones — the honest measure of competition,
+   *  and it never goes down. Replaces counting an embedded `applications`
+   *  array, which RLS filtered to the viewer's own rows: a logged-out visitor
+   *  saw 0 on every card however busy the role was. */
+  applications_count: number;
+  /** The club's "show applicant count" switch. Defaults to false in the
+   *  database, so a null means the club never opted in. */
+  show_application_count: boolean | null;
 }
 
 /** Module-level so the fallback identity is stable. `data ?? []` allocates a
@@ -75,12 +83,11 @@ async function fetchOpportunitiesList(): Promise<OpportunityRow[]> {
       description,
       deadline,
       club_id,
+      applications_count,
+      show_application_count,
       club_profiles (
         club_name,
         logo_url
-      ),
-      applications (
-        id
       )
     `)
     .eq("is_active", true)
@@ -221,7 +228,10 @@ export default function OpportunitiesPage() {
             if (!b.deadline) return -1;
             return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
           case "popular":
-            return (b.applications?.length || 0) - (a.applications?.length || 0);
+            // Reads the trigger-maintained counter. Sorting on the embedded
+            // array made "Most applied to" a no-op for logged-out visitors —
+            // every row was 0, so the order never changed.
+            return b.applications_count - a.applications_count;
           case "newest":
           default:
             return 0;
@@ -243,7 +253,13 @@ export default function OpportunitiesPage() {
       id: opp.id,
       href: `/opportunities/${opp.id}`,
       title: opp.title,
-      meta: `Due ${formatDeadline(opp.deadline)} · ${opp.applications?.length || 0} applied`,
+      // Hidden at zero, and hidden when the club turned the count off
+      // (maintainer decisions, 2026-09-20). A brand-new posting should look
+      // new, not ignored — and at launch nearly every card is at zero.
+      meta:
+        opp.show_application_count && opp.applications_count > 0
+          ? `Due ${formatDeadline(opp.deadline)} · ${opp.applications_count} applied`
+          : `Due ${formatDeadline(opp.deadline)}`,
       tag: { label: opportunityTypeLabel(opp.type) },
       clubId: opp.club_id,
       clubName: opp.club_profiles?.club_name || "Unknown club",
@@ -387,7 +403,8 @@ export default function OpportunitiesPage() {
                         type={opportunity.type}
                         deadline={`Due ${formatDeadline(opportunity.deadline)}`}
                         deadlineAt={opportunity.deadline}
-                        applicants={opportunity.applications?.length || 0}
+                        applicants={opportunity.applications_count}
+                        showApplicants={opportunity.show_application_count ?? false}
                         isBookmarked={isBookmarked(opportunity.id)}
                         onBookmark={() => toggleBookmark(opportunity.id)}
                         hasApplied={appliedOpportunityIds.has(opportunity.id)}

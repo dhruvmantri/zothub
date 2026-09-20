@@ -12,7 +12,7 @@ interface EventForRSVP {
   id: string;
   capacity: number | null;
   requires_approval: boolean | null;
-  rsvps: { id: string; student_id: string; status: string | null }[];
+  confirmed_rsvps_count: number;
   rsvp_questions?: unknown[] | null;
 }
 
@@ -244,12 +244,14 @@ export function useEventRSVP(
       return;
     }
 
-    // Client-side capacity pre-check, kept exactly as it was. It is NOT
-    // authoritative and cannot be: `event.rsvps` is RLS-filtered, so a student
-    // sees almost none of it (see O5-counts). The `enforce_rsvp_capacity`
-    // trigger is the real gate, and its rejection is handled in onError above.
-    const confirmedCount = event.rsvps.filter((r) => r.status === "confirmed").length;
-    if (event.capacity && confirmedCount >= event.capacity) {
+    // Client-side capacity pre-check. Now reads the trigger-maintained counter
+    // rather than an RLS-filtered array, so it is finally right for everyone
+    // instead of always 0 for a visitor (O5-counts). It is still not
+    // AUTHORITATIVE — the number can be up to `staleTime` old, and
+    // `enforce_rsvp_capacity` remains the real gate, with its rejection handled
+    // in onError above. The pre-check exists to avoid a pointless round trip,
+    // not to decide anything.
+    if (event.capacity && event.confirmed_rsvps_count >= event.capacity) {
       toast.error("This event is at full capacity");
       return;
     }
@@ -262,7 +264,7 @@ export function useEventRSVP(
     [rsvpMutation],
   );
 
-  const confirmedRsvps = event?.rsvps.filter((r) => r.status === "confirmed").length ?? 0;
+  const confirmedRsvps = event?.confirmed_rsvps_count ?? 0;
   const spotsLeft = event?.capacity ? event.capacity - confirmedRsvps : null;
 
   return {

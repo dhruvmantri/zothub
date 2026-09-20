@@ -20,7 +20,13 @@ export interface EventDetailData {
     club_name: string;
     logo_url: string | null;
   };
-  rsvps: { id: string; student_id: string; status: string | null }[];
+  /** Trigger-maintained (O5-counts), CONFIRMED RSVPs only — matching
+   *  `enforce_rsvp_capacity`, the authority on who holds a seat. Replaces
+   *  counting an embedded `rsvps` array that RLS filtered to the viewer's own
+   *  rows, so "spots left" was computed from 0 for a logged-out visitor and a
+   *  FULL event advertised every seat as available. Dropping the embed also
+   *  takes per-viewer data out of the cached payload. */
+  confirmed_rsvps_count: number;
 }
 
 /**
@@ -42,7 +48,7 @@ async function fetchEventDetail(
   const { data, error } = (await supabase
     .from("events")
     .select(
-      `id, title, description, event_date, location, capacity, banner_url, requires_approval, ${isAuthed ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url), rsvps (id, student_id, status)`,
+      `id, title, description, event_date, location, capacity, banner_url, requires_approval, confirmed_rsvps_count, ${isAuthed ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url)`,
     )
     .eq("id", eventId)
     .maybeSingle()) as unknown as {

@@ -34,7 +34,12 @@ interface EventRow {
     club_name: string;
     logo_url: string | null;
   };
-  rsvps: { id: string }[];
+  /** Maintained by a database trigger (O5-counts). CONFIRMED RSVPs only, which
+   *  matches `enforce_rsvp_capacity` — the authority on who holds a seat.
+   *  Replaces counting an embedded `rsvps` array that RLS filtered to the
+   *  viewer's own rows, so "spots left" was computed from 0 for a logged-out
+   *  visitor: a FULL event advertised every seat as still available. */
+  confirmed_rsvps_count: number;
 }
 
 /** Module-level so the fallback identity is stable. `data ?? []` allocates a
@@ -71,12 +76,10 @@ async function fetchUpcomingEvents(): Promise<EventRow[]> {
       capacity,
       banner_url,
       club_id,
+      confirmed_rsvps_count,
       club_profiles (
         club_name,
         logo_url
-      ),
-      rsvps (
-        id
       )
     `)
     .eq("is_active", true)
@@ -312,7 +315,7 @@ export default function EventsPage() {
                         clubLogo={event.club_profiles?.logo_url || undefined}
                         eventDate={event.event_date}
                         location={event.location || ""}
-                        attendees={event.rsvps?.length || 0}
+                        attendees={event.confirmed_rsvps_count}
                         capacity={event.capacity ?? undefined}
                         isBookmarked={isBookmarked(event.id)}
                         onBookmark={() => toggleBookmark(event.id)}
