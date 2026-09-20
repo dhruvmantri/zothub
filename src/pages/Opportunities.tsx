@@ -120,8 +120,12 @@ const BASE_CATEGORIES = OPPORTUNITY_TYPES.map((t) => ({ value: t.value, label: t
 type SortOption = "newest" | "deadline" | "popular";
 
 export default function OpportunitiesPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { studentProfileId, isLoading: isStudentProfileLoading } = useStudentProfileId();
+  // A club can browse but cannot apply, RSVP or save — those all need a student
+  // profile. The cards render a neutral "View" instead of dead controls, and
+  // the Saved filter is dropped rather than left as another dead end.
+  const isViewOnly = role === "club";
   const { isBookmarked, toggleBookmark } = useBookmarks("opportunity");
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -193,10 +197,10 @@ export default function OpportunitiesPage() {
       ...(followedClubIds.size > 0
         ? [{ value: "following", label: "Following" }]
         : []),
-      { value: "saved", label: "Saved" },
+      ...(isViewOnly ? [] : [{ value: "saved", label: "Saved" }]),
       ...BASE_CATEGORIES,
     ],
-    [followedClubIds],
+    [followedClubIds, isViewOnly],
   );
 
   const filteredOpportunities = useMemo(() => {
@@ -264,11 +268,13 @@ export default function OpportunitiesPage() {
       clubId: opp.club_id,
       clubName: opp.club_profiles?.club_name || "Unknown club",
       clubLogo: opp.club_profiles?.logo_url,
-      saved: isBookmarked(opp.id),
-      onSave: () => toggleBookmark(opp.id),
-      action: applied
-        ? { label: "Applied", disabled: true }
-        : { label: "Apply", disabled: isApplicationStatePending },
+      saved: isViewOnly ? undefined : isBookmarked(opp.id),
+      onSave: isViewOnly ? undefined : () => toggleBookmark(opp.id),
+      action: isViewOnly
+        ? { label: "View" }
+        : applied
+          ? { label: "Applied", disabled: true }
+          : { label: "Apply", disabled: isApplicationStatePending },
     };
   });
 
@@ -278,10 +284,13 @@ export default function OpportunitiesPage() {
         <div className="border-b border-line bg-surface">
           <div className="container mx-auto px-4 py-9">
             <h1 className="text-[clamp(30px,4vw,40px)] font-medium tracking-[-0.03em] text-ink">
-              Discover
+              Opportunities
             </h1>
             <p className="mt-2 max-w-2xl text-ink-2">
-              Roles and events from UCI clubs — find one, apply, show up.
+              {/* A club can browse but not apply, so it is not told to. */}
+              {isViewOnly
+                ? "Roles from UCI clubs — see what the rest of campus is recruiting for."
+                : "Roles from UCI clubs — find one, apply, show up."}
             </p>
           </div>
         </div>
@@ -409,6 +418,7 @@ export default function OpportunitiesPage() {
                         onBookmark={() => toggleBookmark(opportunity.id)}
                         hasApplied={appliedOpportunityIds.has(opportunity.id)}
                         isApplicationStatePending={isApplicationStatePending}
+                        viewOnly={isViewOnly}
                       />
                     ))}
                   </div>

@@ -104,7 +104,9 @@ const BASE_FILTERS = [
  * the mono date chip doing the work of telling you it is an event.
  */
 export default function EventsPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  // See the note in Opportunities.tsx — a club browses, it does not act.
+  const isViewOnly = role === "club";
   const { isBookmarked, toggleBookmark } = useBookmarks("event");
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,9 +141,9 @@ export default function EventsPage() {
     () => [
       { value: "all", label: "All" },
       ...(followedClubIds.size > 0 ? [{ value: "following", label: "Following" }] : []),
-      ...BASE_FILTERS,
+      ...(isViewOnly ? BASE_FILTERS.filter((f) => f.value !== "saved") : BASE_FILTERS),
     ],
-    [followedClubIds],
+    [followedClubIds, isViewOnly],
   );
 
   const filteredEvents = useMemo(() => {
@@ -198,9 +200,9 @@ export default function EventsPage() {
     clubId: event.club_id,
     clubName: event.club_profiles?.club_name || "Unknown club",
     clubLogo: event.club_profiles?.logo_url,
-    saved: isBookmarked(event.id),
-    onSave: () => toggleBookmark(event.id),
-    action: { label: "RSVP" },
+    saved: isViewOnly ? undefined : isBookmarked(event.id),
+    onSave: isViewOnly ? undefined : () => toggleBookmark(event.id),
+    action: isViewOnly ? { label: "View" } : { label: "RSVP" },
   }));
 
   return (
@@ -319,6 +321,7 @@ export default function EventsPage() {
                         capacity={event.capacity ?? undefined}
                         isBookmarked={isBookmarked(event.id)}
                         onBookmark={() => toggleBookmark(event.id)}
+                        viewOnly={isViewOnly}
                       />
                     ))}
                   </div>

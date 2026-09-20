@@ -101,8 +101,9 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const coldEvents = counts.events;
   check("cold /events issues exactly 1 events request", coldEvents === 1, `got ${coldEvents}`);
 
-  // Client-side navigation via the navbar link (NOT page.goto).
-  await page.getByRole("link", { name: "Discover", exact: true }).first().click();
+  // Client-side navigation via the navbar link (NOT page.goto). The item was
+  // called "Discover" before the 2026-09-20 nav restructure.
+  await page.getByRole("link", { name: "Opportunities", exact: true }).first().click();
   await page.waitForURL("**/opportunities");
   await page.getByRole("heading", { name: "Marketing Lead" }).first().waitFor({ timeout: 10000 });
   const coldOpps = counts.opportunities;

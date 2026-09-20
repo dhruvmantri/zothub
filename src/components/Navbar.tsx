@@ -8,8 +8,13 @@ import { ThemeToggleButton } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Mirrors the signed-in nav minus the account-only destinations, so the bar a
+// visitor learns is the bar they keep (maintainer decision, 2026-08-23).
+// Events used to have no entry here at all — it was reachable only by typing
+// the URL (UX2).
 const navLinks = [
-  { href: "/opportunities", label: "Discover", match: (p: string) => p.startsWith("/opportunities") || p.startsWith("/events") },
+  { href: "/opportunities", label: "Opportunities", match: (p: string) => p.startsWith("/opportunities") },
+  { href: "/events", label: "Events", match: (p: string) => p.startsWith("/events") },
   { href: "/clubs", label: "Clubs", match: (p: string) => p.startsWith("/clubs") },
 ];
 

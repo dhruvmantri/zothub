@@ -148,6 +148,16 @@ export interface OpportunityCardProps {
   onBookmark?: () => void;
   hasApplied?: boolean;
   /**
+   * Render a neutral "View" instead of Save + the primary action.
+   *
+   * A club browsing the student-facing lists can neither apply, RSVP nor save —
+   * those all require a student profile — so showing them was a dead end on
+   * every card (maintainer decision, 2026-09-20). Dropping the buttons entirely
+   * was the other option and looked broken: cards ended up different heights
+   * and a card with no action reads as a fault rather than a choice.
+   */
+  viewOnly?: boolean;
+  /**
    * True while the viewer's applications are still being resolved.
    *
    * Without it the card renders a live "Apply" during that window, so a student
@@ -175,6 +185,7 @@ export function OpportunityCard({
   onBookmark,
   hasApplied,
   isApplicationStatePending = false,
+  viewOnly = false,
 }: OpportunityCardProps) {
   const closesAt = deadlineAt ? new Date(deadlineAt) : null;
   const closed = !!closesAt && closesAt.getTime() < Date.now();
@@ -207,6 +218,11 @@ export function OpportunityCard({
         </>
       }
       footer={
+        viewOnly ? (
+          <Button variant="outline" size="sm" className="relative z-10 flex-1" asChild>
+            <Link to={`/opportunities/${id}`}>View</Link>
+          </Button>
+        ) : (
         <>
           <SaveButton saved={isBookmarked} onToggle={onBookmark} label={title} />
           {hasApplied ? (
@@ -231,6 +247,7 @@ export function OpportunityCard({
             </Button>
           )}
         </>
+        )
       }
     />
   );
@@ -250,6 +267,16 @@ export interface EventCardProps {
   capacity?: number;
   isBookmarked?: boolean;
   onBookmark?: () => void;
+  /**
+   * Render a neutral "View" instead of Save + the primary action.
+   *
+   * A club browsing the student-facing lists can neither apply, RSVP nor save —
+   * those all require a student profile — so showing them was a dead end on
+   * every card (maintainer decision, 2026-09-20). Dropping the buttons entirely
+   * was the other option and looked broken: cards ended up different heights
+   * and a card with no action reads as a fault rather than a choice.
+   */
+  viewOnly?: boolean;
   hasRSVP?: boolean;
 }
 
@@ -264,6 +291,7 @@ export function EventCard({
   isBookmarked,
   onBookmark,
   hasRSVP,
+  viewOnly = false,
 }: EventCardProps) {
   const date = new Date(eventDate);
   const soon = date.getTime() - Date.now() < 3 * DAY && date.getTime() > Date.now();
@@ -295,6 +323,11 @@ export function EventCard({
         </>
       }
       footer={
+        viewOnly ? (
+          <Button variant="outline" size="sm" className="relative z-10 flex-1" asChild>
+            <Link to={`/events/${id}`}>View</Link>
+          </Button>
+        ) : (
         <>
           <SaveButton saved={isBookmarked} onToggle={onBookmark} label={title} />
           {hasRSVP ? (
@@ -311,6 +344,7 @@ export function EventCard({
             </Button>
           )}
         </>
+        )
       }
     />
   );

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, MessageSquare } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { AccountMenu } from "@/components/nav/AccountMenu";
+import { MESSAGES_PATH, messagesMatch } from "@/components/nav/navConfig";
 import type { NavItem } from "@/components/nav/navConfig";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +96,36 @@ export function TopNav({
           >
             <Bell className="size-[18px]" aria-hidden />
             {notificationCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-surface bg-accent"
+              />
+            )}
+          </Link>
+
+          {/* Messages moved out of the nav row and into this icon row
+              (maintainer decision, 2026-08-23). That is what frees the fourth
+              text slot for Events, which had no nav entry at all. It also
+              reaches mobile for free — this row renders at every width, while
+              the text nav above is desktop-only. Order is the maintainer's and
+              is fixed: notifications, MESSAGES, you — messages sits BETWEEN the
+              bell and the avatar (decision, 2026-08-23). */}
+          <Link
+            to={MESSAGES_PATH[role]}
+            aria-label={
+              counts.messages > 0
+                ? `Messages, ${counts.messages} unread`
+                : "Messages"
+            }
+            className={cn(
+              "relative inline-flex size-11 items-center justify-center rounded-pill text-ink-2",
+              "transition-colors duration-fast ease-zh hover:bg-surface-3 hover:text-ink",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              messagesMatch(pathname) && "bg-surface-3 text-ink",
+            )}
+          >
+            <MessageSquare className="size-[18px]" aria-hidden />
+            {counts.messages > 0 && (
               <span
                 aria-hidden
                 className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-surface bg-accent"

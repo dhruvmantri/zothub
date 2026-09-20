@@ -1,9 +1,9 @@
 import {
   Building2,
+  CalendarDays,
   Compass,
   Inbox,
   ListChecks,
-  MessageSquare,
   Briefcase,
   type LucideIcon,
 } from "lucide-react";
@@ -18,6 +18,18 @@ import {
  *   · club "Analytics"    → inside My Club
  *   · club "Team"         → inside My Club
  * Nothing was dropped; three things simply stopped being top-level.
+ *
+ * Restructured 2026-08-23 (maintainer decision; UX2 + UX6 together):
+ *   · "Discover" splits into OPPORTUNITIES and EVENTS as two top-level items.
+ *     Events was previously unreachable from the nav entirely — it existed only
+ *     as a pre-filtered view of Discover that nothing linked to (UX2).
+ *   · MESSAGES leaves the nav row for the top-right icon row, between the
+ *     notifications bell and the profile avatar. That is what frees the slot
+ *     Events needs, so the four-destinations rule survives intact. It also
+ *     reaches mobile for free: the icon row renders at every width, while the
+ *     text nav is desktop-only.
+ *   · club "Responses" is renamed APPLICANTS — an event RSVP is treated as
+ *     applying to the event, so the one word covers both sections of that page.
  */
 export interface NavItem {
   to: string;
@@ -38,11 +50,15 @@ const startsWith =
 export const STUDENT_NAV: NavItem[] = [
   {
     to: "/opportunities",
-    label: "Discover",
+    label: "Opportunities",
     icon: Compass,
-    // One discovery surface; /events stays a pre-filtered entry point into it,
-    // so both light up the same destination.
-    match: startsWith("/opportunities", "/events"),
+    match: startsWith("/opportunities"),
+  },
+  {
+    to: "/events",
+    label: "Events",
+    icon: CalendarDays,
+    match: startsWith("/events"),
   },
   { to: "/clubs", label: "Clubs", icon: Building2, match: startsWith("/clubs") },
   {
@@ -50,13 +66,6 @@ export const STUDENT_NAV: NavItem[] = [
     label: "Activity",
     icon: ListChecks,
     match: startsWith("/student/dashboard", "/student/feed", "/student/profile"),
-  },
-  {
-    to: "/student/messages",
-    label: "Messages",
-    icon: MessageSquare,
-    count: "messages",
-    match: startsWith("/student/messages", "/messages"),
   },
 ];
 
@@ -69,7 +78,7 @@ export const CLUB_NAV: NavItem[] = [
   },
   {
     to: "/club/dashboard",
-    label: "Responses",
+    label: "Applicants",
     icon: Inbox,
     count: "responses",
     // The club's landing page is the work queue, not a stats page (§5).
@@ -79,11 +88,15 @@ export const CLUB_NAV: NavItem[] = [
       p === "/club/dashboard/rsvps",
   },
   {
-    to: "/club/messages",
-    label: "Messages",
-    icon: MessageSquare,
-    count: "messages",
-    match: startsWith("/club/messages", "/messages"),
+    // A club had no way to see the rest of campus at all — not a missing link,
+    // a missing destination (UX19). It reuses the student-facing lists rather
+    // than building a second discovery surface; the cards there render a
+    // neutral "View" for clubs, since they can neither apply, RSVP nor save
+    // (maintainer decision, 2026-09-20).
+    to: "/opportunities",
+    label: "Discover",
+    icon: Compass,
+    match: startsWith("/opportunities", "/events", "/clubs"),
   },
   {
     // Lands on the club's own Overview (stats + recent items), with Team,
@@ -99,3 +112,16 @@ export const CLUB_NAV: NavItem[] = [
     ),
   },
 ];
+
+/**
+ * Where a club's Messages icon points. Messages is no longer a nav item for
+ * either role, but the two roles still have different inboxes.
+ */
+export const MESSAGES_PATH: Record<"student" | "club", string> = {
+  student: "/student/messages",
+  club: "/club/messages",
+};
+
+/** `/messages` is deliberately absent: there is no such route, and matching it
+ *  was dead config the old nav carried (noted in UX19). */
+export const messagesMatch = startsWith("/student/messages", "/club/messages");

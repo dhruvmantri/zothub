@@ -294,8 +294,16 @@ const ClubDetail = () => {
                             )}
                           </p>
                         </div>
-                        <Button variant="ink" size="sm" asChild className="relative z-10 shrink-0">
-                          <Link to={`/opportunities/${opp.id}`}>Apply</Link>
+                        {/* A club browsing another club cannot apply. */}
+                        <Button
+                          variant={role === "club" ? "outline" : "ink"}
+                          size="sm"
+                          asChild
+                          className="relative z-10 shrink-0"
+                        >
+                          <Link to={`/opportunities/${opp.id}`}>
+                            {role === "club" ? "View" : "Apply"}
+                          </Link>
                         </Button>
                       </li>
                     ))}
@@ -348,8 +356,15 @@ const ClubDetail = () => {
                               {event.location ? ` · ${event.location}` : ""}
                             </p>
                           </div>
-                          <Button variant="ink" size="sm" asChild className="relative z-10 shrink-0">
-                            <Link to={`/events/${event.id}`}>RSVP</Link>
+                          <Button
+                            variant={role === "club" ? "outline" : "ink"}
+                            size="sm"
+                            asChild
+                            className="relative z-10 shrink-0"
+                          >
+                            <Link to={`/events/${event.id}`}>
+                              {role === "club" ? "View" : "RSVP"}
+                            </Link>
                           </Button>
                         </li>
                       );

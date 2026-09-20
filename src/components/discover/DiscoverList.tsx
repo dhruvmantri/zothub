@@ -90,15 +90,20 @@ export function DiscoverList({ rows }: { rows: DiscoverListRow[] }) {
                   </div>
 
                   <div className="relative z-10 flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-pressed={row.saved}
-                      aria-label={row.saved ? `Saved: ${row.title}. Remove from saved` : `Save ${row.title}`}
-                      onClick={row.onSave}
-                    >
-                      {row.saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
-                    </Button>
+                    {/* Rendered only when the caller can actually handle it.
+                        A club cannot save anything, so an always-on bookmark
+                        button was a control that silently did nothing. */}
+                    {row.onSave && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-pressed={row.saved}
+                        aria-label={row.saved ? `Saved: ${row.title}. Remove from saved` : `Save ${row.title}`}
+                        onClick={row.onSave}
+                      >
+                        {row.saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                      </Button>
+                    )}
                     {row.action.disabled ? (
                       <Button variant="secondary" size="sm" disabled>
                         {row.action.label}
