@@ -57,7 +57,7 @@
 2. Security holes       ✅ live · S6 closed (cron token is the ANON key — no action)
 3. Deploy gate (CI)     ✅ live & verified green
 4. Speed (UX15)         ✅ COMPLETE — all five waves
-4b. O5-counts (DB fix)  ← approved, next
+4b. O5-counts (DB fix)  ✅ live & verified
 5. Nav → URLs → toolbar → CTAs → empty states
 6. Logos, avatars, onboarding polish
 7. Verification N1–N7 (needs test accounts)
@@ -65,7 +65,7 @@
 9. D1 purge test data         ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** **`O5-counts`** — the applicant and attendee numbers on every card are wrong for almost everyone and always have been. The SELECT policy returns only the viewer's own `applications`/`rsvps` rows plus the owning club's, so the embedded arrays the cards count are RLS-shaped: a signed-out visitor sees **0 applied** and **0 going** on every card; a signed-in student sees 0 or 1; only the owning club sees the truth. Approved by the maintainer on 2026-09-19 as a **trust** fix to land before launch — showing 0 everywhere makes a busy campus look dead to exactly the people who have not signed up yet. It needs a viewer-independent count (a `SECURITY DEFINER` aggregate or a denormalised counter), so it is a **backend migration**: write it, prove it against a throwaway local database, then hand the maintainer one command. Same delivery shape as the `S7`/`S8`/`S9` migration. **UX15 is complete** — all five waves, 64 browser checks green. After `O5-counts`, step 5: the nav restructure.
+**NEXT TASK, exactly:** **Step 5 — the nav restructure**, and it is the first change the maintainer will actually SEE. Decided 2026-08-23: **Opportunities · Events · Clubs · Activity** as four top-level items, with **Messages moving out of the nav row into the top-right icon row**, between the notifications icon and the profile initials — Messages vacating the row is exactly what frees the slot Events needs, which resolves `UX2` (Events is currently unreachable from the nav) and `UX6` together. Club side: **Postings · Applicants · My Club**. The order within step 5 is fixed and must not be reshuffled: **nav restructure → URL renames (`UX8`, with redirects) → the shared toolbar → the CTA sweep → empty states.** Nav must precede the CTA sweep or every CTA gets rewritten twice. `UX19` (clubs have no discovery destination at all) is still unsolved and belongs inside this work. **UX15 and O5-counts are both complete and live.**
 
 **The full migration contract is committed at [`ux15-migration-contract.md`](./ux15-migration-contract.md)** — unified key scheme, invalidation map `M1`–`M21`, 12 resolved conflicts, 15 traps ranked by how likely each is to cause a *silent* regression, and an out-of-scope list so waves 3–4 do not scope-creep. It was produced by a 9-file survey + reconciliation and caught several bugs that would otherwise have shipped (including `UX21` and `A3`). **Read it before touching any remaining page** — do not improvise the keys.
 
