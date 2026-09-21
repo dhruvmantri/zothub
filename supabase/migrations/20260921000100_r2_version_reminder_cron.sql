@@ -41,11 +41,30 @@ BEGIN
   FROM vault.decrypted_secrets
   WHERE name = 'service_role_key';
 
-  IF v_token IS NULL OR length(v_token) < 20 THEN
+  -- Validate the SHAPE, not just the length. A length check alone is not
+  -- enough, and that is not hypothetical: on 2026-09-21 this vault entry was
+  -- found holding the literal placeholder text `<paste your service_role key>`
+  -- — 29 characters, which sails past any "longer than 20" test. The migration
+  -- would then have scheduled the job with a meaningless token and EVERY
+  -- reminder email would have failed silently, hourly, forever. Caught only
+  -- because the stored value was inspected rather than overwritten.
+  --
+  -- A Supabase service-role key is a JWT: three dot-separated base64url
+  -- segments, the first beginning `eyJ` (the encoded `{"`), and well over 100
+  -- characters in total.
+  IF v_token IS NULL THEN
     RAISE EXCEPTION
-      'Vault secret "service_role_key" is missing or too short. Store it first:  '
-      'SELECT vault.create_secret(''<service role key>'', ''service_role_key'');  '
+      'Vault secret "service_role_key" does not exist. Store it first:  '
+      'SELECT vault.create_secret(''<the real key>'', ''service_role_key'');  '
       'Nothing has been changed — the existing schedule is untouched.';
+  END IF;
+
+  IF v_token !~ '^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$' OR length(v_token) < 100 THEN
+    RAISE EXCEPTION
+      'Vault secret "service_role_key" is not a JWT (got % characters, starting "%"). '
+      'A placeholder or a truncated paste would schedule the job with a dead token '
+      'and every reminder email would fail silently. Nothing has been changed.',
+      length(v_token), left(v_token, 6);
   END IF;
 
   -- 2. Build the command. This mirrors the live job exactly (verified against

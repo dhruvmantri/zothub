@@ -49,8 +49,24 @@ run "$BODY" >/dev/null 2>&1
 ok "no vault secret: the working job is left untouched" \
    "$(q "select schedule from cron.job where jobname='send-reminders-hourly'")" "0 * * * *"
 
+# 2b. A PLACEHOLDER in the vault must be refused. Found in the real project on
+#     2026-09-21: the entry held the literal text `<paste your service_role key>`,
+#     29 characters, which passed the original "longer than 20" check.
+q "insert into vault.decrypted_secrets values ('service_role_key','<paste your service_role key>')" >/dev/null
+out=$(run "$BODY" 2>&1); case "$out" in *"is not a JWT"*) r=yes;; *) r=no;; esac
+ok "a placeholder in the vault is refused, not scheduled" "$r" "yes"
+ok "and the working job is STILL untouched" \
+   "$(q "select schedule from cron.job where jobname='send-reminders-hourly'")" "0 * * * *"
+q "delete from vault.decrypted_secrets where name='service_role_key'" >/dev/null
+
+# 2c. A truncated paste must also be refused.
+q "insert into vault.decrypted_secrets values ('service_role_key','eyJhbGciOiJIUzI1NiJ9.trunc')" >/dev/null
+out=$(run "$BODY" 2>&1); case "$out" in *"is not a JWT"*) r=yes;; *) r=no;; esac
+ok "a truncated key is refused too" "$r" "yes"
+q "delete from vault.decrypted_secrets where name='service_role_key'" >/dev/null
+
 # 3. With the secret: replaces cleanly.
-q "insert into vault.decrypted_secrets values ('service_role_key','eyJhbGciOiJIUzI1NiJ9.FAKE.sig')" >/dev/null
+q "insert into vault.decrypted_secrets values ('service_role_key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')" >/dev/null
 run "$BODY" >/dev/null 2>&1
 ok "with the secret: the job is scheduled hourly" \
    "$(q "select schedule from cron.job where jobname='send-reminders-hourly'")" "0 * * * *"
