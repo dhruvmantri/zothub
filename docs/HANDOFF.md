@@ -23,7 +23,7 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-## WAITING ON THE MAINTAINER — three things, in this order
+## WAITING ON THE MAINTAINER — four things, in this order
 
 Each is independent. Stopping after any one of them is fine. All commands run
 from the repo root, after `git pull`.
@@ -60,7 +60,29 @@ node scripts/rehost_club_logos.mjs scripts/data/zotspot_club_manifest.json --com
 Safe to re-run: clubs that already have a logo are skipped. Step (b) resumes
 where (a) stopped. It aborts on a failed canary before touching any club.
 
-### 3. Deploy the two email functions  (~2 min, `S5`/`R1`)
+### 3. Version the reminder cron  (~2 min, `R2`) — two SQL statements
+
+The hourly job exists only as production state; if it is ever lost, all
+reminder email stops silently. This commits it to the repo. It reads the
+service-role key from Supabase Vault so no key enters git.
+
+**a.** SQL Editor, once — stores the key where the migration can read it:
+
+```sql
+SELECT vault.create_secret('<paste the service_role key>', 'service_role_key');
+```
+
+**b.** Terminal:
+
+```bash
+npx supabase db push --linked
+```
+
+If (a) is skipped, (b) fails loudly and changes nothing — the existing
+schedule is left exactly as it is. That is deliberate and is covered by
+`scripts/test_r2_cron_migration.sh` (8/8 against a throwaway Postgres).
+
+### 4. Deploy the two email functions  (~2 min, `S5`/`R1`)
 
 ```bash
 npx supabase functions deploy send-email
