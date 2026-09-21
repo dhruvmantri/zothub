@@ -23,7 +23,15 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** **step 7 — logos, avatars, onboarding polish**
+**WAITING ON THE MAINTAINER:** one command, the logo re-host. Everything
+else in step 7 is settled — student photos are deferred to post-launch by
+decision, so the logos are the whole of what is left. The script is written,
+tested against a stand-in Supabase and dry-run against the real manifest and
+the real ZotSpot; it is idempotent, resumable, and aborts on a failed canary
+before touching a club. See `MB5-logo` in the backlog for the exact command.
+**It needs the service-role key, which is why the agent cannot run it.**
+
+**NEXT TASK after that:** **step 8 — walk `N1`–`N7` with real accounts**
 (`MB5`, 589 logos approved), then **step 8 — walk `N1`–`N7` with real
 accounts** (the maintainer has club test credentials; ask for them, they are
 never committed). Then **step 9, `S5`/`R1`/`R2` email hardening — due before
