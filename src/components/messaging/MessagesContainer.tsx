@@ -136,6 +136,7 @@ export function MessagesContainer({ className }: MessagesContainerProps) {
           currentUserId={user?.id || ""}
           conversation={currentConversation || null}
           onDeleteMessage={deleteMessage}
+          hasConversations={conversations.length > 0}
         />
 
         <MessageComposer onSend={handleSend} isSending={isSending} disabled={!selectedConversation} />

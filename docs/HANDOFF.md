@@ -19,9 +19,11 @@ launch plan are done; **8 and 10 remain.**
 **Step 8 progress (2026-09-21).** Walked with `scripts/journey_walk.mjs`, which
 is read-only against production by construction — every non-GET to the database
 or an edge function is aborted in the browser, so a walk reads real data and
-cannot change it. **8a signed-out: done. 8b club (real login): done. 8c student:
-not started** — it needs either a student test account or a local Supabase, and
-that is the open question.
+cannot change it. **8a signed-out: done. 8b club (real login): done. 8c student: done**, in a
+local sandbox (`scripts/seed_sandbox.mjs` — a real club, three students,
+applications in three states, RSVPs, a follower), because applying and RSVPing
+are writes and the live site is not the place to make them. That sandbox is also
+how `N1`–`N7` finally got exercised with data in them.
 
 Shipped from the walk: `UX18` (decline confirmation), `UX26` (a deploy no longer
 strands the people already on the site), `UX27` (the Clubs directory scrolled
@@ -29,15 +31,27 @@ sideways on every phone), `UX29` (31.7MB and 32s down to 1.4MB and 3.4s),
 `UX3` (back affordance), `UX28` (404 dead end), `UX32` (stale privacy date),
 `UX33` (two club tabs read as selected, and two `aria-current`), `UX34`
 (a club could not accept or decline from a phone at all), `UX35` (plurals),
-`UX30` (dark-mode card separation). **Open from the walk: `UX31` only** — the
-Gmail support address, deliberately deferred until outreach.
+`UX30` (dark-mode card separation), `UX36` (the Activity tabs clipped their
+last tab once a student had anything), `UX39` (the empty Messages pane asked
+you to pick from an empty list). **Open from the walk:** `UX31` (Gmail support
+address, deferred until outreach), `UX37` (an unknown question type renders an
+unanswerable required question — unreachable in production today) and `UX38`
+(a whole-page total sitting under a filtered list).
 
 **The method that found all of it: measure the page, do not look at it.** Two
 findings were false and died on measurement — a "blank /login at desktop" that
 loads perfectly (transient proxy 502) and a bottom nav "covering" content that
 is correctly padded (a full-page-screenshot artifact of fixed positioning). Two
 were only found BY measuring: the sideways scroll read as a rendering quirk in
-the image, and the 31.7MB was invisible until requests were counted.
+the image, and the 31.7MB was invisible until requests were counted. A third
+was a **seed** bug wearing a product bug's clothes — an apply dialog with no
+input, caused by an invalid question type in the seed, not by the app (`UX37`).
+**And two of the agent's own tests were wrong before they were right:** one
+claimed a name was "readable in full" by reading `textContent`, which stays
+complete while `truncate` clips it; another mocked rows the page never asked
+for, so every count came back zero and a layout check passed on an empty strip.
+Both now assert the thing they claim. **Write the guard that proves the test is
+exercising the broken case.**
 
 **Production, measured 2026-09-21 as an anonymous visitor:** 725 clubs (**589
 now show a real logo**, 136 keep initials), 4 test roles, **0 publicly visible

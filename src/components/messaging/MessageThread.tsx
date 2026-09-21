@@ -22,6 +22,9 @@ interface MessageThreadProps {
   messages: Message[];
   currentUserId: string;
   conversation: Conversation | null;
+  /** Whether the list beside this pane has anything in it. Without this the
+   *  pane cannot tell "pick one" from "there are none", and says the former. */
+  hasConversations?: boolean;
   onDeleteMessage?: (messageId: string) => Promise<boolean>;
 }
 
@@ -36,7 +39,13 @@ function formatMessageDate(dateString: string) {
   return format(date, "MMM d, h:mm a");
 }
 
-export function MessageThread({ messages, currentUserId, conversation, onDeleteMessage }: MessageThreadProps) {
+export function MessageThread({
+  messages,
+  currentUserId,
+  conversation,
+  onDeleteMessage,
+  hasConversations = true,
+}: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
@@ -63,12 +72,22 @@ export function MessageThread({ messages, currentUserId, conversation, onDeleteM
   };
 
   if (!conversation) {
+    // With an empty list, "choose a conversation from the list" asks for
+    // something that cannot be done — the design system's first rule is that a
+    // message never names a state without offering a way out of it, and there
+    // is no way out of picking from nothing. Deliberately role-neutral: this
+    // pane serves students and clubs alike, so it must not tell a club to go
+    // and message a club.
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-surface-2">
         <MessageSquare className="w-16 h-16 text-ink-3 mb-4" />
-        <h3 className="font-medium text-ink mb-1">Select a conversation</h3>
+        <h3 className="font-medium text-ink mb-1">
+          {hasConversations ? "Select a conversation" : "No messages yet"}
+        </h3>
         <p className="text-sm text-ink-2">
-          Choose a conversation from the list to start messaging.
+          {hasConversations
+            ? "Choose a conversation from the list to start messaging."
+            : "When a conversation starts, it appears here."}
         </p>
       </div>
     );
