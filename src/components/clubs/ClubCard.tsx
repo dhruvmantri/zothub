@@ -67,9 +67,17 @@ export function ClubCard({ club }: { club: ClubCardData }) {
         ) : (
           "Not recruiting"
         )}
-        {" · "}
-        <span className="font-data">{club.event_count}</span>{" "}
-        {club.event_count === 1 ? "event" : "events"}
+        {/* Hidden at zero, matching ClubList and the 2026-09-20 decision that
+            a count of zero is noise rather than information. The card used to
+            read "Not recruiting · 0 events", which is the same nothing said
+            twice — and it disagreed with the list view of the same club. */}
+        {club.event_count > 0 && (
+          <>
+            {" · "}
+            <span className="font-data">{club.event_count}</span>{" "}
+            {club.event_count === 1 ? "event" : "events"}
+          </>
+        )}
       </p>
 
       {(club.website_url || club.instagram_url || club.linkedin_url) && (
