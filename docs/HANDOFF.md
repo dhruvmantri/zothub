@@ -23,6 +23,56 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
+## WAITING ON THE MAINTAINER — three things, in this order
+
+Each is independent. Stopping after any one of them is fine. All commands run
+from the repo root, after `git pull`.
+
+**Where the service-role key lives:** Supabase dashboard → your project →
+Project Settings → API → *Project API keys* → the one labelled `service_role`
+(it is marked secret). The project URL on the same page is
+`https://fguzpscguulkfctipeih.supabase.co`.
+
+### 1. Paste back one read-only query  (~1 min, unblocks `R2`)
+
+Supabase dashboard → SQL Editor → New query → paste the contents of
+`scripts/inspect_reminder_cron.sql` → Run → copy the output back.
+
+It masks the bearer token, so the output is safe to paste as-is. Needed before
+the cron migration can be written at all: the hourly job exists only as
+production state, so re-scheduling it blind risks either double-sending every
+reminder or silently killing all reminder email, neither of which shows up
+anywhere except in users not getting mail.
+
+### 2. Re-host the club logos  (~5 min, the biggest visible win)
+
+```bash
+export SUPABASE_URL=https://fguzpscguulkfctipeih.supabase.co
+export SUPABASE_SERVICE_ROLE_KEY=<paste the service_role key>
+
+# a. five clubs only — nothing else is touched
+node scripts/rehost_club_logos.mjs scripts/data/zotspot_club_manifest.json --limit=5 --commit
+
+# b. look at zothub.app/clubs. If those five have real logos:
+node scripts/rehost_club_logos.mjs scripts/data/zotspot_club_manifest.json --commit
+```
+
+Safe to re-run: clubs that already have a logo are skipped. Step (b) resumes
+where (a) stopped. It aborts on a failed canary before touching any club.
+
+### 3. Deploy the two email functions  (~2 min, `S5`/`R1`)
+
+```bash
+npx supabase functions deploy send-email
+npx supabase functions deploy send-reminders
+```
+
+`send-email` first — `send-reminders` now calls it, so deploying the caller
+first would leave it briefly calling the old template with the broken
+unsubscribe link. Nothing to migrate; no frontend change goes with these.
+
+---
+
 **WAITING ON THE MAINTAINER:** one command, the logo re-host. Everything
 else in step 7 is settled — student photos are deferred to post-launch by
 decision, so the logos are the whole of what is left. The script is written,
