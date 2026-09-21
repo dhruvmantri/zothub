@@ -23,75 +23,19 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-## WAITING ON THE MAINTAINER — four things, in this order
+## Nothing is waiting on the maintainer
 
-Each is independent. Stopping after any one of them is fine. All commands run
-from the repo root, after `git pull`.
+Everything handed over on 2026-09-21 is done: the 589 club logos are live, the
+reminder cron is committed and applied, and both email functions are deployed.
 
-**Where the service-role key lives:** Supabase dashboard → your project →
-Project Settings → API → *Project API keys* → the one labelled `service_role`
-(it is marked secret). The project URL on the same page is
-`https://fguzpscguulkfctipeih.supabase.co`.
-
-### 1. Paste back one read-only query  (~1 min, unblocks `R2`)
-
-Supabase dashboard → SQL Editor → New query → paste the contents of
-`scripts/inspect_reminder_cron.sql` → Run → copy the output back.
-
-It masks the bearer token, so the output is safe to paste as-is. Needed before
-the cron migration can be written at all: the hourly job exists only as
-production state, so re-scheduling it blind risks either double-sending every
-reminder or silently killing all reminder email, neither of which shows up
-anywhere except in users not getting mail.
-
-### 2. Re-host the club logos  (~5 min, the biggest visible win)
-
-```bash
-export SUPABASE_URL=https://fguzpscguulkfctipeih.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=<paste the service_role key>
-
-# a. five clubs only — nothing else is touched
-node scripts/rehost_club_logos.mjs scripts/data/zotspot_club_manifest.json --limit=5 --commit
-
-# b. look at zothub.app/clubs. If those five have real logos:
-node scripts/rehost_club_logos.mjs scripts/data/zotspot_club_manifest.json --commit
-```
-
-Safe to re-run: clubs that already have a logo are skipped. Step (b) resumes
-where (a) stopped. It aborts on a failed canary before touching any club.
-
-### 3. Version the reminder cron  (~2 min, `R2`) — two SQL statements
-
-The hourly job exists only as production state; if it is ever lost, all
-reminder email stops silently. This commits it to the repo. It reads the
-service-role key from Supabase Vault so no key enters git.
-
-**a.** SQL Editor, once — stores the key where the migration can read it:
-
-```sql
-SELECT vault.create_secret('<paste the service_role key>', 'service_role_key');
-```
-
-**b.** Terminal:
-
-```bash
-npx supabase db push --linked
-```
-
-If (a) is skipped, (b) fails loudly and changes nothing — the existing
-schedule is left exactly as it is. That is deliberate and is covered by
-`scripts/test_r2_cron_migration.sh` (8/8 against a throwaway Postgres).
-
-### 4. Deploy the two email functions  (~2 min, `S5`/`R1`)
-
-```bash
-npx supabase functions deploy send-email
-npx supabase functions deploy send-reminders
-```
-
-`send-email` first — `send-reminders` now calls it, so deploying the caller
-first would leave it briefly calling the old template with the broken
-unsubscribe link. Nothing to migrate; no frontend change goes with these.
+**One thing still needs eyes, and it is not a command.** The rewritten
+`send-reminders` has been deployed but has never actually run in production —
+the cron fires hourly at :00, and `cron.job_run_details` showing "succeeded"
+only proves the HTTP request was QUEUED by pg_net, not that the function
+returned 200. The real check is the **Edge Function logs** for `send-reminders`
+after the next hour turns over. There are currently 0 upcoming events, 0 RSVPs
+and no posts in the last hour, so a healthy run does nothing and logs nothing
+alarming — which is the point: it proves the rewrite executes without throwing.
 
 ---
 
