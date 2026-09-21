@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { BackToHome } from "@/components/BackToHome";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -139,6 +140,10 @@ export default function LoginPage() {
       {/* Right side - Form */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          {/* UX3. Inside the form column on purpose: the left half of this
+              page is a dark decorative panel at lg+, so a page-level top-left
+              link would sit on it and read as invisible. */}
+          <BackToHome className="mb-4" />
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <Logo />

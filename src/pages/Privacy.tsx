@@ -20,7 +20,14 @@ export default function Privacy() {
               Privacy Policy
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Last updated: January 21, 2026
+              {/* This page promises, in "Policy Updates" below, that this date
+                  moves whenever the policy materially changes — so leaving it
+                  stale breaks a commitment made on the page itself. It said
+                  "January 21, 2026" until 2026-09-21, having last been
+                  materially changed on 2026-08-23, when the data-export promise
+                  the product could not keep was deleted (D3). Move this
+                  whenever the wording above changes in substance. */}
+              Last updated: August 23, 2026
             </p>
           </div>
         </div>

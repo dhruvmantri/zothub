@@ -2,6 +2,7 @@ import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWaitlist } from "@/hooks/useWaitlist";
 import { Button } from "@/components/ui/button";
+import { BackToHome } from "@/components/BackToHome";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle, Mail, LogOut } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -31,7 +32,13 @@ export default function WaitlistRejected() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-2 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-2 flex flex-col items-center justify-center p-4">
+      {/* UX3. Before this the only control on the page was Sign Out — the app
+          made you destroy your session to leave a screen you were told to wait
+          on. The session is exactly what you want to keep. */}
+      <div className="w-full max-w-md">
+        <BackToHome className="mb-3" />
+      </div>
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-bad-wash flex items-center justify-center">

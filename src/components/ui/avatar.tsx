@@ -120,6 +120,18 @@ export const EntityAvatar = React.forwardRef<HTMLSpanElement, EntityAvatarProps>
     const text = initials(name);
     const Glyph = kind === "org" ? Building2 : User;
 
+    // Radix's Avatar.Image decides whether to show the fallback by constructing
+    // `new Image()` in JavaScript, which fetches EVERY src the moment it
+    // mounts — off screen or not, and with no way to opt out. On the Clubs
+    // directory that meant 589 logos and 31.7MB on one page load, 32 seconds
+    // to settle, for the dozen avatars actually in view. A native <img> with
+    // `loading="lazy"` hands that decision back to the browser, so the same
+    // page fetches what it shows. Load state is tracked here instead, because
+    // that is the only thing Radix's version was providing.
+    const [imageState, setImageState] = React.useState<"idle" | "loaded" | "error">("idle");
+    React.useEffect(() => setImageState("idle"), [src]);
+    const showImage = !!src && imageState !== "error";
+
     return (
       <Avatar
         ref={ref as never}
@@ -127,21 +139,36 @@ export const EntityAvatar = React.forwardRef<HTMLSpanElement, EntityAvatarProps>
         className={cn(s.box, className)}
         {...(props as Record<string, unknown>)}
       >
-        {src ? <AvatarImage src={src} alt={label} /> : null}
-        <AvatarFallback
-          className={cn(
-            s.text,
-            unclaimed
-              ? "border-[1.5px] border-dashed border-line-3 bg-surface-2 text-ink-3"
-              : text
-                ? "text-white"
-                : "",
-          )}
-          style={!unclaimed && text ? { backgroundColor: avatarColor(name) } : undefined}
-          delayMs={src ? 400 : 0}
-        >
-          {text ? text : <Glyph className="size-[56%]" strokeWidth={1.7} aria-hidden />}
-        </AvatarFallback>
+        {/* Unmounted once the photo is up, not merely covered: club logos are
+            routinely transparent PNGs, and initials showing through one would
+            be worse than either on its own. */}
+        {(!showImage || imageState !== "loaded") && (
+          <AvatarFallback
+            className={cn(
+              s.text,
+              unclaimed
+                ? "border-[1.5px] border-dashed border-line-3 bg-surface-2 text-ink-3"
+                : text
+                  ? "text-white"
+                  : "",
+            )}
+            style={!unclaimed && text ? { backgroundColor: avatarColor(name) } : undefined}
+            delayMs={0}
+          >
+            {text ? text : <Glyph className="size-[56%]" strokeWidth={1.7} aria-hidden />}
+          </AvatarFallback>
+        )}
+        {showImage && (
+          <img
+            src={src}
+            alt={label}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImageState("loaded")}
+            onError={() => setImageState("error")}
+            className="absolute inset-0 aspect-square size-full object-cover"
+          />
+        )}
       </Avatar>
     );
   },

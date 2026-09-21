@@ -1,7 +1,8 @@
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Link } from "react-router-dom";
-import { ArrowLeft, GraduationCap, Users, ShieldQuestion, Mail, Bug } from "lucide-react";
+import { GraduationCap, Users, ShieldQuestion, Mail, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BackToHome } from "@/components/BackToHome";
 import {
   Accordion,
   AccordionContent,
@@ -260,12 +261,7 @@ export default function Help() {
         {/* Header */}
         <div className="bg-secondary/50 border-b border-border">
           <div className="container mx-auto px-4 py-12">
-            <Button variant="ghost" size="sm" asChild className="mb-4">
-              <Link to="/">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Link>
-            </Button>
+            <BackToHome className="mb-4" />
             <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
               Help &amp; Support
             </h1>

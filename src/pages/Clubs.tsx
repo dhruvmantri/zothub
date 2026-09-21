@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
@@ -47,6 +47,13 @@ export default function ClubsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(NO_CATEGORIES);
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
   const [view, setView] = useDiscoverView("clubs");
+
+  /** How many clubs are DRAWN at once. Search, filters and sort still run over
+   *  all 725 — only the rendering is paged, so nothing becomes unfindable.
+   *  (Maintainer decision, 2026-09-21.) Rendering the lot cost 12,454 DOM nodes
+   *  and a page 60,640px tall, which old phones do not enjoy. */
+  const CLUBS_PER_PAGE = 60;
+  const [shownCount, setShownCount] = useState(CLUBS_PER_PAGE);
 
   const clubsQuery = useQuery({
     queryKey: clubKeys.list(),
@@ -123,6 +130,15 @@ export default function ClubsPage() {
   }, [clubs, searchQuery, selectedCategories, sortBy]);
 
   const recruitingCount = clubs.filter((c) => c.opportunity_count > 0).length;
+  // Narrowing the search while scrolled deep into "load more" would otherwise
+  // leave a page-2 window over a 3-result list.
+  useEffect(() => {
+    setShownCount(CLUBS_PER_PAGE);
+  }, [searchQuery, selectedCategories, sortBy]);
+
+  const visibleClubs = filteredAndSortedClubs.slice(0, shownCount);
+  const remaining = filteredAndSortedClubs.length - visibleClubs.length;
+
   const hasFilters = searchQuery !== "" || selectedCategories.length > 0;
 
   const clearFilters = () => {
@@ -211,12 +227,27 @@ export default function ClubsPage() {
               )}
               {view === "cards" ? (
                 <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredAndSortedClubs.map((club) => (
+                  {visibleClubs.map((club) => (
                     <ClubCard key={club.id} club={club} />
                   ))}
                 </div>
               ) : (
-                <ClubList clubs={filteredAndSortedClubs} />
+                <ClubList clubs={visibleClubs} />
+              )}
+
+              {remaining > 0 && (
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <p className="text-sm text-ink-3">
+                    Showing <span className="font-data text-ink-2">{visibleClubs.length}</span> of{" "}
+                    <span className="font-data text-ink-2">{filteredAndSortedClubs.length}</span> clubs
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShownCount((n) => n + CLUBS_PER_PAGE)}
+                  >
+                    Show {Math.min(remaining, CLUBS_PER_PAGE)} more
+                  </Button>
+                </div>
               )}
             </>
           ) : (

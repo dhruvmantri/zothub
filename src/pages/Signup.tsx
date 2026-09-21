@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { BackToHome } from "@/components/BackToHome";
 import { ArrowLeft, GraduationCap, Building2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -247,6 +248,10 @@ export default function SignupPage() {
       {/* Left side - Form */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          {/* UX3, first screen only. The later steps already have their own
+              Back, and two different back controls on one screen is worse
+              than none. */}
+          {step === "role" && <BackToHome className="mb-4" />}
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <Logo />

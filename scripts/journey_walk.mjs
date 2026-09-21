@@ -153,7 +153,10 @@ for (const theme of THEMES) {
       await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
       await page.getByLabel(/email/i).first().fill(email).catch(() => {});
       await page.getByLabel(/password/i).first().fill(password).catch(() => {});
-      await page.getByRole("button", { name: /log ?in|sign ?in/i }).first().click().catch(() => {});
+      // The form's submit button, NOT a name match: "Sign in with UCI Google"
+      // renders above it and matches any sensible /sign ?in/ pattern, so a
+      // first() match sends the walk to Google's consent screen instead.
+      await page.locator('form button[type="submit"]').first().click().catch(() => {});
       await page.waitForTimeout(6000);
       if (/\/login$/.test(new URL(page.url()).pathname)) {
         notes.push(`LOGIN FAILED (${theme}/${vp.name}) — still on /login`);
