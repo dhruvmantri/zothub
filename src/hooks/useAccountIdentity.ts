@@ -27,7 +27,7 @@ export function useAccountIdentity(): AccountIdentity {
   const { user, role } = useAuth();
   const { data: profile, isPending } = useProfile(user?.id);
 
-  // A club's email local-part ("skhan7") is not its name — only fall back to it
+  // A club's email local-part ("aiclub2024") is not its name — only fall back to it
   // for students, where the handle often reads as a person. Clubs get a neutral
   // placeholder, and prominent surfaces should prefer the isLoading skeleton.
   const fallbackName =
