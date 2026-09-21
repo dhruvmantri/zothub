@@ -10,6 +10,9 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole;
   isLoading: boolean;
+  /** A5: the role read FAILED. Different from "this account has no role" —
+   *  callers must not treat an unknown as an answer in either direction. */
+  roleError: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: (intendedRole?: "student" | "club") => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -24,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [roleError, setRoleError] = useState(false);
 
   // The last identity the cache was populated for. Sign-OUT clears the cache
   // (see signOut below); sign-IN has to as well, and nothing did.
@@ -110,17 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (error) {
+        // A5. This used to be indistinguishable from "no role", and "no role"
+        // used to mean "let them through" — so one failed request opened every
+        // protected page. The flag lets ProtectedRoute decline to guess.
         console.error("Error fetching role:", error);
+        setRoleError(true);
         setRole(null);
       } else if (data) {
+        setRoleError(false);
         setRole(data.role as UserRole);
       } else {
+        setRoleError(false);
         // No role found - this might be a new Google OAuth user
         // Check if there's an intended role stored
         await handleNewOAuthUser(userId);
       }
     } catch (err) {
       console.error("Error fetching role:", err);
+      setRoleError(true);
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, isLoading, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, isLoading, roleError, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

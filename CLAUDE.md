@@ -128,9 +128,15 @@ Run the E2E suite before finishing anything auth-, email-, or claim-related.
 **UI and data-layer work is proven in a browser** (`tests/browser/`, see its README):
 
 ```bash
-npx vite --host 127.0.0.1 --port 8080     # one shell
-node tests/browser/wave3-verify.mjs       # another; PASS/FAIL per check, exits non-zero on any failure
+bash tests/browser/run.sh                 # all of them; the run OWNS the dev server
+bash tests/browser/run.sh a5-role-guard   # just one, by name
 ```
+
+Start the server yourself only if you have a reason to. A separately-started
+`npx vite` does not reliably survive between commands in a cloud session, and
+when it dies **every** assertion fails in a way that reads exactly like a code
+regression. Each script also asserts the app actually mounted before judging
+anything, so a dead server now says so instead of inventing an answer.
 
 Two rules those scripts exist to enforce, both learned the expensive way:
 **never navigate with `page.goto()` when testing a cache** (a full document load wipes an

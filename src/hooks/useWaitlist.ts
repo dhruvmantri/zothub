@@ -25,11 +25,19 @@ export function useWaitlist() {
   const [status, setStatus] = useState<WaitlistStatus>(null);
   const [entry, setEntry] = useState<WaitlistEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /**
+   * A5. "No waitlist row" and "the read failed" are DIFFERENT answers, and
+   * collapsing them is a fail-open on an access guard: a `null` status means
+   * "approved (or admin)" below, so one flaky request made a pending user look
+   * approved. Callers must be able to tell the two apart and decline to guess.
+   */
+  const [isError, setIsError] = useState(false);
 
   const fetchWaitlistStatus = useCallback(async () => {
     if (!user) {
       setStatus(null);
       setEntry(null);
+      setIsError(false);
       setIsLoading(false);
       return;
     }
@@ -45,16 +53,23 @@ export function useWaitlist() {
         console.error("Error fetching waitlist status:", error);
         setStatus(null);
         setEntry(null);
+        setIsError(true);
       } else if (data) {
+        setIsError(false);
         setStatus(data.status as WaitlistStatus);
         setEntry(data as WaitlistEntry);
       } else {
-        // No waitlist entry means user is approved (or admin)
+        // No waitlist entry means user is approved (or admin). Only safe to
+        // conclude because the read SUCCEEDED — see isError above.
         setStatus(null);
         setEntry(null);
+        setIsError(false);
       }
     } catch (err) {
       console.error("Error fetching waitlist:", err);
+      // A thrown error left isError false before, so a network failure was
+      // silently indistinguishable from an approved account.
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }
@@ -68,6 +83,7 @@ export function useWaitlist() {
     status,
     entry,
     isLoading,
+    isError,
     refetch: fetchWaitlistStatus,
   };
 }

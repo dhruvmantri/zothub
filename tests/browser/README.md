@@ -60,6 +60,18 @@ That is how a run was wasted here against a dev server that had quietly died:
 twelve identical failures, all of them lying about the cause. Check `count()`
 first.
 
+**Let the run own the dev server.** `bash tests/browser/run.sh [name…]`
+starts vite, waits for it, runs the scripts and kills it. A separately-started
+server does not reliably survive between commands in a cloud session, and when
+it dies EVERY assertion fails in a way that reads exactly like a code
+regression — which has now happened twice, once producing a confident and
+completely false conclusion about an access-control bug.
+
+**Assert that the app mounted before judging anything.** One line
+(`#root` has children) turns "12 routes all redirect" into "the app did not
+mount, this result is meaningless". Cheap, and it is the difference between
+debugging your code and debugging your harness.
+
 **Assert on the request when the screen cannot tell you.** Some correctness
 lives entirely off-screen. A client-side sort and a database sort render
 byte-identically on a short list and only diverge past a row cap — i.e. in
@@ -86,6 +98,7 @@ working code. Scope to the container you mean.
 | `o5-counts.mjs` | `O5-counts`: a logged-out visitor sees the real applicant count rather than 0, a club's "show applicant count" switch is honoured on the LIST (it was ignored there), zero is hidden rather than rendered, and "spots left" comes from confirmed RSVPs — so a sold-out event no longer advertises every seat as free. |
 | `nav-club-discover-menu.mjs` | The club `Discover` nav menu: it must open on hover WITHOUT navigating anywhere itself, survive the pointer moving onto it, open from the keyboard and close on Escape, and open by tap on a phone where hover does not exist. |
 | `ux8-url-renames.mjs` | `UX8`: every OLD address still lands on its new home (params, query and hash intact), every NEW address stays put and renders its own section, and `/messages` serves both roles. The section checks exist because several club paths share one component that reads the pathname — and the new paths nest where the old ones did not. |
+| `a5-role-guard.mjs` | `A5`: an account with **no role** must not render protected pages — it used to render all of them, on both sides. Also that an UNKNOWN (the role or waitlist read failing) is neither a pass nor a lock-out. **Half the checks guard the opposite mistake**: an approved student and club must still get in, cross-role redirects must still work, and pending/rejected must still reach their pages. Restoring the original fall-through fails 6 of 16 with the real symptom. |
 | `ux9-cta-sweep.mjs` | `UX9`/`UX10`/`UX12`: the four home-page CTAs **clicked** in all three auth states, asserting where the browser comes to rest. Deliberately not an href check — the hrefs were always real routes and the fault was one hop later, in `/signup`'s redirect, so an href test would have passed against the broken code. Restoring the original targets makes it fail with the real symptom: "landed on /activity", "landed on /applicants". Also guards the two labels the 2026-09-20 rename left reading "Discover". |
 | `ux11-toolbar.mjs` | `UX11`/`UX13`, the shared toolbar: every control is present on all three pages, the `Filter` menu is genuinely multi-select (it must STAY OPEN across two ticks — Radix closes on activation by default, which silently reverts the one capability the redesign was for), the date windows are one-at-a-time, and the sort is asserted **on the wire**, not on the screen. That last one matters: a client sort and a server sort look identical on a list of three rows and only diverge past the 50-row cap, so the check is that choosing a sort issues a NEW request carrying `order=…&limit=50`. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |

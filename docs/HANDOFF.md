@@ -47,6 +47,18 @@ with real accounts — club test credentials are available from the
 maintainer), step 9 (**`S5`/`R1`/`R2` email hardening, before the first real
 user**), step 10 (`D1` purge, last).
 
+**Also finished 2026-09-21: `A5`, an access guard that failed open.**
+`ProtectedRoute`'s last check was `allowedRoles && role && !allowedRoles…`,
+which is false when `role` is null — so an account with **no role** rendered
+every protected page, including the club dashboard. Reproduced in a browser,
+not inferred. Nothing leaked (RLS is the real gate; creating either profile
+requires the matching role), but it was a guard doing nothing for a whole
+class of account. The rule now, and it is worth keeping: **known states win,
+an unknown is never guessed, entitlement is decided last.** A failed read is
+its own screen with a retry — the `O6` principle extended from "no data" to
+"no answer". Covered by `tests/browser/a5-role-guard.mjs`, half of whose
+checks guard the *opposite* mistake: an approved user must still get in.
+
 **Just finished (2026-09-21): the CTA sweep, `UX9` + `UX10` + `UX12`.**
 Every link in `src/` was inventoried against its label and checked in all
 three auth states. The home page's four big CTAs now land somewhere real for
@@ -115,7 +127,7 @@ npx tsc -p tsconfig.app.json --noEmit     # 0 errors
 npm run build                              # must succeed
 npm run lint                               # 28 warnings is the baseline; 0 errors
 node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
-# browser — see tests/browser/README.md; 145 checks across 12 scripts, all green
+bash tests/browser/run.sh   # 161 checks across 13 scripts, all green; the run owns the dev server
 npx vite --host 127.0.0.1 --port 8080 &
 PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
   node tests/browser/<script>.mjs

@@ -24,6 +24,7 @@ const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const Events = lazy(() => import("./pages/Events"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
 const Clubs = lazy(() => import("./pages/Clubs"));
+const AccountSetup = lazy(() => import("./pages/AccountSetup"));
 const ClubDetail = lazy(() => import("./pages/ClubDetail"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -176,6 +177,10 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/clubs" element={<Clubs />} />
+            {/* A5: where a signed-in account with no role lands. Public on
+                purpose — guarding it with ProtectedRoute would bounce exactly
+                the people it exists for, straight back into a loop. */}
+            <Route path="/account-setup" element={<AccountSetup />} />
             <Route path="/clubs/:id" element={<ClubDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
