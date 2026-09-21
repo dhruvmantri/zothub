@@ -19,6 +19,7 @@ import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { OpportunityManagement } from "@/components/dashboard/OpportunityManagement";
 import { EventManagement } from "@/components/dashboard/EventManagement";
 import { ApplicationReview } from "@/components/dashboard/ApplicationReview";
+import { countOf } from "@/lib/countOf";
 import { RSVPReview } from "@/components/dashboard/RSVPReview";
 import { TeamManagement } from "@/components/dashboard/TeamManagement";
 // Analytics is the only screen that pulls recharts (~400KB), and only the
@@ -303,7 +304,7 @@ export default function ClubHome() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-ink">{opp.title}</p>
                           <p className="font-data text-xs text-ink-3">
-                            {opp.applications_count} applications · {opp.views} views
+                            {countOf(opp.applications_count, "application")} · {countOf(opp.views, "view")}
                           </p>
                         </div>
                       </Link>
@@ -342,7 +343,7 @@ export default function ClubHome() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-ink">{event.title}</p>
                           <p className="font-data text-xs text-ink-3">
-                            {format(new Date(event.event_date), "MMM d, yyyy")} · {event.rsvps_count} RSVPs
+                            {format(new Date(event.event_date), "MMM d, yyyy")} · {countOf(event.rsvps_count, "RSVP")}
                           </p>
                         </div>
                       </Link>

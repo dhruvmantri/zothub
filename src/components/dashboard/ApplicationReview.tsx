@@ -57,6 +57,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
+import { countOf } from "@/lib/countOf";
 import { sendApplicationStatusUpdate } from "@/lib/emailService";
 import { openFileUrl } from "@/lib/storageUrls";
 import type { FormQuestion, FormAnswer } from "@/types";
@@ -405,7 +406,7 @@ export function ApplicationReview() {
 
     const filename = `applications-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
     exportToCSV(dataToExport, columns, filename);
-    toast.success(`Exported ${dataToExport.length} applications`);
+    toast.success(`Exported ${countOf(dataToExport.length, "application")}`);
   };
 
   const getQuestionText = (questionId: string, questions: FormQuestion[]): string => {

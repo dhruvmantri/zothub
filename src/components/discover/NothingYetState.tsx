@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { countOf } from "@/lib/countOf";
+
 import { EmptyState } from "@/components/discover/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useClubCount } from "@/hooks/useClubCount";
@@ -36,7 +38,7 @@ export function NothingYetState({
     <EmptyState
       title={kind === "roles" ? "Nothing open right now —" : "Nothing scheduled right now —"}
       signature={
-        hasCount ? `but ${clubCount} clubs are here.` : "the clubs are still here."
+        hasCount ? `but ${countOf(clubCount!, "club")} ${clubCount === 1 ? "is" : "are"} here.` : "the clubs are still here."
       }
       body={
         kind === "roles"
@@ -45,7 +47,7 @@ export function NothingYetState({
       }
       actions={
         <Button variant="outline" asChild>
-          <Link to="/clubs">{hasCount ? `Browse all ${clubCount} clubs` : "Browse clubs"}</Link>
+          <Link to="/clubs">{hasCount ? `Browse all ${countOf(clubCount!, "club")}` : "Browse clubs"}</Link>
         </Button>
       }
     />

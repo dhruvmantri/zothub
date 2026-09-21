@@ -64,7 +64,14 @@ function getTabs(pathname: string, counts?: ClubSectionNavProps["counts"]): SubT
       {
         to: "/my-club",
         label: "Overview",
-        active: (p) => isPrefix(p, "/my-club", "/my-club/edit"),
+        // The sibling tabs live UNDER this tab's own path, so a bare prefix
+        // match marks Overview current on every one of them — two tabs drawn
+        // as selected, and two links carrying aria-current="page", which is
+        // wrong for a screen reader and not merely untidy. The Postings group
+        // below always had this exclusion; these two never got it.
+        active: (p) =>
+          isPrefix(p, "/my-club", "/my-club/edit") &&
+          !isPrefix(p, "/my-club/team", "/my-club/analytics"),
       },
       {
         to: "/my-club/team",
@@ -86,7 +93,9 @@ function getTabs(pathname: string, counts?: ClubSectionNavProps["counts"]): SubT
         to: "/applicants",
         label: "Applications",
         count: counts?.applications,
-        active: (p) => p === "/applicants" || isPrefix(p, "/applicants"),
+        // Same fault as Overview above: /applicants/events is under
+        // /applicants, so both tabs read as selected on the RSVPs page.
+        active: (p) => isPrefix(p, "/applicants") && !isPrefix(p, "/applicants/events"),
       },
       {
         to: "/applicants/events",

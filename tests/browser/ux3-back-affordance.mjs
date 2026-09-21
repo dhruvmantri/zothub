@@ -109,6 +109,25 @@ for (const target of PAGES) {
   await ctx.close();
 }
 
+// UX28 — the 404 had no header and no footer, so "Back to home" was the only
+// way off it. Same rule as above: never a dead end.
+{
+  const { ctx, page } = await open({ signedIn: false });
+  await page.goto(`${BASE}/no-such-page-exists`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  const names = ["Opportunities", "Events", "Clubs"];
+  for (const name of names) {
+    const link = page.getByRole("link", { name, exact: true });
+    const count = await link.count();
+    check(`the 404 can reach ${name}`, count >= 1, `${count} link(s)`);
+  }
+  await page.getByRole("link", { name: "Clubs", exact: true }).first().click().catch(() => {});
+  await page.waitForTimeout(1200);
+  check("following one of them leaves the 404",
+    new URL(page.url()).pathname === "/clubs", new URL(page.url()).pathname);
+  await ctx.close();
+}
+
 await browser.close();
 const failed = results.filter((r) => !r).length;
 console.log(`\nEXECUTED ${results.length} checks — ${results.length - failed} passed, ${failed} failed`);

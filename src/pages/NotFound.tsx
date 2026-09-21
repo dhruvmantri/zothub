@@ -24,6 +24,30 @@ const NotFound = () => {
       <Button asChild variant="accent" className="mt-8">
         <Link to="/">Back to home</Link>
       </Button>
+
+      {/* UX28. This page has no header and no footer, so "Back to home" was
+          the only way off it — a stale or mistyped link dropped you somewhere
+          with one exit, which is exactly what club outreach produces. These
+          are the same three destinations the nav and the footer carry, so a
+          visitor lands where they were probably trying to go. */}
+      <nav
+        aria-label="Go to"
+        className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm"
+      >
+        {[
+          { to: "/opportunities", label: "Opportunities" },
+          { to: "/events", label: "Events" },
+          { to: "/clubs", label: "Clubs" },
+        ].map(({ to, label }) => (
+          <Link
+            key={to}
+            to={to}
+            className="text-ink-2 underline-offset-4 transition-colors hover:text-ink hover:underline"
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 };
