@@ -95,7 +95,7 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
               <DropdownMenuItem onClick={() => setStatusFilter("draft")}>Draft</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link to="/club/opportunities/new">
+          <Link to="/postings/new">
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
               New Opportunity
@@ -113,7 +113,7 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
               {opportunities.length === 0 ? "No opportunities posted yet" : "No opportunities found"}
             </p>
             {opportunities.length === 0 && (
-              <Link to="/club/opportunities/new">
+              <Link to="/postings/new">
                 <Button className="mt-4 gap-2">
                   <Plus className="w-4 h-4" />
                   Create your first opportunity
@@ -204,7 +204,7 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
                               <Eye className="w-4 h-4" /> View
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => navigate(`/club/opportunities/${opportunity.id}/edit`)}
+                              onClick={() => navigate(`/postings/${opportunity.id}/edit`)}
                               className="gap-2"
                             >
                               <Edit className="w-4 h-4" /> Edit

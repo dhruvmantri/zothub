@@ -56,9 +56,9 @@ export default function SignupPage() {
   useEffect(() => {
     if (user && role) {
       if (role === "club") {
-        navigate("/club/dashboard");
+        navigate("/applicants");
       } else {
-        navigate("/student/dashboard");
+        navigate("/activity");
       }
     }
   }, [user, role, navigate]);
@@ -203,7 +203,7 @@ export default function SignupPage() {
           title: "Welcome to ZotHub!",
           description: "Your account is ready.",
         });
-        navigate("/student/dashboard");
+        navigate("/activity");
       } else {
         // Clubs still go through the /admin review queue.
         toast({

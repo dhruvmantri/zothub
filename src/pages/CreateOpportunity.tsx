@@ -147,7 +147,7 @@ export default function CreateOpportunity() {
 
       if (asDraft) {
         toast.success("Opportunity saved as draft");
-        navigate("/club/dashboard/opportunities");
+        navigate("/postings");
       } else {
         setCreatedOpportunityId(insertedData?.id || null);
         setShowSuccessModal(true);
@@ -166,7 +166,7 @@ export default function CreateOpportunity() {
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard/opportunities">
+            <Link to="/postings">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Postings
             </Link>
@@ -333,7 +333,7 @@ export default function CreateOpportunity() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard/opportunities">Cancel</Link>
+              <Link to="/postings">Cancel</Link>
             </Button>
             <Button
               type="button"
@@ -365,13 +365,13 @@ export default function CreateOpportunity() {
           open={showSuccessModal}
           onClose={() => {
             setShowSuccessModal(false);
-            navigate("/club/dashboard/opportunities");
+            navigate("/postings");
           }}
           title="Opportunity Published!"
           description={`"${title}" is now live and students can start applying. Share it to reach more students!`}
           primaryAction={{
             label: "View Dashboard",
-            onClick: () => navigate("/club/dashboard/opportunities"),
+            onClick: () => navigate("/postings"),
           }}
           secondaryAction={{
             label: "Create Another",

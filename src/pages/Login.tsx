@@ -37,9 +37,9 @@ export default function LoginPage() {
       if (from) {
         navigate(from);
       } else if (role === "club") {
-        navigate("/club/dashboard");
+        navigate("/applicants");
       } else {
-        navigate("/student/dashboard");
+        navigate("/activity");
       }
       return;
     }

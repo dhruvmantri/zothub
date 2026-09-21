@@ -54,7 +54,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 700 } });
   const page = await ctx.newPage();
   await install(page);
-  await page.goto(`${BASE}/club/dashboard/overview`, { waitUntil: "networkidle" }).catch(() => {});
+  await page.goto(`${BASE}/my-club`, { waitUntil: "networkidle" }).catch(() => {});
 
   const trigger = page.getByRole("button", { name: /Discover/ });
   await trigger.waitFor({ timeout: 15000 }).catch(() => {});
@@ -95,7 +95,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 700 } });
   const page = await ctx.newPage();
   await install(page);
-  await page.goto(`${BASE}/club/dashboard/overview`, { waitUntil: "networkidle" }).catch(() => {});
+  await page.goto(`${BASE}/my-club`, { waitUntil: "networkidle" }).catch(() => {});
   const trigger = page.getByRole("button", { name: /Discover/ });
   await trigger.waitFor({ timeout: 15000 }).catch(() => {});
   await trigger.focus();
@@ -118,7 +118,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   });
   const page = await ctx.newPage();
   await install(page);
-  await page.goto(`${BASE}/club/dashboard/overview`, { waitUntil: "networkidle" }).catch(() => {});
+  await page.goto(`${BASE}/my-club`, { waitUntil: "networkidle" }).catch(() => {});
 
   const tab = page.getByRole("button", { name: /Discover/ });
   await tab.waitFor({ timeout: 15000 }).catch(() => {});
@@ -126,7 +126,7 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
   await page.waitForTimeout(500);
   check("tapping the mobile tab opens the menu",
     await page.getByRole("menu").isVisible().catch(() => false));
-  check("tapping did not navigate on its own", /club\/dashboard/.test(page.url()), page.url());
+  check("tapping did not navigate on its own", /\/my-club$/.test(page.url()), page.url());
   await ctx.close();
 }
 

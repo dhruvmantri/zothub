@@ -73,30 +73,29 @@ export const STUDENT_NAV: NavItem[] = [
   },
   { to: "/clubs", label: "Clubs", icon: Building2, match: startsWith("/clubs") },
   {
-    to: "/student/dashboard",
+    to: "/activity",
     label: "Activity",
     icon: ListChecks,
-    match: startsWith("/student/dashboard", "/student/feed", "/student/profile"),
+    match: startsWith("/activity", "/profile"),
   },
 ];
 
 export const CLUB_NAV: NavItem[] = [
   {
-    to: "/club/dashboard/opportunities",
+    to: "/postings",
     label: "Postings",
     icon: Briefcase,
-    match: startsWith("/club/dashboard/opportunities", "/club/dashboard/events", "/club/opportunities", "/club/events"),
+    // `/postings` already covers `/postings/events` and the create/edit paths.
+    match: startsWith("/postings"),
   },
   {
-    to: "/club/dashboard",
+    to: "/applicants",
     label: "Applicants",
     icon: Inbox,
     count: "responses",
     // The club's landing page is the work queue, not a stats page (§5).
     match: (p) =>
-      p === "/club/dashboard" ||
-      p === "/club/dashboard/applications" ||
-      p === "/club/dashboard/rsvps",
+      p === "/applicants" || p === "/applicants/events",
   },
   {
     // A club had no way to see the rest of campus at all — not a missing link,
@@ -120,27 +119,24 @@ export const CLUB_NAV: NavItem[] = [
   {
     // Lands on the club's own Overview (stats + recent items), with Team,
     // Analytics and the profile editor one sub-tab / one click deeper.
-    to: "/club/dashboard/overview",
+    to: "/my-club",
     label: "My Club",
     icon: Building2,
     match: startsWith(
-      "/club/dashboard/overview",
-      "/club/profile",
-      "/club/dashboard/team",
-      "/club/dashboard/analytics",
+      "/my-club",
+      "/my-club/edit",
+      "/my-club/team",
+      "/my-club/analytics",
     ),
   },
 ];
 
 /**
- * Where a club's Messages icon points. Messages is no longer a nav item for
- * either role, but the two roles still have different inboxes.
+ * Where the Messages icon points. Since UX8 both roles share one address —
+ * nobody needs the word "student" or "club" in their own address bar — and
+ * `pages/Messages.tsx` renders the right inbox for the signed-in account.
  */
-export const MESSAGES_PATH: Record<"student" | "club", string> = {
-  student: "/student/messages",
-  club: "/club/messages",
-};
+/** One address for both inboxes; the page resolves which one by role. */
+export const MESSAGES_PATH = "/messages";
 
-/** `/messages` is deliberately absent: there is no such route, and matching it
- *  was dead config the old nav carried (noted in UX19). */
-export const messagesMatch = startsWith("/student/messages", "/club/messages");
+export const messagesMatch = startsWith(MESSAGES_PATH);

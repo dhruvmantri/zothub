@@ -134,7 +134,7 @@ export default function CreateEvent() {
 
       if (asDraft) {
         toast.success("Event saved as draft");
-        navigate("/club/dashboard/events");
+        navigate("/postings/events");
       } else {
         setCreatedEventId(insertedData?.id || null);
         setShowSuccessModal(true);
@@ -153,7 +153,7 @@ export default function CreateEvent() {
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard/events">
+            <Link to="/postings/events">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Postings
             </Link>
@@ -360,7 +360,7 @@ export default function CreateEvent() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard/events">Cancel</Link>
+              <Link to="/postings/events">Cancel</Link>
             </Button>
             <Button
               type="button"
@@ -392,13 +392,13 @@ export default function CreateEvent() {
           open={showSuccessModal}
           onClose={() => {
             setShowSuccessModal(false);
-            navigate("/club/dashboard/events");
+            navigate("/postings/events");
           }}
           title="Event Published!"
           description={`"${title}" is now live and students can RSVP. Share it to reach more attendees!`}
           primaryAction={{
             label: "View Dashboard",
-            onClick: () => navigate("/club/dashboard/events"),
+            onClick: () => navigate("/postings/events"),
           }}
           secondaryAction={{
             label: "Create Another",

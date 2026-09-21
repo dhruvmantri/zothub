@@ -16,6 +16,7 @@ node tests/browser/wave4b-ux21.mjs
 node tests/browser/wave4c-event-rsvp.mjs
 node tests/browser/o5-counts.mjs
 node tests/browser/nav-club-discover-menu.mjs
+node tests/browser/ux8-url-renames.mjs
 ```
 
 Each script prints `PASS`/`FAIL` per check and exits non-zero if any failed.
@@ -40,6 +41,11 @@ from the same `/opportunities` and `/events` endpoints a club's page uses. A
 counter keyed on the endpoint alone attributes one page's queries to another and
 reports a cache miss that never happened. Discriminate on the query string.
 
+**A rename breaks the tests too.** Scripts that navigate by URL or click a nav
+item by name go stale the moment either changes, and a stale assertion reads
+exactly like a regression. When a check fails right after a rename, confirm
+which of the two is wrong before "fixing" the code.
+
 **Fail gracefully, or a caught bug looks like a crashed script.** When a
 regression removes an element, an unguarded `fill()` or `click()` throws and
 aborts the run — hiding the FAIL lines that explain what broke. Guard the
@@ -63,4 +69,5 @@ working code. Scope to the container you mean.
 | `wave4c-event-rsvp.mjs` | `UX21` on the event side, plus the RSVP mutation cluster: the form hands its answers up, the hook writes them once with the right status, and the write invalidates the event so the attendee count refetches. Its negative run writes `answers: []` — a blank RSVP recorded as a confirmed attendance. |
 | `o5-counts.mjs` | `O5-counts`: a logged-out visitor sees the real applicant count rather than 0, a club's "show applicant count" switch is honoured on the LIST (it was ignored there), zero is hidden rather than rendered, and "spots left" comes from confirmed RSVPs — so a sold-out event no longer advertises every seat as free. |
 | `nav-club-discover-menu.mjs` | The club `Discover` nav menu: it must open on hover WITHOUT navigating anywhere itself, survive the pointer moving onto it, open from the keyboard and close on Escape, and open by tap on a phone where hover does not exist. |
+| `ux8-url-renames.mjs` | `UX8`: every OLD address still lands on its new home (params, query and hash intact), every NEW address stays put and renders its own section, and `/messages` serves both roles. The section checks exist because several club paths share one component that reads the pathname — and the new paths nest where the old ones did not. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |

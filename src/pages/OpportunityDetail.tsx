@@ -356,7 +356,7 @@ export default function OpportunityDetail() {
         onClose={() => setShowSuccessModal(false)}
         title="Application sent"
         description={`${club?.club_name} has your application for ${opportunity?.title}. You'll hear back either way — you can track it in Activity.`}
-        primaryAction={{ label: "Track it in Activity", onClick: () => navigate("/student/dashboard") }}
+        primaryAction={{ label: "Track it in Activity", onClick: () => navigate("/activity") }}
         secondaryAction={{ label: "Keep browsing", onClick: () => navigate("/opportunities") }}
       />
     </RoleBasedLayout>

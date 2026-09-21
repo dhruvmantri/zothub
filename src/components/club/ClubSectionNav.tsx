@@ -30,25 +30,21 @@ export interface ClubSectionNavProps {
 
 function getTabs(pathname: string, counts?: ClubSectionNavProps["counts"]): SubTab[] | null {
   // Postings — opportunities and events (also lit by the create/edit forms).
-  if (
-    isPrefix(
-      pathname,
-      "/club/dashboard/opportunities",
-      "/club/dashboard/events",
-      "/club/opportunities",
-      "/club/events",
-    )
-  ) {
+  if (isPrefix(pathname, "/postings")) {
     return [
       {
-        to: "/club/dashboard/opportunities",
+        to: "/postings",
         label: "Opportunities",
-        active: (p) => isPrefix(p, "/club/dashboard/opportunities", "/club/opportunities"),
+        // NOT a bare prefix test. `/postings/events` starts with `/postings`,
+        // so the plain version lit the Opportunities tab while you were
+        // looking at Events (UX8, 2026-09-21 — the same nesting trap as
+        // ClubHome's getSection).
+        active: (p) => isPrefix(p, "/postings") && !isPrefix(p, "/postings/events"),
       },
       {
-        to: "/club/dashboard/events",
+        to: "/postings/events",
         label: "Events",
-        active: (p) => isPrefix(p, "/club/dashboard/events", "/club/events"),
+        active: (p) => isPrefix(p, "/postings/events"),
       },
     ];
   }
@@ -58,45 +54,45 @@ function getTabs(pathname: string, counts?: ClubSectionNavProps["counts"]): SubT
   if (
     isPrefix(
       pathname,
-      "/club/dashboard/overview",
-      "/club/dashboard/team",
-      "/club/dashboard/analytics",
-      "/club/profile",
+      "/my-club",
+      "/my-club/team",
+      "/my-club/analytics",
+      "/my-club/edit",
     )
   ) {
     return [
       {
-        to: "/club/dashboard/overview",
+        to: "/my-club",
         label: "Overview",
-        active: (p) => isPrefix(p, "/club/dashboard/overview", "/club/profile"),
+        active: (p) => isPrefix(p, "/my-club", "/my-club/edit"),
       },
       {
-        to: "/club/dashboard/team",
+        to: "/my-club/team",
         label: "Team",
-        active: (p) => isPrefix(p, "/club/dashboard/team"),
+        active: (p) => isPrefix(p, "/my-club/team"),
       },
       {
-        to: "/club/dashboard/analytics",
+        to: "/my-club/analytics",
         label: "Analytics",
-        active: (p) => isPrefix(p, "/club/dashboard/analytics"),
+        active: (p) => isPrefix(p, "/my-club/analytics"),
       },
     ];
   }
 
-  // Responses — applications and RSVPs. Bare /club/dashboard lands here.
-  if (pathname === "/club/dashboard" || isPrefix(pathname, "/club/dashboard/applications", "/club/dashboard/rsvps")) {
+  // Applicants — role applications and event RSVPs. Bare /applicants lands here.
+  if (pathname === "/applicants" || isPrefix(pathname, "/applicants", "/applicants/events")) {
     return [
       {
-        to: "/club/dashboard/applications",
+        to: "/applicants",
         label: "Applications",
         count: counts?.applications,
-        active: (p) => p === "/club/dashboard" || isPrefix(p, "/club/dashboard/applications"),
+        active: (p) => p === "/applicants" || isPrefix(p, "/applicants"),
       },
       {
-        to: "/club/dashboard/rsvps",
+        to: "/applicants/events",
         label: "RSVPs",
         count: counts?.rsvps,
-        active: (p) => isPrefix(p, "/club/dashboard/rsvps"),
+        active: (p) => isPrefix(p, "/applicants/events"),
       },
     ];
   }

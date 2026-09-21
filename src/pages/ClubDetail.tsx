@@ -406,7 +406,7 @@ const ClubDetail = () => {
                                 — every one of these 404'd. Points at the real
                                 student inbox; the `?to=` handler that opens the
                                 thread lands with Messages. */}
-                            <Link to={`/student/messages?to=${member.user_id}`}>
+                            <Link to={`/messages?to=${member.user_id}`}>
                               <MessageSquare className="size-4" />
                             </Link>
                           </Button>

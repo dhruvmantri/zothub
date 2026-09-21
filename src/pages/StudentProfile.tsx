@@ -41,7 +41,7 @@ interface StudentProfile {
  * else, so a student could never simply *look* at what clubs see — the only way
  * to check your own profile was to open a form you might accidentally save.
  *
- * This is the view; /student/profile/edit is the form. Same row, same fields,
+ * This is the view; /profile/edit is the form. Same row, same fields,
  * nothing dropped.
  */
 export default function StudentProfilePage() {
@@ -143,7 +143,7 @@ export default function StudentProfilePage() {
                   )}
                 </div>
                 <Button variant="accent" asChild>
-                  <Link to="/student/profile/edit">
+                  <Link to="/profile/edit">
                     <Pencil className="size-4" aria-hidden />
                     Edit profile
                   </Link>
@@ -166,7 +166,7 @@ export default function StudentProfilePage() {
               body="Clubs read your profile when you apply. Fill it in once and every application carries it."
               actions={
                 <Button variant="accent" asChild>
-                  <Link to="/student/profile/edit">Set up your profile</Link>
+                  <Link to="/profile/edit">Set up your profile</Link>
                 </Button>
               }
             />
@@ -179,7 +179,7 @@ export default function StudentProfilePage() {
                     <span className="font-medium text-ink">{listOut(missing)}</span>.
                   </p>
                   <Button variant="outline" size="sm" className="mt-3" asChild>
-                    <Link to="/student/profile/edit">Fill it in</Link>
+                    <Link to="/profile/edit">Fill it in</Link>
                   </Button>
                 </div>
               )}

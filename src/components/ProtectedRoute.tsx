@@ -40,9 +40,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     if (role === "admin") {
       return <Navigate to="/admin" replace />;
     } else if (role === "club") {
-      return <Navigate to="/club/dashboard" replace />;
+      return <Navigate to="/applicants" replace />;
     } else {
-      return <Navigate to="/student/dashboard" replace />;
+      return <Navigate to="/activity" replace />;
     }
   }
 

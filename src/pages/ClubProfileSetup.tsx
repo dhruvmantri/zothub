@@ -175,7 +175,7 @@ export default function ClubProfileSetup() {
       queryClient.invalidateQueries({ queryKey: clubKeys.all });
 
       toast.success("Profile saved successfully!");
-      navigate("/club/dashboard/overview");
+      navigate("/my-club");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -200,7 +200,7 @@ export default function ClubProfileSetup() {
           <Logo />
 
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/club/dashboard/overview">
+            <Link to="/my-club">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to My Club
             </Link>
@@ -384,7 +384,7 @@ export default function ClubProfileSetup() {
           {/* Save Button */}
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" asChild>
-              <Link to="/club/dashboard/overview">Cancel</Link>
+              <Link to="/my-club">Cancel</Link>
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? (

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { NavigationCountsSync } from "@/hooks/useNavigationCounts";
@@ -35,8 +35,7 @@ const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
 const StudentProfile = lazy(() => import("./pages/StudentProfile"));
 const StudentProfileEdit = lazy(() => import("./pages/StudentProfileEdit"));
 const ClubProfileSetup = lazy(() => import("./pages/ClubProfileSetup"));
-const ClubMessages = lazy(() => import("./pages/ClubMessages"));
-const StudentMessages = lazy(() => import("./pages/StudentMessages"));
+const Messages = lazy(() => import("./pages/Messages"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -97,6 +96,50 @@ const RouteFallback = () => (
     <PageLoader />
   </div>
 );
+
+/**
+ * Old address -> new one (UX8, 2026-09-21). The rename dropped `/student/` and
+ * `/club/` from every signed-in path: nobody needs the word in their own
+ * address bar, and one `/messages` now serves both inboxes.
+ *
+ * `:id` does NOT carry through on its own. `<Navigate to="/postings/:id/edit">`
+ * navigates to the LITERAL string ":id" — verified, it is what this code did
+ * before `LegacyRedirect` existed, so a club following an old edit link landed
+ * on a page for a posting called ":id". The component below substitutes the
+ * params, and carries the query string and hash across too, which a plain
+ * Navigate also drops.
+ */
+const LEGACY_ROUTES: { from: string; to: string }[] = [
+  { from: "/club/dashboard/opportunities", to: "/postings" },
+  { from: "/club/dashboard/events", to: "/postings/events" },
+  { from: "/club/dashboard/applications", to: "/applicants" },
+  { from: "/club/dashboard/rsvps", to: "/applicants/events" },
+  { from: "/club/dashboard/overview", to: "/my-club" },
+  { from: "/club/dashboard/team", to: "/my-club/team" },
+  { from: "/club/dashboard/analytics", to: "/my-club/analytics" },
+  { from: "/club/dashboard", to: "/applicants" },
+  { from: "/club/opportunities/new", to: "/postings/new" },
+  { from: "/club/opportunities/:id/edit", to: "/postings/:id/edit" },
+  { from: "/club/events/new", to: "/postings/events/new" },
+  { from: "/club/events/:id/edit", to: "/postings/events/:id/edit" },
+  { from: "/club/profile", to: "/my-club/edit" },
+  { from: "/club/messages", to: "/messages" },
+  { from: "/student/dashboard", to: "/activity" },
+  { from: "/student/profile/edit", to: "/profile/edit" },
+  { from: "/student/profile", to: "/profile" },
+  { from: "/student/messages", to: "/messages" },
+];
+
+/**
+ * Sends an old address to its new one, keeping everything that identifies WHAT
+ * the person was looking at: the route params, the query string and the hash.
+ */
+function LegacyRedirect({ to }: { to: string }) {
+  const params = useParams();
+  const { search, hash } = useLocation();
+  const target = to.replace(/:([A-Za-z0-9_]+)/g, (whole, name: string) => params[name] ?? whole);
+  return <Navigate to={`${target}${search}${hash}`} replace />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -162,8 +205,18 @@ const App = () => (
                 filter, so the old link/bookmark lands on equivalent content
                 instead of an orphaned page. */}
             <Route path="/club/feed" element={<Navigate to="/opportunities" replace />} />
+
+            {/* Every address renamed on 2026-09-21 keeps working. Nothing is
+                bookmarked or indexed yet — which is exactly why now was the
+                cheapest moment to rename — and these keep that true for
+                anything already sent in an email or pasted into a chat.
+                `replace` keeps the old path out of the back history, so Back
+                does not bounce through the redirect again. */}
+            {LEGACY_ROUTES.map(({ from, to }) => (
+              <Route key={from} path={from} element={<LegacyRedirect to={to} />} />
+            ))}
             <Route
-              path="/club/dashboard" 
+              path="/applicants" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -171,7 +224,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/dashboard/opportunities" 
+              path="/postings" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -179,7 +232,7 @@ const App = () => (
               } 
             />
             <Route
-              path="/club/dashboard/events"
+              path="/postings/events"
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -187,9 +240,9 @@ const App = () => (
               }
             />
             {/* My Club → Overview: the old dashboard stats + recent items, which
-                moved here when /club/dashboard became the Responses queue. */}
+                moved here when the work queue took over the club landing page. */}
             <Route
-              path="/club/dashboard/overview"
+              path="/my-club"
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -197,7 +250,7 @@ const App = () => (
               }
             />
             <Route 
-              path="/club/dashboard/applications" 
+              path="/applicants/events" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -205,7 +258,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/dashboard/rsvps" 
+              path="/my-club/team" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -213,7 +266,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/dashboard/team" 
+              path="/my-club/analytics" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubHome />
@@ -221,15 +274,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/dashboard/analytics" 
-              element={
-                <ProtectedRoute allowedRoles={["club"]}>
-                  <ClubHome />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/club/opportunities/new" 
+              path="/postings/new" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <CreateOpportunity />
@@ -237,7 +282,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/events/new" 
+              path="/postings/events/new" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <CreateEvent />
@@ -245,7 +290,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/opportunities/:id/edit" 
+              path="/postings/:id/edit" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <EditOpportunity />
@@ -253,7 +298,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/events/:id/edit" 
+              path="/postings/events/:id/edit" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <EditEvent />
@@ -261,7 +306,7 @@ const App = () => (
               } 
             />
             <Route 
-              path="/student/dashboard"
+              path="/activity"
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentDashboard />
@@ -276,7 +321,7 @@ const App = () => (
               element={<Navigate to="/opportunities?filter=following" replace />}
             />
             <Route
-              path="/student/profile"
+              path="/profile"
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentProfile />
@@ -284,7 +329,7 @@ const App = () => (
               }
             />
             <Route
-              path="/student/profile/edit"
+              path="/profile/edit"
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
                   <StudentProfileEdit />
@@ -292,7 +337,7 @@ const App = () => (
               }
             />
             <Route 
-              path="/club/profile" 
+              path="/my-club/edit" 
               element={
                 <ProtectedRoute allowedRoles={["club"]}>
                   <ClubProfileSetup />
@@ -300,18 +345,10 @@ const App = () => (
               } 
             />
             <Route 
-              path="/club/messages" 
+              path="/messages"
               element={
-                <ProtectedRoute allowedRoles={["club"]}>
-                  <ClubMessages />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/student/messages" 
-              element={
-                <ProtectedRoute allowedRoles={["student"]}>
-                  <StudentMessages />
+                <ProtectedRoute allowedRoles={["student", "club"]}>
+                  <Messages />
                 </ProtectedRoute>
               } 
             />

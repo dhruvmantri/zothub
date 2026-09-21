@@ -34,7 +34,7 @@ const ClubAnalyticsComponent = lazy(() =>
  * URL, so `<ClubSectionNav>` and the content stay in lockstep.
  *
  * The important IA change from the old dashboard (maintainer decision,
- * 2026-07-25): `/club/dashboard` now lands on the **Responses** work queue, not
+ * 2026-07-25): `/applicants` now lands on the **Responses** work queue, not
  * a stats page. The old overview — stat cards and recent-item lists — was not
  * deleted; it moved into **My Club → Overview**, where a club's own numbers
  * belong.
@@ -49,14 +49,22 @@ type Section =
   | "team"
   | "analytics";
 
+/**
+ * MOST SPECIFIC FIRST. The old paths were all distinct siblings under
+ * /club/dashboard, so order did not matter; the new ones nest, and
+ * `"/postings/events".startsWith("/postings")` is true — so a parent listed
+ * first silently swallows its own children and every sub-tab renders the wrong
+ * section. That is precisely what a mechanical rename produced here before this
+ * comment existed (UX8, 2026-09-21).
+ */
 function getSection(pathname: string): Section {
-  if (pathname.startsWith("/club/dashboard/opportunities")) return "opportunities";
-  if (pathname.startsWith("/club/dashboard/events")) return "events";
-  if (pathname.startsWith("/club/dashboard/rsvps")) return "rsvps";
-  if (pathname.startsWith("/club/dashboard/overview")) return "overview";
-  if (pathname.startsWith("/club/dashboard/team")) return "team";
-  if (pathname.startsWith("/club/dashboard/analytics")) return "analytics";
-  // Bare /club/dashboard and /club/dashboard/applications both land on the queue.
+  if (pathname.startsWith("/postings/events")) return "events";
+  if (pathname.startsWith("/postings")) return "opportunities";
+  if (pathname.startsWith("/applicants/events")) return "rsvps";
+  if (pathname.startsWith("/my-club/team")) return "team";
+  if (pathname.startsWith("/my-club/analytics")) return "analytics";
+  if (pathname.startsWith("/my-club")) return "overview";
+  // Bare /applicants is the work queue.
   return "applications";
 }
 
@@ -243,7 +251,7 @@ export default function ClubHome() {
                   </Button>
                 )}
                 <Button variant="outline" size="sm" asChild>
-                  <Link to="/club/profile">
+                  <Link to="/my-club/edit">
                     <Pencil className="size-4" />
                     Edit profile
                   </Link>
@@ -272,7 +280,7 @@ export default function ClubHome() {
                     Recent opportunities
                   </CardTitle>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to="/club/dashboard/opportunities">
+                    <Link to="/postings">
                       View all
                       <ArrowRight className="size-4" />
                     </Link>
@@ -289,7 +297,7 @@ export default function ClubHome() {
                     recentOpportunities.map((opp) => (
                       <Link
                         key={opp.id}
-                        to={`/club/opportunities/${opp.id}/edit`}
+                        to={`/postings/${opp.id}/edit`}
                         className="flex items-center justify-between rounded-md border border-line px-3 py-2.5 transition-colors hover:bg-surface-2"
                       >
                         <div className="min-w-0 flex-1">
@@ -311,7 +319,7 @@ export default function ClubHome() {
                     Upcoming events
                   </CardTitle>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to="/club/dashboard/events">
+                    <Link to="/postings/events">
                       View all
                       <ArrowRight className="size-4" />
                     </Link>
@@ -328,7 +336,7 @@ export default function ClubHome() {
                     recentEvents.map((event) => (
                       <Link
                         key={event.id}
-                        to={`/club/events/${event.id}/edit`}
+                        to={`/postings/events/${event.id}/edit`}
                         className="flex items-center justify-between rounded-md border border-line px-3 py-2.5 transition-colors hover:bg-surface-2"
                       >
                         <div className="min-w-0 flex-1">

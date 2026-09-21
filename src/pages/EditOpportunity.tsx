@@ -73,7 +73,7 @@ export default function EditOpportunity() {
     if (error) {
       console.error("Error fetching opportunity:", error);
       toast.error("Failed to load opportunity");
-      navigate("/club/dashboard/opportunities");
+      navigate("/postings");
       return;
     }
 
@@ -162,7 +162,7 @@ export default function EditOpportunity() {
       queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
 
       toast.success(asDraft ? "Opportunity saved as draft" : "Opportunity updated successfully!");
-      navigate("/club/dashboard/opportunities");
+      navigate("/postings");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -187,7 +187,7 @@ export default function EditOpportunity() {
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard/opportunities">
+            <Link to="/postings">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Postings
             </Link>
@@ -354,7 +354,7 @@ export default function EditOpportunity() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard/opportunities">Cancel</Link>
+              <Link to="/postings">Cancel</Link>
             </Button>
             <Button
               type="button"

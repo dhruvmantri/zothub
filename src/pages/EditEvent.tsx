@@ -69,7 +69,7 @@ export default function EditEvent() {
     if (error) {
       console.error("Error fetching event:", error);
       toast.error("Failed to load event");
-      navigate("/club/dashboard/events");
+      navigate("/postings/events");
       return;
     }
 
@@ -147,7 +147,7 @@ export default function EditEvent() {
       queryClient.invalidateQueries({ queryKey: eventKeys.all });
 
       toast.success(asDraft ? "Event saved as draft" : "Event updated successfully!");
-      navigate("/club/dashboard/events");
+      navigate("/postings/events");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -172,7 +172,7 @@ export default function EditEvent() {
         {/* Header */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/club/dashboard/events">
+            <Link to="/postings/events">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Postings
             </Link>
@@ -391,7 +391,7 @@ export default function EditEvent() {
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" asChild>
-              <Link to="/club/dashboard/events">Cancel</Link>
+              <Link to="/postings/events">Cancel</Link>
             </Button>
             <Button
               type="button"

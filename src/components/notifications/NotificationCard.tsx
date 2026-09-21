@@ -15,11 +15,11 @@ function getNotificationLink(notification: Notification, role: UserRole | null):
     case "application_update":
       // Student → Activity (their applications live there); club → the
       // Responses queue. `/club/applications` never existed — it 404'd.
-      return role === "student" ? "/student/dashboard" : "/club/dashboard/applications";
+      return role === "student" ? "/activity" : "/applicants";
     case "new_application":
-      return "/club/dashboard/applications";
+      return "/applicants";
     case "new_message":
-      return role === "student" ? "/student/messages" : "/club/messages";
+      return role === "student" ? "/messages" : "/messages";
     case "event_reminder":
       return notification.related_id ? `/events/${notification.related_id}` : "/events";
     default:

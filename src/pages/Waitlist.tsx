@@ -25,9 +25,9 @@ export default function Waitlist() {
     }
     if (status === "pending") return;
     if (role === "student") {
-      navigate("/student/dashboard", { replace: true });
+      navigate("/activity", { replace: true });
     } else if (role === "club") {
-      navigate("/club/dashboard", { replace: true });
+      navigate("/applicants", { replace: true });
     } else if (role === "admin") {
       navigate("/admin", { replace: true });
     }

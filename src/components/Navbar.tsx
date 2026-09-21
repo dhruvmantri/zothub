@@ -31,7 +31,7 @@ export function Navbar() {
   const { pathname } = useLocation();
   const { user, role, signOut } = useAuth();
 
-  const dashboardLink = role === "club" ? "/club/dashboard" : "/student/dashboard";
+  const dashboardLink = role === "club" ? "/applicants" : "/activity";
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-line bg-surface/90 backdrop-blur-[10px]">

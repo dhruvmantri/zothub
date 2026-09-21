@@ -28,7 +28,7 @@ import {
 import { YEAR_OPTIONS, SKILL_SUGGESTIONS, INTEREST_SUGGESTIONS } from "@/lib/constants";
 
 /**
- * Profile, write side. The read side is /student/profile.
+ * Profile, write side. The read side is /profile.
  *
  * Every field, suggestion and the resume upload are exactly the ones that were
  * here before — the save path (sanitize → zod → upsert on user_id) is
@@ -160,7 +160,7 @@ export default function StudentProfileEdit() {
 
       toast.success("Profile saved");
       // Back to the profile you just edited, so you can see what clubs see.
-      navigate("/student/profile");
+      navigate("/profile");
     } catch (err) {
       console.error("Error:", err);
       toast.error("An error occurred");
@@ -199,7 +199,7 @@ export default function StudentProfileEdit() {
         <div className="border-b border-line bg-surface">
           <div className="container mx-auto max-w-3xl px-4 py-6">
             <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-              <Link to="/student/profile">
+              <Link to="/profile">
                 <ArrowLeft className="size-4" aria-hidden />
                 Back to profile
               </Link>
@@ -364,7 +364,7 @@ export default function StudentProfileEdit() {
                   )}
                 </Button>
                 <Button variant="ghost" size="lg" asChild>
-                  <Link to="/student/profile">Cancel</Link>
+                  <Link to="/profile">Cancel</Link>
                 </Button>
               </div>
 

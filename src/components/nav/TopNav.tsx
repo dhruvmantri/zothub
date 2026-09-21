@@ -122,7 +122,7 @@ export function TopNav({
               is fixed: notifications, MESSAGES, you — messages sits BETWEEN the
               bell and the avatar (decision, 2026-08-23). */}
           <Link
-            to={MESSAGES_PATH[role]}
+            to={MESSAGES_PATH}
             aria-label={
               counts.messages > 0
                 ? `Messages, ${counts.messages} unread`

@@ -80,7 +80,7 @@ export function AccountMenu({ role, displayName, subtitle, avatarUrl, isLoading 
         </div>
 
         <DropdownMenuItem asChild>
-          <Link to={isClub ? "/club/profile" : "/student/profile"} className="flex items-center gap-3">
+          <Link to={isClub ? "/my-club/edit" : "/profile"} className="flex items-center gap-3">
             {isClub ? <Building2 className="size-[15px] text-ink-3" /> : <User className="size-[15px] text-ink-3" />}
             {isClub ? "Club profile" : "Profile"}
           </Link>

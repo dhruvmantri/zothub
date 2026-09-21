@@ -29,9 +29,9 @@ export function AdminRoute({ children }: AdminRouteProps) {
   if (role !== "admin") {
     // Redirect non-admins to their appropriate dashboard
     if (role === "club") {
-      return <Navigate to="/club/dashboard" replace />;
+      return <Navigate to="/applicants" replace />;
     } else if (role === "student") {
-      return <Navigate to="/student/dashboard" replace />;
+      return <Navigate to="/activity" replace />;
     }
     // If no role, redirect to landing
     return <Navigate to="/" replace />;

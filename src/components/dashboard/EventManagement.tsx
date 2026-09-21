@@ -95,7 +95,7 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
               <DropdownMenuItem onClick={() => setStatusFilter("draft")}>Draft</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link to="/club/events/new">
+          <Link to="/postings/events/new">
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
               New Event
@@ -112,7 +112,7 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
             {events.length === 0 ? "No events created yet" : "No events found"}
           </p>
           {events.length === 0 && (
-            <Link to="/club/events/new">
+            <Link to="/postings/events/new">
               <Button className="mt-4 gap-2">
                 <Plus className="w-4 h-4" />
                 Create your first event
@@ -209,7 +209,7 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
                         <Eye className="w-4 h-4" /> View
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => navigate(`/club/events/${event.id}/edit`)}
+                        onClick={() => navigate(`/postings/events/${event.id}/edit`)}
                         className="gap-2"
                       >
                         <Edit className="w-4 h-4" /> Edit

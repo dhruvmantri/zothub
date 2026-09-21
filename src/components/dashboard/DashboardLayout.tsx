@@ -60,12 +60,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [user]);
 
   const sidebarLinks = [
-    { href: "/club/dashboard?tab=opportunities", label: "Opportunities", icon: Briefcase, tab: "opportunities" },
-    { href: "/club/dashboard?tab=events", label: "Events", icon: Calendar, tab: "events" },
-    { href: "/club/dashboard?tab=applications", label: "Applications", icon: Users, badge: applicationCount > 0 ? applicationCount : undefined, tab: "applications" },
-    { href: "/club/messages", label: "Messages", icon: MessageSquare, badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
-    { href: "/club/dashboard?tab=team", label: "Team", icon: Users, tab: "team" },
-    { href: "/club/dashboard?tab=analytics", label: "Analytics", icon: TrendingUp, tab: "analytics" },
+    { href: "/applicants?tab=opportunities", label: "Opportunities", icon: Briefcase, tab: "opportunities" },
+    { href: "/applicants?tab=events", label: "Events", icon: Calendar, tab: "events" },
+    { href: "/applicants?tab=applications", label: "Applications", icon: Users, badge: applicationCount > 0 ? applicationCount : undefined, tab: "applications" },
+    { href: "/messages", label: "Messages", icon: MessageSquare, badge: unreadMessageCount > 0 ? unreadMessageCount : undefined },
+    { href: "/applicants?tab=team", label: "Team", icon: Users, tab: "team" },
+    { href: "/applicants?tab=analytics", label: "Analytics", icon: TrendingUp, tab: "analytics" },
   ];
 
   // Get initials from email
@@ -87,7 +87,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Club Info */}
         <Link 
-          to="/club/profile" 
+          to="/my-club/edit" 
           className="block p-4 border-b border-border hover:bg-secondary/50 transition-colors group"
         >
           <div className="flex items-center gap-3">
@@ -107,7 +107,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {sidebarLinks.map((link) => {
             const currentTab = new URLSearchParams(location.search).get("tab") || "opportunities";
             const isActive = link.tab 
-              ? location.pathname === "/club/dashboard" && currentTab === link.tab
+              ? location.pathname === "/applicants" && currentTab === link.tab
               : location.pathname === link.href || location.pathname.startsWith(link.href);
             
             return (
@@ -172,7 +172,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </Button>
             </Link>
-            <Link to="/club/profile">
+            <Link to="/my-club/edit">
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:ring-2 hover:ring-primary transition-all cursor-pointer">
                 <span className="text-sm font-medium text-muted-foreground">{initials.charAt(0)}</span>
               </div>
