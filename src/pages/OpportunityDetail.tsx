@@ -120,9 +120,11 @@ export default function OpportunityDetail() {
         <div className="border-b border-line bg-surface">
           <div className="container mx-auto max-w-5xl px-4 py-6">
             <Button variant="ghost" size="sm" asChild className="-ml-3 mb-5">
+              {/* "Discover" was this page's name before the 2026-09-20
+                  rename. Going back must name where you land. */}
               <Link to="/opportunities">
                 <ArrowLeft className="size-4" />
-                Discover
+                Opportunities
               </Link>
             </Button>
 

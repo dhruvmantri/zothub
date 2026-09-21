@@ -23,24 +23,39 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** the **CTA sweep**. Every call-to-action in the app has
-to be checked in all three auth states — signed out, student, club — because
-`/signup` **redirects an authenticated visitor to their dashboard**, so any CTA
-pointing there silently bounces a signed-in user instead of doing what its
-label promises. Three are already logged with line refs: `UX9` ("Bring your
-club to ZotHub" → `/signup?role=club`), `UX10` ("Explore clubs" → same fault),
-and `UX12` (a button reading **"Browse clubs"** that links to
-`/opportunities` — the label and the target simply disagree). Do not stop at
-those three: sweep every CTA label against its target, and file what turns up.
-Note the nav and URL renames landed on 2026-09-21, so any CTA still pointing at
-an old address is now going through a redirect rather than straight to the page.
+**NEXT TASK, exactly:** the **empty states** (`UX17a`, `UX17b`).
 
-Then: **empty states** (`UX17a`: the zero-states make false claims and form a
-loop — one tells students to look at events and links them to clubs;
-`UX17b`: `Clubs.tsx` breaks the no-stage-copy rule three times). Design these
-against the POST-PURGE reality: production today holds 5 seeded roles and — as
-a read-only probe on 2026-09-21 confirmed — **zero upcoming events**. After
-`D1` the empty state is the default launch experience, not an edge case.
+`UX17a` — the zero-state copy makes false claims and forms a loop. On
+Opportunities the signature line promises events ("events are worth a look")
+while its button goes to `/clubs`; on Events the signature says "roles are
+open though" and links to a page that, after `D1`, will be empty too. Each
+page sends the visitor to the other, and neither promise is checked against
+what is actually there.
+
+`UX17b` — `Clubs.tsx` breaks the design system's no-stage-copy rule three
+times ("Clubs are being onboarded", "check back soon", "as they join"): copy
+that describes the product's stage rather than the query's result.
+
+**Design these against the POST-PURGE reality, not today's screen.**
+Production currently holds 5 seeded roles and — confirmed by a read-only
+probe on 2026-09-21 — **zero upcoming events**. After `D1` removes the test
+data, discovery is 0 roles and 0 events, so the empty state is the *default*
+launch experience, not an edge case. Do not wait for `D1` to design it.
+
+Then: step 7 (logos `MB5`, avatars, onboarding), step 8 (verify `N1`–`N7`
+with real accounts — club test credentials are available from the
+maintainer), step 9 (**`S5`/`R1`/`R2` email hardening, before the first real
+user**), step 10 (`D1` purge, last).
+
+**Just finished (2026-09-21): the CTA sweep, `UX9` + `UX10` + `UX12`.**
+Every link in `src/` was inventoried against its label and checked in all
+three auth states. The home page's four big CTAs now land somewhere real for
+everyone; two labels our own 2026-09-20 rename had left reading "Discover"
+were corrected. Three findings were logged rather than fixed, as out of
+scope: `DP12` (dead code carrying broken `?tab=` links), `A5` (a signed-in
+user with **no role** passes every `ProtectedRoute` check and reaches a
+student page — read from the guards, not reproduced), `A6` (Signup has no
+waitlist branch where Login does).
 
 **Just finished (2026-09-21): the shared toolbar, `UX11` + `UX13`.**
 `DiscoverToolbar` is now the single composition behind Clubs, Opportunities and
@@ -100,7 +115,7 @@ npx tsc -p tsconfig.app.json --noEmit     # 0 errors
 npm run build                              # must succeed
 npm run lint                               # 28 warnings is the baseline; 0 errors
 node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
-# browser — see tests/browser/README.md; 131 checks across 11 scripts, all green
+# browser — see tests/browser/README.md; 145 checks across 12 scripts, all green
 npx vite --host 127.0.0.1 --port 8080 &
 PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
   node tests/browser/<script>.mjs

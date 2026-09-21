@@ -51,6 +51,15 @@ regression removes an element, an unguarded `fill()` or `click()` throws and
 aborts the run — hiding the FAIL lines that explain what broke. Guard the
 interaction steps with `.catch(() => {})` and let the checks do the reporting.
 
+**A silently-swallowed locator error looks like a wrong answer.** The rule
+above — guard interactions with `.catch(() => {})` — has a second half: if the
+element is *missing*, say so as its own failure. A swallowed click plus a URL
+assertion reports "the button goes to the wrong place" when the truth is "the
+button is not there", and pays a 30s click timeout per case for the privilege.
+That is how a run was wasted here against a dev server that had quietly died:
+twelve identical failures, all of them lying about the cause. Check `count()`
+first.
+
 **Assert on the request when the screen cannot tell you.** Some correctness
 lives entirely off-screen. A client-side sort and a database sort render
 byte-identically on a short list and only diverge past a row cap — i.e. in
@@ -77,5 +86,6 @@ working code. Scope to the container you mean.
 | `o5-counts.mjs` | `O5-counts`: a logged-out visitor sees the real applicant count rather than 0, a club's "show applicant count" switch is honoured on the LIST (it was ignored there), zero is hidden rather than rendered, and "spots left" comes from confirmed RSVPs — so a sold-out event no longer advertises every seat as free. |
 | `nav-club-discover-menu.mjs` | The club `Discover` nav menu: it must open on hover WITHOUT navigating anywhere itself, survive the pointer moving onto it, open from the keyboard and close on Escape, and open by tap on a phone where hover does not exist. |
 | `ux8-url-renames.mjs` | `UX8`: every OLD address still lands on its new home (params, query and hash intact), every NEW address stays put and renders its own section, and `/messages` serves both roles. The section checks exist because several club paths share one component that reads the pathname — and the new paths nest where the old ones did not. |
+| `ux9-cta-sweep.mjs` | `UX9`/`UX10`/`UX12`: the four home-page CTAs **clicked** in all three auth states, asserting where the browser comes to rest. Deliberately not an href check — the hrefs were always real routes and the fault was one hop later, in `/signup`'s redirect, so an href test would have passed against the broken code. Restoring the original targets makes it fail with the real symptom: "landed on /activity", "landed on /applicants". Also guards the two labels the 2026-09-20 rename left reading "Discover". |
 | `ux11-toolbar.mjs` | `UX11`/`UX13`, the shared toolbar: every control is present on all three pages, the `Filter` menu is genuinely multi-select (it must STAY OPEN across two ticks — Radix closes on activation by default, which silently reverts the one capability the redesign was for), the date windows are one-at-a-time, and the sort is asserted **on the wire**, not on the screen. That last one matters: a client sort and a server sort look identical on a list of three rows and only diverge past the 50-row cap, so the check is that choosing a sort issues a NEW request carrying `order=…&limit=50`. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |

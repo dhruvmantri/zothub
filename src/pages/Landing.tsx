@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { clubKeys } from "@/lib/queryKeys";
 import { fetchAllClubsPublic } from "@/lib/queryFns";
 
@@ -68,6 +69,28 @@ function Count({ value, one, many }: { value: number | null; one: string; many: 
 
 export default function Landing() {
   const clubCount = useClubCount();
+  const { user, role } = useAuth();
+
+  /**
+   * The two split-card CTAs, resolved per auth state (maintainer decision,
+   * 2026-09-21 — closes UX9 and UX10).
+   *
+   * Both used to point straight at `/signup`, which **redirects an
+   * authenticated visitor to their dashboard**. So for anyone already signed
+   * in, the button did nothing except send them back where they came from —
+   * indistinguishable from a broken link. A stranger still gets the signup
+   * path, because that is what these two cards are for.
+   *
+   * A signed-in STUDENT cannot bring a club to ZotHub — claiming a club is a
+   * signed-out flow — so the club card sends them to the directory rather
+   * than to a form they cannot complete.
+   */
+  const clubCtaTarget = !user
+    ? "/signup?role=club"
+    : role === "club"
+      ? "/my-club"
+      : "/clubs";
+  const studentCtaTarget = user ? "/clubs" : "/signup?role=student";
 
   return (
     <RoleBasedLayout>
@@ -129,8 +152,16 @@ export default function Landing() {
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
+              {/* Always the browse surface, for everyone (maintainer decision,
+                  2026-09-21). It used to point at /signup, which REDIRECTS an
+                  authenticated visitor to their dashboard — so the site's most
+                  prominent button sent a signed-in student on a round trip to
+                  where they already were. Google sign-in also returns to this
+                  page, so that was the first thing they saw after signing in.
+                  The signup path is still offered by the top bar and by the
+                  two cards below. */}
               <Button size="lg" asChild>
-                <Link to="/signup">
+                <Link to="/opportunities">
                   Start exploring
                   <ArrowRight className="size-4" />
                 </Link>
@@ -140,7 +171,10 @@ export default function Landing() {
                 asChild
                 className="border-[1.5px] border-white/70 bg-transparent text-white hover:bg-white/10"
               >
-                <Link to="/opportunities">Browse clubs</Link>
+                {/* Said "Browse clubs" and went to the ROLES list (UX12).
+                    The target was the wrong one, not the label — and fixing it
+                    this way gives the hero two genuinely different doors. */}
+                <Link to="/clubs">Browse clubs</Link>
               </Button>
             </div>
 
@@ -176,7 +210,7 @@ export default function Landing() {
               and manage student interest without sending everyone across scattered links and forms.
             </p>
             <Button variant="accent" className="mt-6" asChild>
-              <Link to="/signup?role=club">Bring your club to ZotHub</Link>
+              <Link to={clubCtaTarget}>Bring your club to ZotHub</Link>
             </Button>
           </div>
 
@@ -192,7 +226,7 @@ export default function Landing() {
               to get involved—from general membership and volunteering to internships and leadership roles.
             </p>
             <Button variant="accent" className="mt-6" asChild>
-              <Link to="/signup?role=student">Explore clubs</Link>
+              <Link to={studentCtaTarget}>Explore clubs</Link>
             </Button>
           </div>
         </div>
@@ -237,7 +271,9 @@ export default function Landing() {
           <Logo />
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
             {[
-              { to: "/opportunities", label: "Discover" },
+              // "Discover" was this page's name before the 2026-09-20
+              // rename; the nav and the page itself both say Opportunities now.
+              { to: "/opportunities", label: "Opportunities" },
               { to: "/events", label: "Events" },
               { to: "/clubs", label: "Clubs" },
               { to: "/privacy", label: "Privacy" },
