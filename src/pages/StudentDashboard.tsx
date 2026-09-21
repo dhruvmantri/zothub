@@ -332,9 +332,16 @@ export default function StudentActivity() {
         <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
           <div className="container mx-auto max-w-4xl px-4 py-3">
             <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
-              <TabsList className="max-w-full justify-start overflow-x-auto">
+              <TabsList className="max-w-full justify-start gap-0 overflow-x-auto sm:gap-1">
                 {sections.map((s) => (
-                  <TabsTrigger key={s.value} value={s.value} className="gap-2">
+                  /* Tighter padding below `sm` only. With counts showing, the
+                     four tabs measured 388px inside a 358px strip at 390px, so
+                     "Following" was clipped off the right edge — reachable only
+                     by dragging a strip that gives no sign it scrolls. Four
+                     tabs times 8px of reclaimed padding closes the gap without
+                     changing the control's shape, and the shared Tabs component
+                     keeps its own spacing for every other tab strip. */
+                  <TabsTrigger key={s.value} value={s.value} className="gap-1.5 px-2 text-[13px] sm:gap-2 sm:px-4 sm:text-sm">
                     {s.label}
                     {/* A count is only shown when there is something to count —
                         a row of zeros is noise, not information. */}
