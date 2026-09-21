@@ -104,3 +104,23 @@ working code. Scope to the container you mean.
 | `ux9-cta-sweep.mjs` | `UX9`/`UX10`/`UX12`: the four home-page CTAs **clicked** in all three auth states, asserting where the browser comes to rest. Deliberately not an href check — the hrefs were always real routes and the fault was one hop later, in `/signup`'s redirect, so an href test would have passed against the broken code. Restoring the original targets makes it fail with the real symptom: "landed on /activity", "landed on /applicants". Also guards the two labels the 2026-09-20 rename left reading "Discover". |
 | `ux11-toolbar.mjs` | `UX11`/`UX13`, the shared toolbar: every control is present on all three pages, the `Filter` menu is genuinely multi-select (it must STAY OPEN across two ticks — Radix closes on activation by default, which silently reverts the one capability the redesign was for), the date windows are one-at-a-time, and the sort is asserted **on the wire**, not on the screen. That last one matters: a client sort and a server sort look identical on a list of three rows and only diverge past the 50-row cap, so the check is that choosing a sort issues a NEW request carrying `order=…&limit=50`. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |
+
+## Running a browser against anything that is not `127.0.0.1`
+
+These scripts target the local dev server, which the proxy never sees. A script
+that visits a real HTTPS host (the production walk in `scripts/journey_walk.mjs`
+does) fails every page with `ERR_CERT_AUTHORITY_INVALID` in a cloud session:
+outbound TLS is re-terminated by the agent proxy, and Playwright's bundled
+Chromium does not read the CA bundle the rest of the toolchain does. It renders
+Chrome's own interstitial, so **every screenshot comes back looking identical** —
+which is how it announces itself.
+
+The fix is to trust the CA, never to turn verification off:
+
+```bash
+apt-get update -qq && apt-get install -y libnss3-tools
+certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n ccr-agent-proxy \
+         -i /root/.ccr/agent-proxy-ca.crt
+```
+
+The store is per-container, so this is needed once per session.

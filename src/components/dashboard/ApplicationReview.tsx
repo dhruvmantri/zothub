@@ -14,6 +14,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,6 +86,26 @@ interface Opportunity {
   title: string;
 }
 
+/** What the confirmation dialog is currently asking about; `null` when nothing
+ *  is pending. Every decline routes through here, and so does a bulk accept,
+ *  because both end real people's applications and email them on the spot —
+ *  there is no undo once the mail has left. A single accept and "mark as
+ *  reviewed" deliberately do NOT confirm: neither is a decision anyone regrets,
+ *  and a club working through fifty applicants should not pay a click for each. */
+interface PendingDecision {
+  scope: "one" | "bulk";
+  status: "accepted" | "rejected";
+  ids: string[];
+  names: string[];
+}
+
+/** What to call an applicant in the confirmation. Falls back to the email
+ *  rather than "N/A" — the whole point of the dialog is that you recognise who
+ *  you are about to turn down. */
+function applicantName(application: Application): string {
+  return application.student.full_name?.trim() || application.student.email;
+}
+
 export function ApplicationReview() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -90,6 +120,7 @@ export function ApplicationReview() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -281,6 +312,40 @@ export function ApplicationReview() {
     }
   };
 
+  const askToDecline = (application: Application) =>
+    setPendingDecision({
+      scope: "one",
+      status: "rejected",
+      ids: [application.id],
+      names: [applicantName(application)],
+    });
+
+  const askForBulkDecision = (status: "accepted" | "rejected") => {
+    if (selectedIds.size === 0) return;
+    const chosen = applications.filter((app) => selectedIds.has(app.id));
+    setPendingDecision({
+      scope: "bulk",
+      status,
+      ids: chosen.map((app) => app.id),
+      names: chosen.map(applicantName),
+    });
+  };
+
+  const confirmPendingDecision = async () => {
+    if (!pendingDecision) return;
+    const { scope, status, ids } = pendingDecision;
+    // Close first: the work below is awaited, and leaving the dialog up while
+    // it runs invites a second click on the same confirm button.
+    setPendingDecision(null);
+    if (scope === "one") {
+      await updateApplicationStatus(ids[0], status);
+    } else {
+      // Reads `selectedIds`, which is still the set the dialog described —
+      // nothing clears it between asking and confirming.
+      await handleBulkStatusUpdate(status);
+    }
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(new Set(filteredApplications.map(app => app.id)));
@@ -449,7 +514,7 @@ export function ApplicationReview() {
                 variant="outline"
                 className="gap-1.5 border-ok/40 text-ok hover:bg-ok-wash hover:text-ok"
                 disabled={isBulkUpdating}
-                onClick={() => handleBulkStatusUpdate("accepted")}
+                onClick={() => askForBulkDecision("accepted")}
               >
                 <Check className="w-3.5 h-3.5" />
                 Accept all
@@ -459,7 +524,7 @@ export function ApplicationReview() {
                 variant="outline"
                 className="gap-1.5 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
                 disabled={isBulkUpdating}
-                onClick={() => handleBulkStatusUpdate("rejected")}
+                onClick={() => askForBulkDecision("rejected")}
               >
                 <X className="w-3.5 h-3.5" />
                 Decline all
@@ -602,7 +667,7 @@ export function ApplicationReview() {
                             disabled={isUpdating}
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateApplicationStatus(application.id, "rejected");
+                              askToDecline(application);
                             }}
                           >
                             <X className="w-4 h-4" />
@@ -724,7 +789,7 @@ export function ApplicationReview() {
                       variant="outline"
                       className="gap-2 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
                       disabled={isUpdating}
-                      onClick={() => updateApplicationStatus(selectedApplication.id, "rejected")}
+                      onClick={() => askToDecline(selectedApplication)}
                     >
                       {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                       Decline
@@ -758,6 +823,53 @@ export function ApplicationReview() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* UX18 — the confirmation that was missing entirely. A decline sat one
+          click from a named student's row and had already sent the rejection
+          email before the row finished re-rendering. */}
+      <AlertDialog
+        open={pendingDecision !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDecision(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDecision?.status === "rejected"
+                ? pendingDecision.names.length === 1
+                  ? `Decline ${pendingDecision.names[0]}?`
+                  : `Decline ${pendingDecision.names.length} applicants?`
+                : `Accept ${pendingDecision?.names.length ?? 0} applicants?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDecision && pendingDecision.names.length > 1 && (
+                <span className="mb-3 block font-medium text-ink">
+                  {pendingDecision.names.slice(0, 5).join(", ")}
+                  {pendingDecision.names.length > 5 &&
+                    ` and ${pendingDecision.names.length - 5} more`}
+                </span>
+              )}
+              {pendingDecision?.status === "rejected"
+                ? "They are emailed straight away that their application was declined. ZotHub cannot take that back."
+                : "They are emailed straight away that their application was accepted. ZotHub cannot take that back."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmPendingDecision}
+              className={
+                pendingDecision?.status === "rejected"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {pendingDecision?.status === "rejected" ? "Decline" : "Accept"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
