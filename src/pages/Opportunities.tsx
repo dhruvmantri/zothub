@@ -9,6 +9,7 @@ import { DiscoverList, type DiscoverListRow } from "@/components/discover/Discov
 import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { ErrorState } from "@/components/discover/ErrorState";
+import { NothingYetState } from "@/components/discover/NothingYetState";
 import { SignInToSaveState } from "@/components/discover/SignInToSaveState";
 import { useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
@@ -402,17 +403,22 @@ export default function OpportunitiesPage() {
                 isReordering && "pointer-events-none opacity-60",
               )}
             >
-              <p className="mb-5 text-sm text-ink-3">
-                <span className="font-data text-ink-2">{filteredOpportunities.length}</span>{" "}
-                {filteredOpportunities.length === 1 ? "role" : "roles"}
-                {savedOnly ? " saved" : ""}
-                {followingOnly ? " from clubs you follow" : ""}
-                {selectedTypes.length === 1
-                  ? ` in ${TYPE_OPTIONS.find((t) => t.value === selectedTypes[0])?.label}`
-                  : selectedTypes.length > 1
-                    ? ` across ${selectedTypes.length} types`
-                    : ""}
-              </p>
+              {/* Hidden at zero: the empty state directly below says it
+                  better, and "0 roles" above it is just the same
+                  bad news twice. */}
+              {filteredOpportunities.length > 0 && (
+                <p className="mb-5 text-sm text-ink-3">
+                  <span className="font-data text-ink-2">{filteredOpportunities.length}</span>{" "}
+                  {filteredOpportunities.length === 1 ? "role" : "roles"}
+                  {savedOnly ? " saved" : ""}
+                  {followingOnly ? " from clubs you follow" : ""}
+                  {selectedTypes.length === 1
+                    ? ` in ${TYPE_OPTIONS.find((t) => t.value === selectedTypes[0])?.label}`
+                    : selectedTypes.length > 1
+                      ? ` across ${selectedTypes.length} types`
+                      : ""}
+                </p>
+              )}
 
               {filteredOpportunities.length > 0 ? (
                 view === "cards" ? (
@@ -442,42 +448,31 @@ export default function OpportunitiesPage() {
                 )
               ) : (
                 /* The empty state describes the QUERY, never the product's stage. */
-                <EmptyState
-                  title={
-                    followingOnly
-                      ? "Quiet from your clubs —"
-                      : hasFilters
-                        ? "Nothing matches that yet —"
-                        : "No open roles right now —"
-                  }
-                  signature={
-                    followingOnly
-                      ? "the rest of campus is open."
-                      : hasFilters
-                        ? "try a wider net."
-                        : "events are worth a look."
-                  }
-                  body={
-                    hasFilters
-                      ? savedOnly
+                !hasFilters ? (
+                  /* Nothing open anywhere — which is launch day. Its own
+                     component because Events needs the identical thing, and
+                     because it reads the live club count (UX17a). */
+                  <NothingYetState kind="roles" />
+                ) : (
+                  <EmptyState
+                    title={followingOnly ? "Quiet from your clubs —" : "Nothing matches that yet —"}
+                    signature={
+                      followingOnly ? "the rest of campus is open." : "try a wider net."
+                    }
+                    body={
+                      savedOnly
                         ? "You haven't saved any roles yet. Save one from a card and it'll wait for you here."
                         : followingOnly
                           ? "The clubs you follow have nothing open right now. New postings from them show up here first."
                           : "No roles match those filters. Clearing them shows everything that's open."
-                      : "Clubs post roles throughout the term. Following a club puts its new postings in front of you."
-                  }
-                  actions={
-                    hasFilters ? (
+                    }
+                    actions={
                       <Button variant="outline" onClick={clearFilters}>
                         Clear filters
                       </Button>
-                    ) : (
-                      <Button variant="outline" asChild>
-                        <Link to="/clubs">Browse clubs</Link>
-                      </Button>
-                    )
-                  }
-                />
+                    }
+                  />
+                )
               )}
             </div>
           )}

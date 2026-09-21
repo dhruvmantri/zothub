@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
@@ -221,13 +220,20 @@ export default function ClubsPage() {
               )}
             </>
           ) : (
+            /* UX17b. The unfiltered branch used to read "No clubs yet —
+               check back soon" + "Clubs are being onboarded… as they join":
+               three separate descriptions of the product's STAGE, which the
+               design system forbids outright (Foundation rule 2).
+               It is also all but unreachable — there are 722 clubs — so an
+               empty directory is not a young product, it is something having
+               gone wrong. The copy now says that, and offers the retry. */
             <EmptyState
-              title={hasFilters ? "No clubs match that —" : "No clubs yet —"}
-              signature={hasFilters ? "try a wider search." : "check back soon."}
+              title={hasFilters ? "No clubs match that —" : "No clubs to show —"}
+              signature={hasFilters ? "try a wider search." : "that's unusual."}
               body={
                 hasFilters
                   ? "Nothing here matches those filters. Clearing them shows every club."
-                  : "Clubs are being onboarded. Roles and events appear here as they join."
+                  : "The directory came back empty, which shouldn't happen. Trying again normally sorts it."
               }
               actions={
                 hasFilters ? (
@@ -235,8 +241,12 @@ export default function ClubsPage() {
                     Clear filters
                   </Button>
                 ) : (
-                  <Button variant="outline" asChild>
-                    <Link to="/opportunities">Browse roles</Link>
+                  <Button
+                    variant="outline"
+                    onClick={() => clubsQuery.refetch()}
+                    disabled={clubsQuery.isFetching}
+                  >
+                    {clubsQuery.isFetching ? "Trying…" : "Try again"}
                   </Button>
                 )
               }

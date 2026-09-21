@@ -6,8 +6,7 @@ import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { clubKeys } from "@/lib/queryKeys";
-import { fetchAllClubsPublic } from "@/lib/queryFns";
+import { useClubCount } from "@/hooks/useClubCount";
 
 /**
  * Honest about state (Foundation §2). The hero shows **live counts only** —
@@ -20,37 +19,18 @@ import { fetchAllClubsPublic } from "@/lib/queryFns";
  * started", no "coming soon".
  */
 /**
- * The club count for the hero.
+ * The hero count. Was three (roles / events / clubs); the roles and events
+ * counts were removed by maintainer decision (2026-09-19, refining UX5),
+ * because both read a flat 0 from launch day until clubs start posting and
+ * "0 open roles · 0 upcoming events" would be the first thing every visitor
+ * read. The club count stays because it is true, durable, and the one number
+ * that argues for the product rather than against it.
  *
- * Was three counts (roles / events / clubs). The roles and events counts are
- * removed by maintainer decision (2026-09-19, refining UX5): both will read a
- * flat **0** from launch day until clubs start posting, and "0 open roles · 0
- * upcoming events" is the first thing every visitor would read. The club count
- * stays because 725 is true, durable, and the one number that argues for the
- * product rather than against it.
- *
- * It now shares clubKeys.list() with /clubs instead of firing its own copy of
- * the same RPC. Before, a Landing -> Clubs navigation downloaded all ~725 rows
- * twice, once of them purely to take `.length`.
- *
- * `select` narrows the cached array to a number, so this component re-renders
- * only when the count changes — not whenever any club row does. It is declared
- * at module scope because an inline arrow is a new identity every render, which
- * would re-run the selector each time.
+ * The hook itself now lives in src/hooks/useClubCount.ts, shared with the
+ * empty states on Opportunities and Events (UX17a). All of them read the same
+ * cached query, so none of them costs an extra request.
  */
-const selectClubCount = (rows: unknown[]): number => rows.length;
 
-function useClubCount(): number | null {
-  const { data } = useQuery({
-    queryKey: clubKeys.list(),
-    queryFn: fetchAllClubsPublic,
-    select: selectClubCount,
-  });
-  // null (not 0) while loading — Count renders its own placeholder for null, and
-  // flashing a confident "0 clubs" on the hero would be worse than showing
-  // nothing. Counts are decoration on the hero and must never block it.
-  return data ?? null;
-}
 
 /**
  * Counts are live, so they spend most of their early life at 0 and 1 — the

@@ -10,6 +10,7 @@ import { DiscoverList, type DiscoverListRow } from "@/components/discover/Discov
 import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { ErrorState } from "@/components/discover/ErrorState";
+import { NothingYetState } from "@/components/discover/NothingYetState";
 import { SignInToSaveState } from "@/components/discover/SignInToSaveState";
 import { useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
@@ -330,15 +331,20 @@ export default function EventsPage() {
                 isReordering && "pointer-events-none opacity-60",
               )}
             >
-              <p className="mb-5 text-sm text-ink-3">
-                <span className="font-data text-ink-2">{filteredEvents.length}</span>{" "}
-                {filteredEvents.length === 1 ? "event" : "events"}
-                {savedOnly ? " saved" : ""}
-                {followingOnly ? " from clubs you follow" : ""}
-                {dateWindow[0]
-                  ? ` ${WHEN_OPTIONS.find((w) => w.value === dateWindow[0])?.label.toLowerCase()}`
-                  : ""}
-              </p>
+              {/* Hidden at zero: the empty state directly below says it
+                  better, and "0 events" above it is just the same
+                  bad news twice. */}
+              {filteredEvents.length > 0 && (
+                <p className="mb-5 text-sm text-ink-3">
+                  <span className="font-data text-ink-2">{filteredEvents.length}</span>{" "}
+                  {filteredEvents.length === 1 ? "event" : "events"}
+                  {savedOnly ? " saved" : ""}
+                  {followingOnly ? " from clubs you follow" : ""}
+                  {dateWindow[0]
+                    ? ` ${WHEN_OPTIONS.find((w) => w.value === dateWindow[0])?.label.toLowerCase()}`
+                    : ""}
+                </p>
+              )}
 
               {filteredEvents.length > 0 ? (
                 view === "cards" ? (
@@ -364,42 +370,31 @@ export default function EventsPage() {
                   <DiscoverList rows={listRows} />
                 )
               ) : (
-                <EmptyState
-                  title={
-                    followingOnly
-                      ? "Quiet from your clubs —"
-                      : hasFilters
-                        ? "Nothing on that date —"
-                        : "No events coming up —"
-                  }
-                  signature={
-                    followingOnly
-                      ? "the rest of campus is busy."
-                      : hasFilters
-                        ? "try a wider window."
-                        : "roles are open though."
-                  }
-                  body={
-                    hasFilters
-                      ? savedOnly
+                !hasFilters ? (
+                  /* It used to say "roles are open though" and link to the
+                     roles list. After the test-data purge there are none —
+                     two empty pages promising each other (UX17a). */
+                  <NothingYetState kind="events" />
+                ) : (
+                  <EmptyState
+                    title={followingOnly ? "Quiet from your clubs —" : "Nothing on that date —"}
+                    signature={
+                      followingOnly ? "the rest of campus is busy." : "try a wider window."
+                    }
+                    body={
+                      savedOnly
                         ? "You haven't saved any events yet. Save one from a card and it'll wait for you here."
                         : followingOnly
                           ? "The clubs you follow have nothing scheduled. Their next event shows up here first."
                           : "No events fall in that window. Clearing the filter shows everything upcoming."
-                      : "Clubs schedule events throughout the term. Following a club puts its next one in front of you."
-                  }
-                  actions={
-                    hasFilters ? (
+                    }
+                    actions={
                       <Button variant="outline" onClick={clearFilters}>
                         Clear filters
                       </Button>
-                    ) : (
-                      <Button variant="outline" asChild>
-                        <Link to="/opportunities">Browse roles</Link>
-                      </Button>
-                    )
-                  }
-                />
+                    }
+                  />
+                )
               )}
             </div>
           )}

@@ -23,29 +23,20 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** the **empty states** (`UX17a`, `UX17b`).
+**NEXT TASK, exactly:** **step 7 — logos, avatars, onboarding polish**
+(`MB5`, 589 logos approved), then **step 8 — walk `N1`–`N7` with real
+accounts** (the maintainer has club test credentials; ask for them, they are
+never committed). Then **step 9, `S5`/`R1`/`R2` email hardening — due before
+the first real user, not before launch**: `send-reminders` is the one email
+path that bypasses `send-email`, it is unescaped, and it **marks failed sends
+as delivered**, after which the database refuses to resend forever. Step 10,
+`D1`, purges the test data and goes last.
 
-`UX17a` — the zero-state copy makes false claims and forms a loop. On
-Opportunities the signature line promises events ("events are worth a look")
-while its button goes to `/clubs`; on Events the signature says "roles are
-open though" and links to a page that, after `D1`, will be empty too. Each
-page sends the visitor to the other, and neither promise is checked against
-what is actually there.
-
-`UX17b` — `Clubs.tsx` breaks the design system's no-stage-copy rule three
-times ("Clubs are being onboarded", "check back soon", "as they join"): copy
-that describes the product's stage rather than the query's result.
-
-**Design these against the POST-PURGE reality, not today's screen.**
-Production currently holds 5 seeded roles and — confirmed by a read-only
-probe on 2026-09-21 — **zero upcoming events**. After `D1` removes the test
-data, discovery is 0 roles and 0 events, so the empty state is the *default*
-launch experience, not an edge case. Do not wait for `D1` to design it.
-
-Then: step 7 (logos `MB5`, avatars, onboarding), step 8 (verify `N1`–`N7`
-with real accounts — club test credentials are available from the
-maintainer), step 9 (**`S5`/`R1`/`R2` email hardening, before the first real
-user**), step 10 (`D1` purge, last).
+**Launch-day reality, measured on production 2026-09-21 as an anonymous
+visitor** — design against this, not against what the screen shows today:
+**725 clubs** (~722 after `D1`), **4 test roles** (0 after it), and **0
+publicly visible events, ever**. Both discovery lists are empty on day one
+and the club directory is full.
 
 **Also finished 2026-09-21: `A5`, an access guard that failed open.**
 `ProtectedRoute`'s last check was `allowedRoles && role && !allowedRoles…`,
@@ -127,7 +118,7 @@ npx tsc -p tsconfig.app.json --noEmit     # 0 errors
 npm run build                              # must succeed
 npm run lint                               # 28 warnings is the baseline; 0 errors
 node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
-bash tests/browser/run.sh   # 161 checks across 13 scripts, all green; the run owns the dev server
+bash tests/browser/run.sh   # 182 checks across 15 scripts, all green; the run owns the dev server
 npx vite --host 127.0.0.1 --port 8080 &
 PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
   node tests/browser/<script>.mjs
