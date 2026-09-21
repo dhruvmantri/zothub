@@ -82,7 +82,8 @@ await page.getByRole("button", { name: /^Saved$/ }).first().click();
 await page.waitForTimeout(400);
 check("signed-in student does NOT get the sign-in prompt",
   (await page.getByText("Saving needs an account").count()) === 0);
-await page.getByRole("button", { name: /^All$/ }).first().click();
+// Saved is a toggle since the UX11 toolbar — clicking it again turns it off.
+await page.getByRole("button", { name: /^Saved$/ }).first().click();
 
 // Client-side navigation away and back: nothing refetches.
 const before = { ...counts };

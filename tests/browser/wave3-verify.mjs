@@ -162,8 +162,10 @@ const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
     (await page.getByText("You haven't saved any events yet").count()) === 0,
   );
 
-  // Not a trap: the visitor can still get back out.
-  await page.getByRole("button", { name: /^All$/ }).first().click();
+  // Not a trap: the visitor can still get back out. Since the UX11 toolbar
+  // there is no "All" chip to escape to — Saved is an independent TOGGLE, so
+  // the way out is the same control you came in by.
+  await page.getByRole("button", { name: /^Saved$/ }).first().click();
   await page.getByRole("heading", { name: "Hack at UCI Kickoff" }).first().waitFor({ timeout: 5000 });
   check("visitor can leave the Saved filter again", true);
 

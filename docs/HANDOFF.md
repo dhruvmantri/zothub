@@ -23,23 +23,40 @@ Nobody is visiting yet — that is why invasive changes are cheap right now.
 10. D1 purge test data        ← LAST, immediately before launch
 ```
 
-**NEXT TASK, exactly:** the **shared discover toolbar**. `Clubs.tsx`,
-`Opportunities.tsx` and `Events.tsx` each grew their own search box, filter
-chips, sort control and view toggle, and they have drifted (different ordering,
-different spacing, Events has no sort at all). `components/discover/` already
-holds the *parts* (`FilterChip`, `ViewToggle`, `EmptyState`, `ErrorState`) but
-no shared *composition* — that absence is the logged root cause of the drift.
-Extract one `DiscoverToolbar`, adopt it on all three. **If it turns up a real
-design choice — most likely "should Events gain the sort control the other two
-have?" — stop and show mockups rather than guess.** Note `O3`: a sort on Events
-must be server-side and in the query key, since a client sort only reorders an
-arbitrary "soonest 50" window.
+**NEXT TASK, exactly:** the **CTA sweep**. Every call-to-action in the app has
+to be checked in all three auth states — signed out, student, club — because
+`/signup` **redirects an authenticated visitor to their dashboard**, so any CTA
+pointing there silently bounces a signed-in user instead of doing what its
+label promises. Three are already logged with line refs: `UX9` ("Bring your
+club to ZotHub" → `/signup?role=club`), `UX10` ("Explore clubs" → same fault),
+and `UX12` (a button reading **"Browse clubs"** that links to
+`/opportunities` — the label and the target simply disagree). Do not stop at
+those three: sweep every CTA label against its target, and file what turns up.
+Note the nav and URL renames landed on 2026-09-21, so any CTA still pointing at
+an old address is now going through a redirect rather than straight to the page.
 
-Then: **CTA sweep** (every call-to-action checked signed-out / student / club —
-`/signup` bounces authenticated visitors, so a CTA pointing there silently fails
-for them), then **empty states** (`UX17a`: the zero-states make false claims and
-form a loop — one tells students to look at events and links them to clubs;
-`UX17b`: `Clubs.tsx` breaks the no-stage-copy rule three times).
+Then: **empty states** (`UX17a`: the zero-states make false claims and form a
+loop — one tells students to look at events and links them to clubs;
+`UX17b`: `Clubs.tsx` breaks the no-stage-copy rule three times). Design these
+against the POST-PURGE reality: production today holds 5 seeded roles and — as
+a read-only probe on 2026-09-21 confirmed — **zero upcoming events**. After
+`D1` the empty state is the default launch experience, not an edge case.
+
+**Just finished (2026-09-21): the shared toolbar, `UX11` + `UX13`.**
+`DiscoverToolbar` is now the single composition behind Clubs, Opportunities and
+Events — search · viewer-scope chips (Saved / Following) · a `Filter` menu ·
+sort · card-list toggle. Add a control there, never to one page. Two structural
+consequences worth knowing before touching these pages:
+
+- **Both list sorts are now server-side and in the query key**
+  (`opportunityKeys.listSorted`, `eventKeys.upcomingSorted`), because the
+  queries cap at 50 rows and the ORDER therefore decides which 50 come back.
+  The prefix keys (`list()`, `upcoming()`) still exist purely so existing
+  invalidations reach every sort variant. Filtering stays client-side — it can
+  only narrow rows already in hand.
+- **Saved and Following are independent toggles**, not members of a
+  single-select chip row, and the `All` chip is gone: the way out of a filter
+  is the same control you came in by. Any test clicking `All` is stale.
 
 ## 2. Architectural decisions that constrain future work
 
@@ -83,7 +100,7 @@ npx tsc -p tsconfig.app.json --noEmit     # 0 errors
 npm run build                              # must succeed
 npm run lint                               # 28 warnings is the baseline; 0 errors
 node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
-# browser — see tests/browser/README.md; 107 checks across 10 scripts, all green
+# browser — see tests/browser/README.md; 131 checks across 11 scripts, all green
 npx vite --host 127.0.0.1 --port 8080 &
 PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
   node tests/browser/<script>.mjs

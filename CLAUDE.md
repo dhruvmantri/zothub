@@ -146,13 +146,22 @@ cloud session start the daemon with `sudo dockerd`.
 
 ## Known architectural traps
 
-- **TanStack Query is wired but unused** (0 `useQuery` calls). Every page hand-rolls
-  `useEffect` + `isLoading`. Root cause of the sluggish navigation and the avatar-initials
-  flash. See `UX15`.
+- **TanStack Query is the data layer now** (`UX15`, complete 2026-09-19). Every cached read goes
+  through `src/lib/queryKeys.ts` — the single key registry — and the rules that make it work are
+  binding: the root segment is the **table**, never the page; no wall-clock value ever enters a
+  key (compute `now` inside the fetcher); a fetcher **throws** on a supabase error, because
+  supabase-js *resolves* `{data, error}` and returning early caches `undefined` as a success;
+  and gate skeletons on `isPending`, never `isFetching`. Read `docs/ux15-migration-contract.md`
+  before touching any cached read.
+- **A sort that decides WHICH rows come back must be server-side and in the key.** The list
+  queries cap at 50 rows, so re-ordering in the browser reorders an arbitrary window and answers
+  the wrong question once the cap binds — invisibly, because it looks right on a short list.
+  Filtering in the browser is fine: it can only narrow rows already in hand.
 - **`/signup` redirects authenticated users to their dashboard**, so any CTA pointing there
   silently bounces signed-in visitors. Check CTA targets in all three auth states.
-- **Shared primitives exist without shared compositions** (`components/discover/` has parts
-  but no toolbar), which is why the three list pages drifted apart.
+- **Shared compositions, not just shared parts.** The three list pages drifted because
+  `components/discover/` held the *parts* and no toolbar. `DiscoverToolbar` is now that
+  composition (`UX11`, 2026-09-21) — add a control there, not to one page.
 - **`send-reminders` is the one email path that bypasses `send-email`** — unescaped, and it
   marks failed sends as delivered. Logged as `S5`/`R1`/`R2`, deferred by decision.
 

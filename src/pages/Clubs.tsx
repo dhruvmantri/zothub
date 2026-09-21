@@ -1,23 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, X } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
-import { FilterChip } from "@/components/discover/FilterChip";
+import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { ErrorState } from "@/components/discover/ErrorState";
+import { useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClubCard, type ClubCardData as Club } from "@/components/clubs/ClubCard";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ClubList } from "@/components/clubs/ClubList";
 import { CLUB_CATEGORIES } from "@/lib/constants";
 import { clubKeys, eventKeys, opportunityKeys, EMPTY_COUNT_MAP } from "@/lib/queryKeys";
 import {
@@ -28,17 +21,33 @@ import {
 
 type SortOption = "name-asc" | "name-desc" | "most-active";
 
+const SORT_OPTIONS = [
+  { value: "name-asc", label: "Name A–Z" },
+  { value: "name-desc", label: "Name Z–A" },
+  { value: "most-active", label: "Most active" },
+] as const;
+
 /** Module-level so the fallback identity is stable — `?? []` allocates a new
  *  array every render and busts every useMemo below, silently cancelling the
  *  caching win this migration exists to deliver. */
 const EMPTY_CLUBS: Club[] = [];
+/** Same reason: a fresh `[]` default for the category selection would change
+ *  identity every render and bust the filter memo. */
+const NO_CATEGORIES: string[] = [];
 
 export default function ClubsPage() {
   // Genuine UI state. None of it may enter a query key: putting `searchQuery`
   // in the key would turn every keystroke into a 725-row network round trip.
+  //
+  // The sort stays CLIENT-side here, unlike Opportunities and Events. That is
+  // not an inconsistency: `get_all_clubs_public` returns every club in one
+  // call with no cap, so re-ordering in the browser sees the whole set and is
+  // always correct. The other two pages cap at 50 rows, which is exactly why
+  // their sort had to move to the database (contract O3).
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(NO_CATEGORIES);
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
+  const [view, setView] = useDiscoverView("clubs");
 
   const clubsQuery = useQuery({
     queryKey: clubKeys.list(),
@@ -76,20 +85,23 @@ export default function ClubsPage() {
   // `isFetching` would reintroduce UX1 in a new form.
   const isLoading = clubsQuery.isPending;
 
-  const categories = useMemo(() => {
+  // Only the categories some club actually uses, so the menu can never offer a
+  // filter that returns nothing.
+  const categoryOptions = useMemo(() => {
     const used = new Set(clubs.map((c) => c.category).filter(Boolean) as string[]);
-    return [
-      { value: "all", label: "All" },
-      ...CLUB_CATEGORIES.filter((c) => used.has(c)).map((c) => ({ value: c, label: c })),
-    ];
+    return CLUB_CATEGORIES.filter((c) => used.has(c)).map((c) => ({ value: c, label: c }));
   }, [clubs]);
 
   const filteredAndSortedClubs = useMemo(() => {
+    const needle = searchQuery.toLowerCase();
     const result = clubs.filter((club) => {
       const matchesSearch =
-        club.club_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (club.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      const matchesCategory = selectedCategory === "all" || club.category === selectedCategory;
+        club.club_name.toLowerCase().includes(needle) ||
+        (club.description?.toLowerCase().includes(needle) ?? false);
+      // An empty selection means "every category", not "no category".
+      const matchesCategory =
+        selectedCategories.length === 0 ||
+        (club.category !== null && selectedCategories.includes(club.category));
       return matchesSearch && matchesCategory;
     });
 
@@ -109,10 +121,15 @@ export default function ClubsPage() {
     }
 
     return result;
-  }, [clubs, searchQuery, selectedCategory, sortBy]);
+  }, [clubs, searchQuery, selectedCategories, sortBy]);
 
   const recruitingCount = clubs.filter((c) => c.opportunity_count > 0).length;
-  const hasFilters = searchQuery !== "" || selectedCategory !== "all";
+  const hasFilters = searchQuery !== "" || selectedCategories.length > 0;
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategories(NO_CATEGORIES);
+  };
 
   return (
     <RoleBasedLayout>
@@ -132,64 +149,31 @@ export default function ClubsPage() {
           </div>
         </div>
 
-        <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <label htmlFor="clubs-search" className="sr-only">
-                  Search clubs by name or description
-                </label>
-                <Search
-                  aria-hidden
-                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-3"
-                />
-                <Input
-                  id="clubs-search"
-                  type="search"
-                  placeholder="Search clubs…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-11"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-pill text-ink-3 hover:bg-surface-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <X className="size-4" />
-                  </button>
-                )}
-              </div>
-
-              <Select value={sortBy} onValueChange={(v: SortOption) => setSortBy(v)}>
-                <SelectTrigger className="w-full md:w-[190px]" aria-label="Sort clubs">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name-asc">Name A–Z</SelectItem>
-                  <SelectItem value="name-desc">Name Z–A</SelectItem>
-                  <SelectItem value="most-active">Most active</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {categories.length > 1 && (
-              <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-                {categories.map((category) => (
-                  <FilterChip
-                    key={category.value}
-                    active={selectedCategory === category.value}
-                    onClick={() => setSelectedCategory(category.value)}
-                  >
-                    {category.label}
-                  </FilterChip>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <DiscoverToolbar
+          searchId="clubs-search"
+          searchLabel="Search clubs by name or description"
+          searchPlaceholder="Search clubs…"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterGroups={[
+            {
+              id: "category",
+              label: "Category",
+              mode: "multi",
+              options: categoryOptions,
+              selected: selectedCategories,
+              onChange: setSelectedCategories,
+            },
+          ]}
+          sort={{
+            value: sortBy,
+            onChange: (v) => setSortBy(v as SortOption),
+            options: SORT_OPTIONS,
+            label: "Sort clubs",
+          }}
+          view={view}
+          onViewChange={setView}
+        />
 
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
@@ -214,11 +198,28 @@ export default function ClubsPage() {
               isRetrying={clubsQuery.isFetching}
             />
           ) : filteredAndSortedClubs.length > 0 ? (
-            <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredAndSortedClubs.map((club) => (
-                <ClubCard key={club.id} club={club} />
-              ))}
-            </div>
+            <>
+              {/* Only once something is actually filtered. The header above
+                  already states the unfiltered total, and printing "725 clubs"
+                  twice on one screen reads as a mistake. Opportunities and
+                  Events have no count in their header, so theirs always
+                  shows. */}
+              {hasFilters && (
+                <p className="mb-5 text-sm text-ink-3">
+                  <span className="font-data text-ink-2">{filteredAndSortedClubs.length}</span>{" "}
+                  {filteredAndSortedClubs.length === 1 ? "club" : "clubs"} matching
+                </p>
+              )}
+              {view === "cards" ? (
+                <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredAndSortedClubs.map((club) => (
+                    <ClubCard key={club.id} club={club} />
+                  ))}
+                </div>
+              ) : (
+                <ClubList clubs={filteredAndSortedClubs} />
+              )}
+            </>
           ) : (
             <EmptyState
               title={hasFilters ? "No clubs match that —" : "No clubs yet —"}
@@ -230,13 +231,7 @@ export default function ClubsPage() {
               }
               actions={
                 hasFilters ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedCategory("all");
-                    }}
-                  >
+                  <Button variant="outline" onClick={clearFilters}>
                     Clear filters
                   </Button>
                 ) : (

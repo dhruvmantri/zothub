@@ -51,6 +51,13 @@ regression removes an element, an unguarded `fill()` or `click()` throws and
 aborts the run — hiding the FAIL lines that explain what broke. Guard the
 interaction steps with `.catch(() => {})` and let the checks do the reporting.
 
+**Assert on the request when the screen cannot tell you.** Some correctness
+lives entirely off-screen. A client-side sort and a database sort render
+byte-identically on a short list and only diverge past a row cap — i.e. in
+production, months later. Where that is true, route-record the REST calls and
+assert on the URL. The same trick catches "it reshuffled the cache instead of
+refetching", which is invisible by definition.
+
 **Scope the locator, or strict mode looks like a broken feature.** A detail page
 often shows the same text twice — once in a preview, once in a dialog. An
 unscoped `getByText` matches both, Playwright's strict mode throws, and the
@@ -70,4 +77,5 @@ working code. Scope to the container you mean.
 | `o5-counts.mjs` | `O5-counts`: a logged-out visitor sees the real applicant count rather than 0, a club's "show applicant count" switch is honoured on the LIST (it was ignored there), zero is hidden rather than rendered, and "spots left" comes from confirmed RSVPs — so a sold-out event no longer advertises every seat as free. |
 | `nav-club-discover-menu.mjs` | The club `Discover` nav menu: it must open on hover WITHOUT navigating anywhere itself, survive the pointer moving onto it, open from the keyboard and close on Escape, and open by tap on a phone where hover does not exist. |
 | `ux8-url-renames.mjs` | `UX8`: every OLD address still lands on its new home (params, query and hash intact), every NEW address stays put and renders its own section, and `/messages` serves both roles. The section checks exist because several club paths share one component that reads the pathname — and the new paths nest where the old ones did not. |
+| `ux11-toolbar.mjs` | `UX11`/`UX13`, the shared toolbar: every control is present on all three pages, the `Filter` menu is genuinely multi-select (it must STAY OPEN across two ticks — Radix closes on activation by default, which silently reverts the one capability the redesign was for), the date windows are one-at-a-time, and the sort is asserted **on the wire**, not on the screen. That last one matters: a client sort and a server sort look identical on a list of three rows and only diverge past the 50-row cap, so the check is that choosing a sort issues a NEW request carrying `order=…&limit=50`. |
 | `wave3-signin-transition.mjs` | `A4`: browse logged out, sign in through the real login form, navigate back by link click — the anon-shaped rows must not survive the sign-in. Temporarily disabling the guard in `AuthContext` must make this script fail; that is how it was proven. |

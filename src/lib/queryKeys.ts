@@ -43,8 +43,15 @@ export const clubKeys = {
 
 export const opportunityKeys = {
   all: ["opportunities"] as const,
-  /** Public list: active, deadline null-or-future, newest 50. */
+  /** Public list PREFIX, over every sort variant — use this to invalidate. */
   list: () => ["opportunities", "list"] as const,
+  /** Exact entry. The sort is part of the key because the ORDER is applied by
+   *  the database before the 50-row cap: "closing soonest" returns the 50
+   *  soonest-closing roles, which is a different SET of rows from the 50
+   *  newest, not a reshuffle of them. A client sort over one cached page
+   *  would quietly answer the wrong question once there are more than 50
+   *  open roles (contract O3, generalised to Opportunities on 2026-09-21). */
+  listSorted: (sort: string) => ["opportunities", "list", sort] as const,
   /** Prefix over BOTH auth variants — use this to invalidate. */
   details: (opportunityId: string) => ["opportunities", "detail", opportunityId] as const,
   /** Exact entry — use this in useQuery. */
@@ -63,7 +70,11 @@ export const opportunityKeys = {
 export const eventKeys = {
   all: ["events"] as const,
   list: () => ["events", "list"] as const,
+  /** PREFIX over every sort variant — use this to invalidate. */
   upcoming: () => ["events", "list", "upcoming"] as const,
+  /** Exact entry. Sorted server-side before the 50-row cap — see
+   *  opportunityKeys.listSorted and contract O3. */
+  upcomingSorted: (sort: string) => ["events", "list", "upcoming", sort] as const,
   details: (eventId: string) => ["events", "detail", eventId] as const,
   detail: (eventId: string, viewer: string) => ["events", "detail", eventId, viewer] as const,
   byClubPublic: (clubId: string) => ["events", "byClub", clubId, "public"] as const,

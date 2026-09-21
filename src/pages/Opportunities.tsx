@@ -1,26 +1,18 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Search, X, Bookmark, Heart } from "lucide-react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { Bookmark, Heart } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { OpportunityCard } from "@/components/cards/OpportunityCard";
 import { DiscoverList, type DiscoverListRow } from "@/components/discover/DiscoverList";
-import { FilterChip } from "@/components/discover/FilterChip";
+import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
 import { EmptyState } from "@/components/discover/EmptyState";
 import { ErrorState } from "@/components/discover/ErrorState";
 import { SignInToSaveState } from "@/components/discover/SignInToSaveState";
-import { ViewToggle, useDiscoverView } from "@/components/discover/ViewToggle";
+import { useDiscoverView } from "@/components/discover/ViewToggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDeadline, normalizeOpportunityType, opportunityTypeLabel } from "@/lib/formatters";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
@@ -29,6 +21,7 @@ import { useStudentProfileId } from "@/hooks/useStudentProfileId";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAppliedOpportunityIds } from "@/lib/queryFns";
 import { applicationKeys, opportunityKeys, EMPTY_ID_SET } from "@/lib/queryKeys";
+import { cn } from "@/lib/utils";
 
 interface OpportunityRow {
   id: string;
@@ -56,9 +49,27 @@ interface OpportunityRow {
  *  fresh array every render, busting the filter/sort memo below and silently
  *  cancelling the caching win (contract T5). */
 const EMPTY_OPPORTUNITIES: OpportunityRow[] = [];
+/** Same reason, for the type selection. */
+const NO_TYPES: string[] = [];
+
+export type OpportunitySort = "newest" | "deadline" | "popular";
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest first" },
+  { value: "deadline", label: "Closing soonest" },
+  { value: "popular", label: "Most applied to" },
+] as const;
 
 /**
  * The open-roles read.
+ *
+ * The SORT is applied by the DATABASE, and is part of the query key
+ * (maintainer decision, 2026-09-21). It has to be: the query is capped at 50
+ * rows, so ordering server-side changes which 50 rows come back —
+ * "closing soonest" returns the 50 soonest-closing roles, not a reshuffle of
+ * the 50 newest. Re-ordering in the browser looked identical while there were
+ * fewer than 50 open roles and would have started silently lying in a busy
+ * term. Contract O3 flagged this for Events; it applied here too.
  *
  * `now` is computed HERE, inside the fetcher, and never enters the query key
  * (contract T1) — a key holding a fresh timestamp is unique per render, so the
@@ -72,9 +83,9 @@ const EMPTY_OPPORTUNITIES: OpportunityRow[] = [];
  * with `retry: 1` it fires twice per failure and again on every background
  * refetch. Failure is surfaced from render, via `isError`.
  */
-async function fetchOpportunitiesList(): Promise<OpportunityRow[]> {
+async function fetchOpportunitiesList(sort: OpportunitySort): Promise<OpportunityRow[]> {
   const now = new Date().toISOString();
-  const { data, error } = await supabase
+  let query = supabase
     .from("opportunities")
     .select(`
       id,
@@ -91,9 +102,26 @@ async function fetchOpportunitiesList(): Promise<OpportunityRow[]> {
       )
     `)
     .eq("is_active", true)
-    .or(`deadline.is.null,deadline.gte.${now}`)
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .or(`deadline.is.null,deadline.gte.${now}`);
+
+  if (sort === "deadline") {
+    // Nulls LAST: a role with no deadline is not closing soonest, it is not
+    // closing at all, so it belongs after every dated one. Postgres already
+    // does this for an ASCENDING order — verified against production, where
+    // `deadline.asc` and `deadline.asc.nullslast` return byte-identical
+    // orders — so the modifier is documentation, not a fix. It is stated
+    // explicitly because the default flips for DESC, and a future "closing
+    // latest" would silently lead with the undated roles.
+    query = query.order("deadline", { ascending: true, nullsFirst: false });
+  } else if (sort === "popular") {
+    query = query.order("applications_count", { ascending: false });
+  }
+  // Always the final key, so ties resolve the same way every time. Without a
+  // deterministic tiebreak the same sort can return rows in a different order
+  // on each fetch, which reads as the list jumping about by itself.
+  query = query.order("created_at", { ascending: false });
+
+  const { data, error } = await query.limit(50);
 
   if (error) throw new Error(`Failed to load opportunities: ${error.message}`);
   return data ?? [];
@@ -104,20 +132,15 @@ async function fetchOpportunitiesList(): Promise<OpportunityRow[]> {
 const selectAppliedIdSet = (ids: string[]): Set<string> => new Set(ids);
 
 /**
- * Categories are the six real opportunity types plus All, Saved and Following.
- * The old list hard-coded four and the formatter silently coerced the other two
- * to "volunteer", so Committee and Other postings were both unfilterable and
- * mislabelled (Structure §3).
+ * The six real opportunity types. The old list hard-coded four and the
+ * formatter silently coerced the other two to "volunteer", so Committee and
+ * Other postings were both unfilterable and mislabelled (Structure §3).
  *
- * "Following" is what used to be the separate /student/feed destination
- * (maintainer decision, 2026-07-25). A feed of clubs you follow is a *filter on
- * discovery*, not a fifth place to look — same cards, same sort, same actions.
- * The chip only exists once you actually follow a club, so it can never be a
- * filter that only ever returns nothing.
+ * These are MULTI-select (maintainer decision, 2026-09-21): a student looking
+ * for something to do wants Leadership *or* Creative, and the old single-select
+ * chip row made them look twice.
  */
-const BASE_CATEGORIES = OPPORTUNITY_TYPES.map((t) => ({ value: t.value, label: t.label }));
-
-type SortOption = "newest" | "deadline" | "popular";
+const TYPE_OPTIONS = OPPORTUNITY_TYPES.map((t) => ({ value: t.value, label: t.label }));
 
 export default function OpportunitiesPage() {
   const { user, role } = useAuth();
@@ -130,20 +153,33 @@ export default function OpportunitiesPage() {
   const { bookmarkedIds: followedClubIds } = useBookmarks("club");
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(
+  // Saved and Following are independent SCOPES, not categories: turning both
+  // on means "saved roles from clubs I follow", which the old single-select
+  // chip row could not express at all.
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [followingOnly, setFollowingOnly] = useState(
     // /student/feed redirects here, so an old bookmark still lands on the
     // student's followed clubs instead of a 404.
-    searchParams.get("filter") === "following" ? "following" : "all",
+    searchParams.get("filter") === "following",
   );
-  const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(NO_TYPES);
+  const [sortOption, setSortOption] = useState<OpportunitySort>("newest");
   const [view, setView] = useDiscoverView("discover");
 
-  // None of the UI state above may enter the key: putting `searchQuery` in it
-  // would turn every keystroke into a network round trip. Filtering and sorting
-  // stay client-side over the cached rows, which is what makes them instant.
+  // The SORT is in the key; the search box and the filters are not. Putting
+  // `searchQuery` in the key would turn every keystroke into a network round
+  // trip. Filtering stays client-side over the cached rows, which is what makes
+  // it instant — and unlike the sort it is safe there, because filtering can
+  // only ever narrow the rows already in hand, never reveal rows the 50-row cap
+  // left behind.
   const opportunitiesQuery = useQuery({
-    queryKey: opportunityKeys.list(),
-    queryFn: fetchOpportunitiesList,
+    queryKey: opportunityKeys.listSorted(sortOption),
+    queryFn: () => fetchOpportunitiesList(sortOption),
+    // Switching sort is now a network round trip. Without this the page would
+    // drop straight back to the six grey skeletons — a full-page flash for what
+    // reads as a local re-ordering. The previous rows stay on screen, dimmed,
+    // until the new order arrives.
+    placeholderData: keepPreviousData,
   });
 
   // ONE key serves both the Applied badge here and `hasApplied` on the detail
@@ -160,6 +196,9 @@ export default function OpportunitiesPage() {
 
   const opportunities = opportunitiesQuery.data ?? EMPTY_OPPORTUNITIES;
   const appliedOpportunityIds = appliedQuery.data ?? EMPTY_ID_SET;
+  /** True while a newly-chosen sort is still in flight and the rows on screen
+   *  are the PREVIOUS order. */
+  const isReordering = opportunitiesQuery.isPlaceholderData;
 
   // UX23. "Not applied" and "we don't know yet" are different answers, and
   // collapsing them renders a live Apply on a role the student already applied
@@ -183,73 +222,52 @@ export default function OpportunitiesPage() {
   // longer than a visitor for the same rows.
   const isLoading = opportunitiesQuery.isPending;
 
-  const selectCategory = (value: string) => {
-    setSelectedCategory(value);
+  const toggleFollowing = () => {
+    const next = !followingOnly;
+    setFollowingOnly(next);
     // Only "following" is worth keeping in the URL — it is the one filter a
     // student arrives at by link rather than by tapping a chip.
-    if (value === "following") setSearchParams({ filter: "following" }, { replace: true });
+    if (next) setSearchParams({ filter: "following" }, { replace: true });
     else if (searchParams.has("filter")) setSearchParams({}, { replace: true });
   };
 
-  const categories = useMemo(
-    () => [
-      { value: "all", label: "All" },
-      ...(followedClubIds.size > 0
-        ? [{ value: "following", label: "Following" }]
-        : []),
-      ...(isViewOnly ? [] : [{ value: "saved", label: "Saved" }]),
-      ...BASE_CATEGORIES,
-    ],
-    [followedClubIds, isViewOnly],
-  );
-
   const filteredOpportunities = useMemo(() => {
-    return opportunities
-      .filter((opp) => {
-        const clubName = opp.club_profiles?.club_name || "";
-        const matchesSearch =
-          opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          clubName.toLowerCase().includes(searchQuery.toLowerCase());
+    const needle = searchQuery.toLowerCase();
+    return opportunities.filter((opp) => {
+      const clubName = opp.club_profiles?.club_name || "";
+      const matchesSearch =
+        opp.title.toLowerCase().includes(needle) || clubName.toLowerCase().includes(needle);
+      if (!matchesSearch) return false;
+      if (savedOnly && !isBookmarked(opp.id)) return false;
+      if (followingOnly && !followedClubIds.has(opp.club_id)) return false;
+      // An empty selection means "every type", not "no type".
+      if (
+        selectedTypes.length > 0 &&
+        !selectedTypes.includes(normalizeOpportunityType(opp.type))
+      ) {
+        return false;
+      }
+      return true;
+    });
+    // No `.sort()` here on purpose — the order arrives from the database, see
+    // fetchOpportunitiesList. Re-sorting a capped page in the browser is the
+    // bug this page just stopped having.
+  }, [opportunities, searchQuery, savedOnly, followingOnly, selectedTypes, isBookmarked, followedClubIds]);
 
-        if (selectedCategory === "saved") {
-          return matchesSearch && isBookmarked(opp.id);
-        }
+  const hasFilters =
+    searchQuery !== "" || savedOnly || followingOnly || selectedTypes.length > 0;
 
-        if (selectedCategory === "following") {
-          return matchesSearch && followedClubIds.has(opp.club_id);
-        }
-
-        const matchesCategory =
-          selectedCategory === "all" ||
-          normalizeOpportunityType(opp.type) === selectedCategory;
-        return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => {
-        switch (sortOption) {
-          case "deadline":
-            if (!a.deadline && !b.deadline) return 0;
-            if (!a.deadline) return 1;
-            if (!b.deadline) return -1;
-            return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-          case "popular":
-            // Reads the trigger-maintained counter. Sorting on the embedded
-            // array made "Most applied to" a no-op for logged-out visitors —
-            // every row was 0, so the order never changed.
-            return b.applications_count - a.applications_count;
-          case "newest":
-          default:
-            return 0;
-        }
-      });
-  }, [opportunities, searchQuery, selectedCategory, sortOption, isBookmarked, followedClubIds]);
-
-  const activeCategory = categories.find((c) => c.value === selectedCategory);
-  const hasFilters = searchQuery !== "" || selectedCategory !== "all";
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSavedOnly(false);
+    setSelectedTypes(NO_TYPES);
+    if (followingOnly) toggleFollowing();
+  };
 
   // A signed-out visitor tapping "Saved" cannot have saved anything, so the
   // ordinary empty state would blame them for not doing something they were
   // never able to do. Maintainer decision, 2026-09-19 — docs/BACKLOG.md UX22.
-  const needsAccountToSave = selectedCategory === "saved" && !user;
+  const needsAccountToSave = savedOnly && !user;
 
   const listRows: DiscoverListRow[] = filteredOpportunities.map((opp) => {
     const applied = appliedOpportunityIds.has(opp.id);
@@ -295,68 +313,59 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="sticky top-[60px] z-40 border-b border-line bg-surface">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <label htmlFor="discover-search" className="sr-only">
-                  Search roles by title or club
-                </label>
-                <Search
-                  aria-hidden
-                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-3"
-                />
-                <Input
-                  id="discover-search"
-                  type="search"
-                  placeholder="Search roles or clubs…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-11"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-pill text-ink-3 hover:bg-surface-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <X className="size-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Select value={sortOption} onValueChange={(v) => setSortOption(v as SortOption)}>
-                  <SelectTrigger className="w-full md:w-[190px]" aria-label="Sort roles">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="deadline">Closing soonest</SelectItem>
-                    <SelectItem value="popular">Most applied to</SelectItem>
-                  </SelectContent>
-                </Select>
-                <ViewToggle view={view} onChange={setView} className="hidden sm:inline-flex" />
-              </div>
-            </div>
-
-            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-              {categories.map((category) => (
-                <FilterChip
-                  key={category.value}
-                  active={selectedCategory === category.value}
-                  onClick={() => selectCategory(category.value)}
-                >
-                  {category.value === "saved" && <Bookmark className="size-3.5" aria-hidden />}
-                  {category.value === "following" && <Heart className="size-3.5" aria-hidden />}
-                  {category.label}
-                </FilterChip>
-              ))}
-            </div>
-          </div>
-        </div>
+        <DiscoverToolbar
+          searchId="discover-search"
+          searchLabel="Search roles by title or club"
+          searchPlaceholder="Search roles or clubs…"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          scopes={[
+            // A club account has no student profile, so it cannot save. The
+            // chip is dropped rather than left as another dead end.
+            ...(isViewOnly
+              ? []
+              : [
+                  {
+                    value: "saved",
+                    label: "Saved",
+                    icon: Bookmark,
+                    active: savedOnly,
+                    onToggle: () => setSavedOnly((v) => !v),
+                  },
+                ]),
+            // Only once they actually follow a club, so it can never be a
+            // filter that only ever returns nothing.
+            ...(followedClubIds.size > 0
+              ? [
+                  {
+                    value: "following",
+                    label: "Following",
+                    icon: Heart,
+                    active: followingOnly,
+                    onToggle: toggleFollowing,
+                  },
+                ]
+              : []),
+          ]}
+          filterGroups={[
+            {
+              id: "type",
+              label: "Type",
+              mode: "multi",
+              options: TYPE_OPTIONS,
+              selected: selectedTypes,
+              onChange: setSelectedTypes,
+            },
+          ]}
+          sort={{
+            value: sortOption,
+            onChange: (v) => setSortOption(v as OpportunitySort),
+            options: SORT_OPTIONS,
+            label: "Sort roles",
+          }}
+          view={view}
+          onViewChange={setView}
+        />
 
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
@@ -386,17 +395,23 @@ export default function OpportunitiesPage() {
           ) : needsAccountToSave ? (
             <SignInToSaveState noun="roles" />
           ) : (
-            <>
+            <div
+              aria-busy={isReordering}
+              className={cn(
+                "transition-opacity duration-base ease-zh",
+                isReordering && "pointer-events-none opacity-60",
+              )}
+            >
               <p className="mb-5 text-sm text-ink-3">
                 <span className="font-data text-ink-2">{filteredOpportunities.length}</span>{" "}
                 {filteredOpportunities.length === 1 ? "role" : "roles"}
-                {selectedCategory === "following"
-                  ? " from clubs you follow"
-                  : selectedCategory === "saved"
-                    ? " saved"
-                    : selectedCategory !== "all" && activeCategory
-                      ? ` in ${activeCategory.label}`
-                      : ""}
+                {savedOnly ? " saved" : ""}
+                {followingOnly ? " from clubs you follow" : ""}
+                {selectedTypes.length === 1
+                  ? ` in ${TYPE_OPTIONS.find((t) => t.value === selectedTypes[0])?.label}`
+                  : selectedTypes.length > 1
+                    ? ` across ${selectedTypes.length} types`
+                    : ""}
               </p>
 
               {filteredOpportunities.length > 0 ? (
@@ -429,14 +444,14 @@ export default function OpportunitiesPage() {
                 /* The empty state describes the QUERY, never the product's stage. */
                 <EmptyState
                   title={
-                    selectedCategory === "following"
+                    followingOnly
                       ? "Quiet from your clubs —"
                       : hasFilters
                         ? "Nothing matches that yet —"
                         : "No open roles right now —"
                   }
                   signature={
-                    selectedCategory === "following"
+                    followingOnly
                       ? "the rest of campus is open."
                       : hasFilters
                         ? "try a wider net."
@@ -444,22 +459,16 @@ export default function OpportunitiesPage() {
                   }
                   body={
                     hasFilters
-                      ? selectedCategory === "saved"
+                      ? savedOnly
                         ? "You haven't saved any roles yet. Save one from a card and it'll wait for you here."
-                        : selectedCategory === "following"
+                        : followingOnly
                           ? "The clubs you follow have nothing open right now. New postings from them show up here first."
                           : "No roles match those filters. Clearing them shows everything that's open."
                       : "Clubs post roles throughout the term. Following a club puts its new postings in front of you."
                   }
                   actions={
                     hasFilters ? (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSearchQuery("");
-                          selectCategory("all");
-                        }}
-                      >
+                      <Button variant="outline" onClick={clearFilters}>
                         Clear filters
                       </Button>
                     ) : (
@@ -470,7 +479,7 @@ export default function OpportunitiesPage() {
                   }
                 />
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
