@@ -41,6 +41,16 @@ const VIEWPORTS = [
 ];
 const THEMES = ["light", "dark"];
 
+/** Reads that PostgREST happens to expose as POST. Every one of these is
+ *  declared STABLE in its migration, and Postgres refuses to let a STABLE
+ *  function modify the database — so this list is guaranteed by the engine,
+ *  not by a naming convention. Check the migration before adding to it. */
+const READ_ONLY_RPCS = [
+  "get_all_clubs_public",
+  "get_club_public_profile",
+  "get_student_public_profile",
+];
+
 /** Routes per journey. `wait` is a selector worth waiting for before the shot,
  *  so a screenshot of a skeleton does not get mistaken for a design problem. */
 const ROUTES = {
@@ -113,7 +123,13 @@ for (const theme of THEMES) {
         const url = req.url();
         const mutating = req.method() !== "GET" && req.method() !== "HEAD" && req.method() !== "OPTIONS";
         const isData = url.includes("/rest/v1/") || url.includes("/functions/v1/") || url.includes("/storage/v1/object/");
-        if (mutating && isData) {
+        // PostgREST calls every function over POST, read-only ones included, so
+        // method alone cannot tell a read from a write. Blocking them all left
+        // the clubs directory empty and the landing page reading "— clubs",
+        // which looks exactly like a product defect and is not one. Named reads
+        // are allowed through; anything not on the list is still refused.
+        const isReadRpc = READ_ONLY_RPCS.some((fn) => url.includes(`/rest/v1/rpc/${fn}`));
+        if (mutating && isData && !isReadRpc) {
           blockedWrites++;
           notes.push(`BLOCKED ${req.method()} ${new URL(url).pathname}`);
           return route.abort();
@@ -153,11 +169,22 @@ for (const theme of THEMES) {
       }
       await page.waitForTimeout(1200);
 
-      const mounted = await page.evaluate(() => {
+      const didMount = () => page.evaluate(() => {
         const root = document.getElementById("root");
         return !!root && root.children.length > 0;
       }).catch(() => false);
-      if (!mounted) notes.push(`NOT MOUNTED ${label}`);
+
+      // One retry, because the egress proxy intermittently answers 502 and an
+      // empty page is indistinguishable from a page that genuinely renders
+      // nothing. Two failures in a row is a finding; one is weather. This cost
+      // an hour of chasing a "blank /login at desktop" that loads perfectly.
+      let mounted = await didMount();
+      if (!mounted) {
+        await page.goto(`${BASE}${r.path}`, { waitUntil: "networkidle", timeout: 30000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        mounted = await didMount();
+        if (!mounted) notes.push(`NOT MOUNTED ${label} (twice)`);
+      }
 
       const landed = new URL(page.url()).pathname;
       if (landed !== r.path) notes.push(`REDIRECT ${r.path} -> ${landed} (${theme}/${vp.name})`);

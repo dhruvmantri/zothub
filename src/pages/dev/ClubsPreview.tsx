@@ -51,7 +51,7 @@ export default function ClubsPreview() {
             Missing logos fall back to initials; missing descriptions read “No description yet.” No
             “unclaimed” marker anywhere here.
           </p>
-          <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FIXTURE_CLUBS.map((club) => (
               <ClubCard key={club.id} club={club} />
             ))}

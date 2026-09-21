@@ -300,7 +300,7 @@ export default function EventsPage() {
 
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="flex gap-3 rounded-lg border border-line bg-surface p-4">
                   <Skeleton className="size-[46px] shrink-0 rounded-[11px]" />
@@ -348,7 +348,7 @@ export default function EventsPage() {
 
               {filteredEvents.length > 0 ? (
                 view === "cards" ? (
-                  <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredEvents.map((event) => (
                       <EventCard
                         key={event.id}

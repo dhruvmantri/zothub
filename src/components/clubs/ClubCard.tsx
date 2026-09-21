@@ -25,6 +25,14 @@ export interface ClubCardData {
  * logo falls back to the initials avatar, a missing description reads
  * "No description yet.", and zero postings read "Not recruiting". The unclaimed
  * distinction (claim banner + source line) lives only on the club's profile page.
+ *
+ * The card title is `truncate`, so its min-content width is the WHOLE club
+ * name — and a grid item defaults to `min-width: auto`, which refuses to
+ * shrink below that. Any grid holding these cards must therefore declare a
+ * base `grid-cols-1` (Tailwind expands it to `minmax(0, 1fr)`); without it a
+ * single implicit column sizes to the longest club name and the page scrolls
+ * sideways on a phone. That is not hypothetical: it shipped, and the Clubs
+ * directory measured 1357px wide inside a 390px viewport.
  */
 export function ClubCard({ club }: { club: ClubCardData }) {
   return (

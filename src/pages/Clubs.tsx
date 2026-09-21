@@ -176,7 +176,7 @@ export default function ClubsPage() {
 
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="flex gap-3 rounded-lg border border-line bg-surface p-5">
                   <Skeleton className="size-[52px] shrink-0 rounded-[13px]" />
@@ -210,7 +210,7 @@ export default function ClubsPage() {
                 </p>
               )}
               {view === "cards" ? (
-                <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {filteredAndSortedClubs.map((club) => (
                     <ClubCard key={club.id} club={club} />
                   ))}
