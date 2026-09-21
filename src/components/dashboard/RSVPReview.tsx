@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EntityAvatar } from "@/components/ui/avatar";
+import { countOf } from "@/lib/countOf";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -518,7 +519,9 @@ export function RSVPReview() {
         <div className="flex items-center gap-3 rounded-lg border border-accent-line bg-accent-wash p-4">
           <CalendarCheck className="w-5 h-5 text-accent-text" />
           <p className="text-sm text-ink">
-            You have <span className="font-semibold">{pendingCount}</span> pending RSVPs awaiting your approval
+            You have{" "}
+            <span className="font-semibold">{countOf(pendingCount, "pending RSVP")}</span>{" "}
+            awaiting your approval
           </p>
         </div>
       )}
@@ -532,7 +535,80 @@ export function RSVPReview() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface">
+        <>
+          {/* UX34 — the phone layout, and this queue was the worse of the two.
+              Its container is `overflow-hidden` with fixed columns, so the row
+              did not scroll, it CLIPPED: measured on production at 390px,
+              "Cancel RSVP" ended at 439px and "Confirm RSVP" at 399px, both
+              past the edge with no scrollbar to recover them. A club could not
+              approve or decline an attendee from a phone at all. */}
+          <ul className="space-y-3 md:hidden">
+            {filteredRsvps.map((rsvp) => {
+              const name = rsvp.student.full_name || rsvp.student.email;
+              return (
+                <li key={rsvp.id} className="rounded-lg border border-line bg-surface p-4 shadow-e1">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedIds.has(rsvp.id)}
+                      onCheckedChange={(checked) => handleSelectOne(rsvp.id, !!checked)}
+                      aria-label={`Select ${name}`}
+                      className="mt-1"
+                    />
+                    <EntityAvatar kind="person" name={name} size="sm" />
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setSelectedRsvp(rsvp)}
+                    >
+                      <p className="truncate font-medium text-ink">{rsvp.student.full_name || "Unknown"}</p>
+                      <p className="truncate text-sm text-ink-2">{rsvp.student.email}</p>
+                    </button>
+                  </div>
+
+                  {/* Status on the second row — see the note in ApplicationReview. */}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-ink">{rsvp.event.title}</p>
+                      <p className="font-data text-xs text-ink-3">
+                        {format(new Date(rsvp.event.event_date), "MMM d, yyyy")} · RSVP'd{" "}
+                        {format(new Date(rsvp.created_at), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <StatusBadge domain="rsvp" status={rsvp.status} audience="club" />
+                  </div>
+
+                  {rsvp.status === "pending" && (
+                    <div className="mt-3 flex w-full items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1.5 text-ok hover:bg-ok-wash hover:text-ok"
+                        onClick={() => updateRsvpStatus(rsvp.id, "confirmed")}
+                        disabled={isUpdating}
+                        aria-label="Confirm RSVP"
+                      >
+                        <Check className="h-4 w-4" />
+                        Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1.5 text-bad hover:bg-bad-wash hover:text-bad"
+                        onClick={() => updateRsvpStatus(rsvp.id, "cancelled")}
+                        disabled={isUpdating}
+                        aria-label="Cancel RSVP"
+                      >
+                        <X className="h-4 w-4" />
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
           {/* Table Header */}
           <div className="grid grid-cols-[auto_1fr_1fr_120px_110px_88px] gap-4 border-b border-line bg-surface-2 px-4 py-3 text-sm font-medium text-ink-2">
             <div className="flex items-center">
@@ -630,7 +706,8 @@ export function RSVPReview() {
               </div>
             ))}
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* RSVP Detail Dialog */}

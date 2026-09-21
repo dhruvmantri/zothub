@@ -11,10 +11,33 @@ launch plan are done; **8 and 10 remain.**
 ```
 1. Trust & legal        ✅      6. Nav ✅ URLs ✅ toolbar ✅ CTAs ✅ empty states ✅
 2. Security             ✅      7. Logos ✅ · avatars deferred · onboarding (MB8) ⬜
-3. CI gate              ✅      8. DESIGN + JOURNEY PASS  ← NEXT, and it is the redesign
+3. CI gate              ✅      8. DESIGN + JOURNEY PASS  ← IN PROGRESS (a, b done; c left)
 4. Speed (UX15)         ✅      9. Email hardening ✅ (done early, deployed)
 5. Card counts (O5)     ✅     10. D1 purge test data  ← LAST, immediately before launch
 ```
+
+**Step 8 progress (2026-09-21).** Walked with `scripts/journey_walk.mjs`, which
+is read-only against production by construction — every non-GET to the database
+or an edge function is aborted in the browser, so a walk reads real data and
+cannot change it. **8a signed-out: done. 8b club (real login): done. 8c student:
+not started** — it needs either a student test account or a local Supabase, and
+that is the open question.
+
+Shipped from the walk: `UX18` (decline confirmation), `UX26` (a deploy no longer
+strands the people already on the site), `UX27` (the Clubs directory scrolled
+sideways on every phone), `UX29` (31.7MB and 32s down to 1.4MB and 3.4s),
+`UX3` (back affordance), `UX28` (404 dead end), `UX32` (stale privacy date),
+`UX33` (two club tabs read as selected, and two `aria-current`), `UX34`
+(a club could not accept or decline from a phone at all), `UX35` (plurals),
+`UX30` (dark-mode card separation). **Open from the walk: `UX31` only** — the
+Gmail support address, deliberately deferred until outreach.
+
+**The method that found all of it: measure the page, do not look at it.** Two
+findings were false and died on measurement — a "blank /login at desktop" that
+loads perfectly (transient proxy 502) and a bottom nav "covering" content that
+is correctly padded (a full-page-screenshot artifact of fixed positioning). Two
+were only found BY measuring: the sideways scroll read as a rendering quirk in
+the image, and the 31.7MB was invisible until requests were counted.
 
 **Production, measured 2026-09-21 as an anonymous visitor:** 725 clubs (**589
 now show a real logo**, 136 keep initials), 4 test roles, **0 publicly visible

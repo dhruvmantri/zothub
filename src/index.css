@@ -270,6 +270,19 @@
     color: hsl(var(--ink));
   }
 
+  /* In the DARK theme the page behind a `.ctx-dark` card is itself near-black,
+     so the card stops reading as a card and the deliberate club/student pair
+     flattens into one dark field. Lifting its surface one step restores the
+     edge without touching the register: the card is still the dark half, which
+     is what W4 above is protecting. Light theme is untouched — there the card
+     already separates from a white page, which is the whole effect.
+     (Maintainer chose this over adding a visible outline, 2026-09-21.) */
+  :root[data-theme="dark"] .ctx-dark,
+  .dark .ctx-dark {
+    --bg: 213 19% 16%;
+    background-color: hsl(var(--bg));
+  }
+
   .ctx-light {
     --bg: 0 0% 100%;
     --bg-2: 216 33.3% 97.1%;

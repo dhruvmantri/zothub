@@ -60,6 +60,7 @@ import { exportToCSV, type CSVColumn } from "@/lib/csvExport";
 import { countOf } from "@/lib/countOf";
 import { sendApplicationStatusUpdate } from "@/lib/emailService";
 import { openFileUrl } from "@/lib/storageUrls";
+import { cn } from "@/lib/utils";
 import type { FormQuestion, FormAnswer } from "@/types";
 
 interface Application {
@@ -105,6 +106,83 @@ interface PendingDecision {
  *  you are about to turn down. */
 function applicantName(application: Application): string {
   return application.student.full_name?.trim() || application.student.email;
+}
+
+/**
+ * The controls that decide one application, shared by the phone cards and the
+ * desktop table so the two layouts can never drift on what a club can DO.
+ *
+ * `compact` labels the buttons instead of relying on icons: on a phone this is
+ * the one control that matters, and an unlabelled tick next to an unlabelled
+ * cross is a poor place to be guessing.
+ */
+function DecisionActions({
+  application,
+  decided,
+  isUpdating,
+  compact = false,
+  onAccept,
+  onDecline,
+}: {
+  application: Application;
+  decided: boolean;
+  isUpdating: boolean;
+  compact?: boolean;
+  onAccept: (application: Application) => void;
+  onDecline: (application: Application) => void;
+}) {
+  return (
+    <div className={cn("flex items-center gap-2", compact ? "w-full" : "justify-end")}>
+      {application.resume_url && (
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("gap-1.5", compact && "flex-1")}
+          onClick={(e) => {
+            e.stopPropagation();
+            openFileUrl(application.resume_url!).catch(() => toast.error("Could not open resume"));
+          }}
+        >
+          <FileText className="h-4 w-4" />
+          Resume
+        </Button>
+      )}
+      {/* A reviewed application must still be decidable — the old
+          `=== "pending"` gate is the "reviewed status unsettable" bug. */}
+      {!decided && (
+        <>
+          <Button
+            variant="outline"
+            size={compact ? "sm" : "icon-sm"}
+            className={cn("text-ok hover:bg-ok-wash hover:text-ok", compact && "flex-1 gap-1.5")}
+            aria-label="Accept application"
+            disabled={isUpdating}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAccept(application);
+            }}
+          >
+            <Check className="h-4 w-4" />
+            {compact && "Accept"}
+          </Button>
+          <Button
+            variant="outline"
+            size={compact ? "sm" : "icon-sm"}
+            className={cn("text-bad hover:bg-bad-wash hover:text-bad", compact && "flex-1 gap-1.5")}
+            aria-label="Decline application"
+            disabled={isUpdating}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecline(application);
+            }}
+          >
+            <X className="h-4 w-4" />
+            {compact && "Decline"}
+          </Button>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function ApplicationReview() {
@@ -556,7 +634,74 @@ export function ApplicationReview() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+        <>
+          {/* UX34 — the phone layout. The table below is 760px wide inside a
+              356px scroller, which put Accept and Decline about 300px past the
+              right edge of a phone with no scrollbar and no hint they were
+              there: a club officer on their phone could not decide anyone, and
+              deciding is the club's entire job here. Measured on production,
+              not guessed. Stacking is deliberate rather than a narrower table —
+              there is no honest way to fit six columns and two buttons into
+              390px. */}
+          <ul className="space-y-3 md:hidden">
+            {filteredApplications.map((application) => {
+              const decided = application.status === "accepted" || application.status === "rejected";
+              const name = application.student.full_name || application.student.email;
+              return (
+                <li
+                  key={application.id}
+                  className="rounded-lg border border-line bg-surface p-4 shadow-e1"
+                >
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedIds.has(application.id)}
+                      onCheckedChange={(checked) => handleSelectOne(application.id, checked as boolean)}
+                      aria-label={`Select ${name}`}
+                      className="mt-1"
+                    />
+                    <EntityAvatar kind="person" name={name} size="sm" />
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setSelectedApplication(application)}
+                    >
+                      <p className="truncate font-medium text-ink">{name}</p>
+                      <p className="truncate text-sm text-ink-2">
+                        {application.student.major || "No major"} •{" "}
+                        {application.student.year || "Year not set"}
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* The status sits on the second row, not beside the name:
+                      on the name's row it took ~110px of a 390px screen and
+                      truncated exactly the thing a club is scanning for. */}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-ink">{application.opportunity.title}</p>
+                      <p className="font-data text-xs text-ink-3">
+                        Applied {format(new Date(application.created_at), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <StatusBadge domain="application" status={application.status} audience="club" />
+                  </div>
+
+                  <div className="mt-3">
+                    <DecisionActions
+                      application={application}
+                      decided={decided}
+                      isUpdating={isUpdating}
+                      compact
+                      onAccept={(a) => updateApplicationStatus(a.id, "accepted")}
+                      onDecline={askToDecline}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-line bg-surface md:block">
           <div className="min-w-[760px]">
             {/* Header */}
             <div className="grid grid-cols-[auto_1.6fr_1fr_120px_116px_176px] items-center gap-4 border-b border-line bg-surface-2 px-4 py-3 text-sm font-medium text-ink-2">
@@ -626,62 +771,20 @@ export function ApplicationReview() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-2">
-                      {application.resume_url && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openFileUrl(application.resume_url!).catch(() =>
-                              toast.error("Could not open resume")
-                            );
-                          }}
-                        >
-                          <FileText className="w-4 h-4" />
-                          Resume
-                        </Button>
-                      )}
-                      {/* A reviewed application must still be decidable — the old
-                          `=== "pending"` gate is the "reviewed status unsettable" bug. */}
-                      {!decided && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            className="text-ok hover:bg-ok-wash hover:text-ok"
-                            aria-label="Accept application"
-                            disabled={isUpdating}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateApplicationStatus(application.id, "accepted");
-                            }}
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            className="text-bad hover:bg-bad-wash hover:text-bad"
-                            aria-label="Decline application"
-                            disabled={isUpdating}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              askToDecline(application);
-                            }}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    <DecisionActions
+                      application={application}
+                      decided={decided}
+                      isUpdating={isUpdating}
+                      onAccept={(a) => updateApplicationStatus(a.id, "accepted")}
+                      onDecline={askToDecline}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Application Detail Dialog */}
