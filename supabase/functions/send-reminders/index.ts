@@ -1,22 +1,183 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { checkEmailResult } from "../_shared/email-result.ts";
+import { deliverReminder } from "../_shared/reminder-delivery.ts";
+
+/**
+ * The hourly reminder job.
+ *
+ * Two defects this rewrite exists to close, both of which only bite once real
+ * people are using the product — which is why it is due before the first real
+ * user rather than before launch.
+ *
+ * S5 — it used to build HTML here and hand it straight to Resend, interpolating
+ * club names, titles, locations and student names RAW. 724 of those club names
+ * were scraped from ZotSpot: third-party text nobody sanitised, going out from
+ * the verified zothub.app domain. Every send now goes through `send-email`,
+ * whose templates escape every interpolation and which owns the allowlist.
+ *
+ * R1 — it used to send, then log. Resend's SDK RESOLVES with `{ error }` on an
+ * API failure rather than throwing, so the try/catch never fired, the log row
+ * was written anyway, and the `unique_reminder` constraint then made that
+ * reminder PERMANENTLY unsendable. The student silently never got it, and no
+ * retry was possible for the life of the row. It is now claim-before-send: the
+ * log row is written FIRST as a claim, the send is judged by `checkEmailResult`,
+ * and the claim is RELEASED if delivery failed, so the next hourly run retries.
+ * That ordering also makes two overlapping cron runs safe — the unique
+ * constraint decides who owns the send instead of both sending.
+ */
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+type Supa = ReturnType<typeof createClient>;
+
+/** Postgres unique-violation: somebody already claimed this exact reminder. */
+const UNIQUE_VIOLATION = "23505";
+
+interface Recipient {
+  userId: string;
+  email: string;
+  fullName: string | null;
+}
+
+/**
+ * Claim a reminder by writing its log row BEFORE sending.
+ *
+ * Returns false when the row already exists, which means it was already sent
+ * (or is being sent right now by an overlapping run) — either way this run must
+ * not send it.
+ */
+async function claim(
+  supabase: Supa,
+  reminderType: string,
+  targetId: string,
+  userId: string,
+): Promise<{ claimed: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("reminder_logs")
+    .insert({ reminder_type: reminderType, target_id: targetId, user_id: userId });
+  if (!error) return { claimed: true };
+  if (error.code === UNIQUE_VIOLATION) return { claimed: false };
+  return { claimed: false, error: error.message };
+}
+
+/**
+ * Give the claim back after a failed send, so the next run can try again.
+ *
+ * If this delete itself fails the reminder stays unsendable — the one case the
+ * old code produced for EVERY failure — so it is reported loudly rather than
+ * swallowed.
+ */
+async function release(
+  supabase: Supa,
+  reminderType: string,
+  targetId: string,
+  userId: string,
+): Promise<string | null> {
+  const { error } = await supabase
+    .from("reminder_logs")
+    .delete()
+    .eq("reminder_type", reminderType)
+    .eq("target_id", targetId)
+    .eq("user_id", userId);
+  return error ? error.message : null;
+}
+
+/** Send through `send-email`, which escapes. A 200 is not proof of delivery. */
+async function sendVia(
+  supabase: Supa,
+  type: string,
+  to: string,
+  data: Record<string, unknown>,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data: res, error } = await supabase.functions.invoke("send-email", {
+      body: { type, to, data },
+    });
+    return checkEmailResult(error, res);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "send-email threw" };
   }
+}
+
+/** Is this user opted in to `prefColumn`? Absent row means yes (the DB default). */
+async function wants(supabase: Supa, userId: string, prefColumn: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("notification_preferences")
+    .select(prefColumn)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return true;
+  const value = (data as Record<string, unknown>)[prefColumn];
+  return value !== false;
+}
+
+async function studentFor(supabase: Supa, userId: string): Promise<Recipient | null> {
+  const { data } = await supabase
+    .from("student_profiles")
+    .select("email, full_name")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const row = data as { email?: string; full_name?: string } | null;
+  if (!row?.email) return null;
+  return { userId, email: row.email, fullName: row.full_name ?? null };
+}
+
+/**
+ * Wire the real implementations into the shared ordering rule.
+ *
+ * The RULE lives in `_shared/reminder-delivery.ts` and is unit-tested from Node
+ * (`src/lib/reminderDelivery.test.ts`) — this function is only the wiring, so
+ * the part that can silently lose a student's email forever is the part under
+ * test rather than the part buried in a Deno handler nothing can run here.
+ */
+async function deliver(
+  supabase: Supa,
+  opts: {
+    reminderType: string;
+    targetId: string;
+    recipient: Recipient;
+    prefColumn: string;
+    emailType: string;
+    data: Record<string, unknown>;
+  },
+  errors: string[],
+): Promise<boolean> {
+  const outcome = await deliverReminder(
+    {
+      wants: (userId, prefColumn) => wants(supabase, userId, prefColumn),
+      claim: (t, id, u) => claim(supabase, t, id, u),
+      send: () => sendVia(supabase, opts.emailType, opts.recipient.email, opts.data),
+      release: (t, id, u) => release(supabase, t, id, u),
+    },
+    {
+      reminderType: opts.reminderType,
+      targetId: opts.targetId,
+      userId: opts.recipient.userId,
+      prefColumn: opts.prefColumn,
+    },
+  );
+
+  if (outcome.status === "sent") return true;
+  if (outcome.status === "failed") {
+    errors.push(
+      outcome.retryable
+        ? `${opts.reminderType} failed, will retry next run: ${outcome.error}`
+        : `${opts.reminderType} WILL NOT BE RETRIED: ${outcome.error}`,
+    );
+  }
+  return false;
+}
+
+const handler = async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -31,7 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
       errors: [] as string[],
     };
 
-    // 1. Event reminders (events happening in next 24-48 hours)
+    // --- 1. Events happening in the next 24–48 hours ------------------------
     const { data: upcomingEvents, error: eventsError } = await supabase
       .from("events")
       .select(`
@@ -48,400 +209,149 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (eventsError) {
       results.errors.push(`Events query error: ${eventsError.message}`);
-    } else if (upcomingEvents) {
-      for (const event of upcomingEvents) {
-        const clubName = (event.club_profiles as unknown as { club_name: string })?.club_name || "Unknown Club";
-        for (const rsvp of event.rsvps || []) {
+    } else {
+      for (const event of upcomingEvents ?? []) {
+        const clubName =
+          (event.club_profiles as unknown as { club_name: string })?.club_name ?? "Unknown Club";
+        for (const rsvp of (event.rsvps as unknown as Array<Record<string, unknown>>) ?? []) {
           if (rsvp.status !== "confirmed") continue;
-          
-          const studentProfile = rsvp.student_profiles as unknown as { user_id: string; email: string; full_name: string } | null;
-          if (!studentProfile?.email || !studentProfile?.user_id) continue;
+          const sp = rsvp.student_profiles as
+            | { user_id: string; email: string; full_name: string }
+            | null;
+          if (!sp?.email || !sp?.user_id) continue;
 
-          // Check if reminder already sent
-          const { data: existingLog } = await supabase
-            .from("reminder_logs")
-            .select("id")
-            .eq("reminder_type", "event_reminder")
-            .eq("target_id", event.id)
-            .eq("user_id", studentProfile.user_id)
-            .single();
-
-          if (existingLog) continue;
-
-          // Check notification preferences
-          const { data: prefs } = await supabase
-            .from("notification_preferences")
-            .select("event_reminders")
-            .eq("user_id", studentProfile.user_id)
-            .single();
-
-          if (prefs && !prefs.event_reminders) continue;
-
-          try {
-            await resend.emails.send({
-              from: "ZotHub <notifications@zothub.app>",
-              to: [studentProfile.email],
-              subject: `Reminder: ${event.title} is tomorrow!`,
-              html: `
-                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #1a1a2e;">Event Reminder 📅</h1>
-                  <p>Hi ${studentProfile.full_name || "there"},</p>
-                  <p>Just a friendly reminder that <strong>${event.title}</strong> is happening tomorrow!</p>
-                  <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
-                    <p style="margin: 0;"><strong>📅 Date:</strong> ${new Date(event.event_date).toLocaleString()}</p>
-                    <p style="margin: 8px 0 0 0;"><strong>📍 Location:</strong> ${event.location || "TBD"}</p>
-                    <p style="margin: 8px 0 0 0;"><strong>🏢 Hosted by:</strong> ${clubName}</p>
-                  </div>
-                  <p>See you there!</p>
-                  <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
-                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">
-                      You received this email because you RSVP'd to this event.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=event_reminders" style="color: #3b82f6;">Unsubscribe from event reminders</a> | 
-                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
-                    </p>
-                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
-                      ZotHub • University of California, Irvine • Irvine, CA 92697
-                    </p>
-                  </div>
-                </div>
-              `,
-            });
-
-            // Log the reminder
-            await supabase.from("reminder_logs").insert({
-              reminder_type: "event_reminder",
-              target_id: event.id,
-              user_id: studentProfile.user_id,
-            });
-
-            results.eventReminders++;
-          } catch (emailError) {
-            results.errors.push(`Event email error: ${emailError}`);
-          }
+          const ok = await deliver(
+            supabase,
+            {
+              reminderType: "event_reminder",
+              targetId: event.id as string,
+              recipient: { userId: sp.user_id, email: sp.email, fullName: sp.full_name ?? null },
+              prefColumn: "event_reminders",
+              emailType: "rsvp_reminder",
+              data: {
+                studentName: sp.full_name || "there",
+                eventTitle: event.title,
+                eventDate: new Date(event.event_date as string).toLocaleString(),
+                location: event.location ?? "TBD",
+                clubName,
+              },
+            },
+            results.errors,
+          );
+          if (ok) results.eventReminders++;
         }
       }
     }
 
-    // 2. Deadline reminders (opportunities with deadlines in next 24-48 hours)
+    // --- 2. Bookmarked opportunities closing in the next 24–48 hours --------
     const { data: upcomingDeadlines, error: deadlinesError } = await supabase
       .from("opportunities")
-      .select(`
-        id, title, deadline,
-        club_profiles:club_id(club_name)
-      `)
+      .select(`id, title, deadline, club_profiles:club_id(club_name)`)
       .eq("is_active", true)
       .gte("deadline", tomorrow.toISOString())
       .lte("deadline", in48Hours.toISOString());
 
     if (deadlinesError) {
       results.errors.push(`Deadlines query error: ${deadlinesError.message}`);
-    } else if (upcomingDeadlines) {
-      // Get all students who have bookmarked these opportunities
-      for (const opportunity of upcomingDeadlines) {
-        const clubName = (opportunity.club_profiles as unknown as { club_name: string })?.club_name || "Unknown Club";
+    } else {
+      for (const opportunity of upcomingDeadlines ?? []) {
+        const clubName =
+          (opportunity.club_profiles as unknown as { club_name: string })?.club_name ??
+          "Unknown Club";
         const { data: bookmarks } = await supabase
           .from("bookmarks")
           .select("user_id")
           .eq("opportunity_id", opportunity.id);
 
-        if (!bookmarks) continue;
+        for (const userId of [...new Set((bookmarks ?? []).map((b) => b.user_id as string))]) {
+          const recipient = await studentFor(supabase, userId);
+          if (!recipient) continue;
 
-        for (const bookmark of bookmarks) {
-          // Check if reminder already sent
-          const { data: existingLog } = await supabase
-            .from("reminder_logs")
-            .select("id")
-            .eq("reminder_type", "deadline_reminder")
-            .eq("target_id", opportunity.id)
-            .eq("user_id", bookmark.user_id)
-            .single();
-
-          if (existingLog) continue;
-
-          // Check notification preferences
-          const { data: prefs } = await supabase
-            .from("notification_preferences")
-            .select("deadline_reminders")
-            .eq("user_id", bookmark.user_id)
-            .single();
-
-          if (prefs && !prefs.deadline_reminders) continue;
-
-          // Get student email
-          const { data: student } = await supabase
-            .from("student_profiles")
-            .select("email, full_name")
-            .eq("user_id", bookmark.user_id)
-            .single();
-
-          if (!student?.email) continue;
-
-          try {
-            await resend.emails.send({
-              from: "ZotHub <notifications@zothub.app>",
-              to: [student.email],
-              subject: `Deadline Approaching: ${opportunity.title}`,
-              html: `
-                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #1a1a2e;">Deadline Reminder ⏰</h1>
-                  <p>Hi ${student.full_name || "there"},</p>
-                  <p>The deadline for <strong>${opportunity.title}</strong> at <strong>${clubName}</strong> is approaching!</p>
-                  <div style="margin: 24px 0; padding: 16px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                    <p style="margin: 0; font-weight: 600; color: #b45309;">
-                      Deadline: ${new Date(opportunity.deadline!).toLocaleString()}
-                    </p>
-                  </div>
-                  <p>Don't miss out on this opportunity!</p>
-                  <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
-                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">
-                      You received this email because you bookmarked this opportunity.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=deadline_reminders" style="color: #3b82f6;">Unsubscribe from deadline reminders</a> | 
-                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
-                    </p>
-                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
-                      ZotHub • University of California, Irvine • Irvine, CA 92697
-                    </p>
-                  </div>
-                </div>
-              `,
-            });
-
-            // Log the reminder
-            await supabase.from("reminder_logs").insert({
-              reminder_type: "deadline_reminder",
-              target_id: opportunity.id,
-              user_id: bookmark.user_id,
-            });
-
-            results.deadlineReminders++;
-          } catch (emailError) {
-            results.errors.push(`Deadline email error: ${emailError}`);
-          }
+          const ok = await deliver(
+            supabase,
+            {
+              reminderType: "deadline_reminder",
+              targetId: opportunity.id as string,
+              recipient,
+              prefColumn: "deadline_reminders",
+              emailType: "deadline_reminder",
+              data: {
+                studentName: recipient.fullName || "there",
+                opportunityTitle: opportunity.title,
+                clubName,
+                deadline: new Date(opportunity.deadline as string).toLocaleString(),
+              },
+            },
+            results.errors,
+          );
+          if (ok) results.deadlineReminders++;
         }
       }
     }
 
-    // 3. New club post notifications (opportunities/events created in last hour)
+    // --- 3 & 4. New posts from followed clubs, in the last hour -------------
+    // NOTE (R2): this one-hour lookback is why the cron schedule matters. A
+    // paused job does not delay these emails, it SKIPS them permanently — the
+    // window has moved on by the time it resumes.
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    let newPostEmails = 0;
 
-    // Check for new opportunities
-    const { data: newOpportunities, error: oppError } = await supabase
-      .from("opportunities")
-      .select(`
-        id, title,
-        club_profiles:club_id(id, club_name)
-      `)
-      .eq("is_active", true)
-      .gte("created_at", oneHourAgo.toISOString());
+    for (const kind of ["opportunity", "event"] as const) {
+      const table = kind === "opportunity" ? "opportunities" : "events";
+      const { data: posts, error: postsErr } = await supabase
+        .from(table)
+        .select(`id, title, club_profiles:club_id(id, club_name)`)
+        .eq("is_active", true)
+        .gte("created_at", oneHourAgo.toISOString());
 
-    if (oppError) {
-      results.errors.push(`New opportunities query error: ${oppError.message}`);
-    } else if (newOpportunities) {
-      for (const opportunity of newOpportunities) {
-        const clubProfile = opportunity.club_profiles as unknown as { id: string; club_name: string } | null;
-        if (!clubProfile) continue;
-
-        // Get followers of this club. "Following" is stored as a bookmark with
-        // club_id set (the source of truth the whole app uses); club_followers is
-        // never written by the app.
-        const { data: followers } = await supabase
-          .from("bookmarks")
-          .select("user_id")
-          .eq("club_id", clubProfile.id);
-
-        if (!followers) continue;
-
-        // A follower can have duplicate bookmark rows (no unique constraint);
-        // de-duplicate so we only consider each follower once.
-        const uniqueFollowerIds = [...new Set(followers.map((f) => f.user_id))];
-
-        for (const followerId of uniqueFollowerIds) {
-          // Check if email already sent
-          const { data: existingLog } = await supabase
-            .from("reminder_logs")
-            .select("id")
-            .eq("reminder_type", "new_post_email")
-            .eq("target_id", opportunity.id)
-            .eq("user_id", followerId)
-            .single();
-
-          if (existingLog) continue;
-
-          // Check notification preferences
-          const { data: prefs } = await supabase
-            .from("notification_preferences")
-            .select("new_post_notifications")
-            .eq("user_id", followerId)
-            .single();
-
-          if (prefs && !prefs.new_post_notifications) continue;
-
-          // Get student email
-          const { data: student } = await supabase
-            .from("student_profiles")
-            .select("email, full_name")
-            .eq("user_id", followerId)
-            .single();
-
-          if (!student?.email) continue;
-
-          try {
-            await resend.emails.send({
-              from: "ZotHub <notifications@zothub.app>",
-              to: [student.email],
-              subject: `New opportunity from ${clubProfile.club_name}`,
-              html: `
-                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #1a1a2e;">New Opportunity 🎯</h1>
-                  <p>Hi ${student.full_name || "there"},</p>
-                  <p><strong>${clubProfile.club_name}</strong> just posted a new opportunity:</p>
-                  <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
-                    <h2 style="margin: 0 0 8px 0; color: #1a1a2e;">${opportunity.title}</h2>
-                  </div>
-                  <a href="https://zothub.app/opportunities/${opportunity.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Opportunity</a>
-                  <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
-                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">
-                      You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=new_post_notifications" style="color: #3b82f6;">Unsubscribe from new posts</a> |
-                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
-                    </p>
-                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
-                      ZotHub • University of California, Irvine • Irvine, CA 92697
-                    </p>
-                  </div>
-                </div>
-              `,
-            });
-
-            await supabase.from("reminder_logs").insert({
-              reminder_type: "new_post_email",
-              target_id: opportunity.id,
-              user_id: followerId,
-            });
-
-            newPostEmails++;
-          } catch (emailError) {
-            results.errors.push(`New post email error: ${emailError}`);
-          }
-        }
+      if (postsErr) {
+        results.errors.push(`New ${kind} query error: ${postsErr.message}`);
+        continue;
       }
-    }
 
-    // Check for new events
-    const { data: newEvents, error: eventsErr } = await supabase
-      .from("events")
-      .select(`
-        id, title, event_date, location,
-        club_profiles:club_id(id, club_name)
-      `)
-      .eq("is_active", true)
-      .gte("created_at", oneHourAgo.toISOString());
-
-    if (eventsErr) {
-      results.errors.push(`New events query error: ${eventsErr.message}`);
-    } else if (newEvents) {
-      for (const event of newEvents) {
-        const clubProfile = event.club_profiles as unknown as { id: string; club_name: string } | null;
-        if (!clubProfile) continue;
+      for (const post of posts ?? []) {
+        const club = post.club_profiles as unknown as { id: string; club_name: string } | null;
+        if (!club) continue;
 
         const { data: followers } = await supabase
           .from("bookmarks")
           .select("user_id")
-          .eq("club_id", clubProfile.id);
+          .eq("club_id", club.id);
 
-        if (!followers) continue;
+        // A follower can hold duplicate bookmark rows, so de-duplicate before
+        // the loop rather than relying on the claim to absorb it.
+        for (const userId of [...new Set((followers ?? []).map((f) => f.user_id as string))]) {
+          const recipient = await studentFor(supabase, userId);
+          if (!recipient) continue;
 
-        const uniqueFollowerIds = [...new Set(followers.map((f) => f.user_id))];
-
-        for (const followerId of uniqueFollowerIds) {
-          const { data: existingLog } = await supabase
-            .from("reminder_logs")
-            .select("id")
-            .eq("reminder_type", "new_post_email")
-            .eq("target_id", event.id)
-            .eq("user_id", followerId)
-            .single();
-
-          if (existingLog) continue;
-
-          const { data: prefs } = await supabase
-            .from("notification_preferences")
-            .select("new_post_notifications")
-            .eq("user_id", followerId)
-            .single();
-
-          if (prefs && !prefs.new_post_notifications) continue;
-
-          const { data: student } = await supabase
-            .from("student_profiles")
-            .select("email, full_name")
-            .eq("user_id", followerId)
-            .single();
-
-          if (!student?.email) continue;
-
-          try {
-            await resend.emails.send({
-              from: "ZotHub <notifications@zothub.app>",
-              to: [student.email],
-              subject: `New event from ${clubProfile.club_name}`,
-              html: `
-                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #1a1a2e;">New Event 📅</h1>
-                  <p>Hi ${student.full_name || "there"},</p>
-                  <p><strong>${clubProfile.club_name}</strong> just posted a new event:</p>
-                  <div style="margin: 24px 0; padding: 16px; background: #f4f4f5; border-radius: 8px;">
-                    <h2 style="margin: 0 0 8px 0; color: #1a1a2e;">${event.title}</h2>
-                    <p style="margin: 0;"><strong>📅</strong> ${new Date(event.event_date).toLocaleString()}</p>
-                    ${event.location ? `<p style="margin: 4px 0 0 0;"><strong>📍</strong> ${event.location}</p>` : ''}
-                  </div>
-                  <a href="https://zothub.app/events/${event.id}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px;">View Event</a>
-                  <p style="margin-top: 24px; color: #71717a; font-size: 14px;">— The ZotHub Team</p>
-                  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
-                    <p style="color: #71717a; font-size: 12px; margin: 0;">
-                      You received this email because you follow ${clubProfile.club_name}.<br/>
-                      <a href="https://zothub.app/unsubscribe?type=new_post_notifications" style="color: #3b82f6;">Unsubscribe from new posts</a> |
-                      <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
-                    </p>
-                    <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
-                      ZotHub • University of California, Irvine • Irvine, CA 92697
-                    </p>
-                  </div>
-                </div>
-              `,
-            });
-
-            await supabase.from("reminder_logs").insert({
-              reminder_type: "new_post_email",
-              target_id: event.id,
-              user_id: followerId,
-            });
-
-            newPostEmails++;
-          } catch (emailError) {
-            results.errors.push(`New event email error: ${emailError}`);
-          }
+          const ok = await deliver(
+            supabase,
+            {
+              reminderType: "new_post_email",
+              targetId: post.id as string,
+              recipient,
+              prefColumn: "new_post_notifications",
+              emailType: "new_club_post",
+              data: {
+                clubName: club.club_name,
+                title: post.title,
+                type: kind,
+                link: `https://zothub.app/${kind === "opportunity" ? "opportunities" : "events"}/${post.id}`,
+              },
+            },
+            results.errors,
+          );
+          if (ok) results.newPostEmails++;
         }
       }
     }
-
-    results.newPostEmails = newPostEmails;
-    console.log("Reminder results:", results);
 
     return new Response(JSON.stringify(results), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error in send-reminders function:", errorMessage);
+  } catch (error) {
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 };

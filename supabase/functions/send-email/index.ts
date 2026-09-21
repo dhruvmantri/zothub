@@ -261,7 +261,14 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
               <a href="${safeUrl(data.link)}" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px;">View ${esc(data.type)}</a>
             </div>
             <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
-            ${getEmailFooter("deadline_reminders")}
+            ${/* Was "deadline_reminders", which is a DIFFERENT preference: the
+                  unsubscribe link in a new-post email switched off deadline
+                  reminders instead, so a student who tried to stop these kept
+                  getting them and lost ones they wanted. A working opt-out is
+                  not optional. Found 2026-09-21 while routing send-reminders
+                  through here — the inline version it replaces had the right
+                  link, so the S5 fix would have REGRESSED this. */""}
+            ${getEmailFooter("new_post_notifications")}
           </div>
         `,
       };
