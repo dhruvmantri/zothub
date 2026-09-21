@@ -89,10 +89,24 @@ collaborative: you do the engineering, they make the calls.
 
 ## Non-negotiables
 
-**Production belongs to the maintainer.** Do not commit, stage, push, or deploy without
-explicit approval, and never write to production. Read-only checks are fine when authorised —
-prepare SQL for the maintainer to run when they aren't. (`supabase db dump` prints
-"Initialising login role…" and may create a role on the remote — don't use it read-only.)
+**Production belongs to the maintainer** — but the approval line moved on **2026-09-21**.
+The agent may now **commit and push frontend/app changes on its own** once they are tested
+(typecheck, build, and the browser suite green). It must still **STOP AND ASK** before anything
+that is hard to undo:
+
+- a **database migration** or any schema change,
+- **deleting or purging data**, in any environment,
+- anything needing a **command the maintainer runs**, or a secret only they hold,
+- an **edge-function deploy**, or any change whose deploy order matters (see below).
+
+**The agent still never writes to production itself.** Read-only checks are fine when
+authorised; prepare the SQL or the script and hand the maintainer one reviewable command.
+(`supabase db dump` prints "Initialising login role…" and may create a role on the remote —
+don't use it read-only.)
+
+The point of the change is that the maintainer keeps the veto where it matters and stops being
+interrupted where it does not. If a frontend change is *risky* rather than merely visible, ask
+anyway — the rule is a default, not a licence.
 
 **Deploy order is migrations → functions → frontend.** Vercel **auto-deploys on push to
 `main`**, so a push ships the frontend first. Deploy the backend before pushing, or you strand
