@@ -59,10 +59,15 @@ events, ever**. After `D1` that is ~722 clubs, 0 roles, 0 events — so both
 discovery lists are empty on launch day and the club directory is full. Design
 against that, not against today's screen.
 
-**One unverified thing:** the rewritten `send-reminders` is deployed but has
-never executed in production. Check the **Edge Function logs** for it after any
-hour turns over. `cron.job_run_details` saying "succeeded" is NOT proof — that
-only means pg_net queued the request.
+**That last unknown is closed (2026-09-22).** The maintainer's Edge Function
+logs showed `booted` / `Listening` / `shutdown` at 18:00, so the hourly cron
+really does fire `send-reminders` — `cron.job_run_details` was never proof, but
+this is. The same screenshot exposed the real gap: those three lines were the
+function's *entire* output, because it built a summary and returned it to
+`pg_net`, which discards the body. It now logs one line per run (`R4`, deployed).
+**The only step left on it is observation:** the log should carry
+`send-reminders: 0 event, 0 deadline, 0 new-post; 0 error(s)` after an hour
+turns over. Zeros are correct today; the line's presence is the signal.
 
 ## 2. THE NEXT TASK — step 8, the design + journey pass
 
