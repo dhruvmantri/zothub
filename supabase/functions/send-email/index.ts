@@ -467,6 +467,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Strict template allowlist — reject unknown types outright.
     if (!type || !TEMPLATE_TYPES.has(type)) {
+      console.error(`send-email DENIED: unknown or unsupported type "${type}"`);
       return jsonResponse({ error: "Unknown or unsupported email type." }, 400);
     }
     const dataIn: Record<string, unknown> = (data ?? {}) as Record<string, unknown>;
@@ -479,7 +480,10 @@ const handler = async (req: Request): Promise<Response> => {
     // carries `{ error }` on a Resend-side failure, which callers MUST inspect (a
     // 200 is NOT proof of delivery). See send-otp / review-club-claim.
     const sendOne = async (recipient: string | undefined, payload: Record<string, unknown>) => {
-      if (!recipient) return jsonResponse({ error: "Missing recipient." }, 400);
+      if (!recipient) {
+        console.error(`send-email DENIED ${type}: no recipient supplied`);
+        return jsonResponse({ error: "Missing recipient." }, 400);
+      }
       const { subject, html } = getEmailContent(type, payload);
       const emailResponse = await resend.emails.send({ from, to: [recipient], subject, html });
       return jsonResponse(emailResponse as unknown as Record<string, unknown>, 200);
@@ -487,7 +491,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     // ── Tier 1: service-role-only templates ─────────────────────────────────
     if (SERVICE_ROLE_ONLY.has(type)) {
-      if (!isServiceRole) return jsonResponse({ error: "Not authorized." }, 401);
+      if (!isServiceRole) {
+        // Logged because its absence cost real debugging time: a club-claim
+        // approval failed with nothing whatsoever in this function's logs, since
+        // every guarded return below exits without a word. NEVER log the bearer
+        // itself — only enough shape to tell "no header" from "wrong key".
+        console.error(
+          `send-email DENIED ${type}: caller is not the service role ` +
+            `(bearer ${bearer ? `present, ${bearer.length} chars, starts "${bearer.slice(0, 6)}"` : "absent"}; ` +
+            `expected ${supabaseServiceKey ? `${supabaseServiceKey.length} chars, starts "${supabaseServiceKey.slice(0, 6)}"` : "SUPABASE_SERVICE_ROLE_KEY is UNSET"})`,
+        );
+        return jsonResponse({ error: "Not authorized." }, 401);
+      }
       return await sendOne(to, dataIn);
     }
 

@@ -53,6 +53,24 @@ serve(async (req) => {
         const { data: res, error } = await supabase.functions.invoke("send-email", {
           body: { type, to, data },
         });
+        // A FunctionsHttpError's `.message` is ONLY ever "Edge Function returned a
+        // non-2xx status code" — it names nothing. send-email's guarded rejections
+        // ("Not authorized.", "Missing recipient.") live in the response BODY, and
+        // passing the bare message to checkEmailResult threw them away. That is why
+        // a failed club approval showed the admin a generic string and left no clue
+        // anywhere: the reason existed and was discarded here.
+        if (error) {
+          let detail = error.message ?? "email transport error";
+          const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+          if (ctx && typeof ctx.json === "function") {
+            try {
+              const body = await ctx.json() as { error?: unknown } | null;
+              if (body && body.error) detail = String(body.error);
+            } catch { /* body unreadable — keep the generic message */ }
+          }
+          console.error(`send-email rejected ${type}: ${detail}`);
+          return { ok: false, error: detail };
+        }
         return checkEmailResult(error, res);
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "send-email threw" };
