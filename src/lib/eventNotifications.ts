@@ -65,16 +65,23 @@ export async function sendRSVPStatusEmail(
   try {
     const type = newStatus === "confirmed" ? "rsvp_confirmation" : "rsvp_declined";
 
-    const { error } = await supabase.functions.invoke("send-email", {
+    const { data, error } = await supabase.functions.invoke("send-email", {
       body: {
         type,
         data: { rsvpId },
       },
     });
 
-    if (error) {
-      console.error("RSVP status email error:", error);
-      return { success: false, error: error.message };
+    // Through the shared checker, like `sendEventCancellationEmails` forty
+    // lines above — this function used to test only `error`, which supabase-js
+    // sets for a transport failure and NOT for a 200 whose body says the send
+    // failed. Resend reports rejections in the body, so approving or declining
+    // an RSVP told the club the student had been emailed when nobody had. That
+    // is the exact case `CLAUDE.md` names: a 200 is not proof of delivery.
+    const emailResult = checkEmailResult(error, data);
+    if (!emailResult.ok) {
+      console.error("RSVP status email error:", emailResult.error);
+      return { success: false, error: emailResult.error };
     }
 
     return { success: true };

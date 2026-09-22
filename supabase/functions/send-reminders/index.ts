@@ -345,12 +345,28 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // The only caller is pg_net, from the hourly cron, and pg_net DISCARDS the
+    // response body — so returning this summary told nobody anything. Before
+    // this line the function's entire log output for a run was "booted",
+    // "Listening" and "shutdown": a run that sent five reminders and a run that
+    // silently sent none were indistinguishable in the dashboard. Logged as one
+    // line so a scan of the logs answers "is this working?".
+    console.log(
+      `send-reminders: ${results.eventReminders} event, ${results.deadlineReminders} deadline, ` +
+        `${results.newPostEmails} new-post; ${results.errors.length} error(s)` +
+        (results.errors.length ? ` — ${results.errors.join(" | ")}` : ""),
+    );
+
     return new Response(JSON.stringify(results), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    // Likewise: a thrown error became a 500 that pg_net dropped on the floor,
+    // so a total failure looked exactly like a quiet hour.
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`send-reminders: RUN FAILED — ${message}`);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
