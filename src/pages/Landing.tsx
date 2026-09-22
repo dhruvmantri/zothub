@@ -65,11 +65,15 @@ export default function Landing() {
    * signed-out flow — so the club card sends them to the directory rather
    * than to a form they cannot complete.
    */
-  const clubCtaTarget = !user
-    ? "/signup?role=club"
-    : role === "club"
-      ? "/my-club"
-      : "/clubs";
+  // Everyone except a club that already has one goes to the directory, because
+  // claiming is the path 722 of 722 listed clubs actually need — and claiming
+  // is LOGGED-OUT ONLY, enforced server-side in `submit-club-claim`, which
+  // returns 403 to any request carrying a real user. Sending a signed-out
+  // officer to `/signup` therefore walked them INTO the one state where their
+  // club can no longer be claimed; they would have had to sign out again. The
+  // note below was already right about the signed-in student and wrong about
+  // the visitor it mattered most for.
+  const clubCtaTarget = role === "club" ? "/my-club" : "/clubs";
   const studentCtaTarget = user ? "/clubs" : "/signup?role=student";
 
   return (

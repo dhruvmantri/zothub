@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { DiscoverToolbar } from "@/components/discover/DiscoverToolbar";
@@ -11,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClubCard, type ClubCardData as Club } from "@/components/clubs/ClubCard";
 import { ClubList } from "@/components/clubs/ClubList";
 import { CLUB_CATEGORIES } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 import { clubKeys, eventKeys, opportunityKeys, EMPTY_COUNT_MAP } from "@/lib/queryKeys";
 import {
   fetchAllClubsPublic,
@@ -46,6 +48,7 @@ export default function ClubsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(NO_CATEGORIES);
   const [sortBy, setSortBy] = useState<SortOption>("name-asc");
+  const { user } = useAuth();
   const [view, setView] = useDiscoverView("clubs");
 
   /** How many clubs are DRAWN at once. Search, filters and sort still run over
@@ -161,6 +164,26 @@ export default function ClubsPage() {
               {clubs.length === 1 ? "club" : "clubs"} ·{" "}
               <span className="font-data">{recruitingCount}</span> recruiting right now
             </p>
+
+            {/* Signed out only, and that is the whole point: a club claim is
+                rejected server-side for anyone carrying a session, so this is
+                addressed to exactly the people who can act on it. The landing
+                page now sends club officers here rather than to signup, so the
+                page has to say what to do once they arrive — and offer the way
+                out for a club that the ZotSpot import never listed. */}
+            {!user && (
+              <p className="mt-5 rounded-lg border border-accent-line bg-accent-wash px-4 py-3 text-sm text-ink-2">
+                <span className="font-medium text-ink">Run a club?</span> Find yours
+                below and claim it — or{" "}
+                <Link
+                  to="/signup?role=club"
+                  className="text-accent-text underline underline-offset-2 hover:no-underline"
+                >
+                  add it if it isn't listed
+                </Link>
+                .
+              </p>
+            )}
           </div>
         </div>
 

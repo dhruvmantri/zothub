@@ -64,7 +64,12 @@ const CASES = [
     "Start exploring": "/opportunities",
     "Browse clubs": "/clubs",
     "Explore clubs": "/signup",
-    "Bring your club to ZotHub": "/signup",
+    // Changed deliberately 2026-09-22, not a regression. A club claim is
+    // LOGGED-OUT ONLY — `submit-club-claim` returns 403 to any request carrying
+    // a real user — so sending a signed-out officer to /signup walked them into
+    // the one state where their club can no longer be claimed. The directory is
+    // where they can actually act, and it now carries a strip telling them so.
+    "Bring your club to ZotHub": "/clubs",
   }],
   ["a signed-in student", "student", {
     "Start exploring": "/opportunities",
