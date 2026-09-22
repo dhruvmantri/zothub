@@ -182,6 +182,16 @@ cloud session start the daemon with `sudo dockerd`.
 - **Shared compositions, not just shared parts.** The three list pages drifted because
   `components/discover/` held the *parts* and no toolbar. `DiscoverToolbar` is now that
   composition (`UX11`, 2026-09-21) — add a control there, not to one page.
+- **The service key is `sb_secret_…`, NOT a JWT — so supabase-js sends it as `apikey` and
+  omits `Authorization` entirely.** Any server-side check written as `bearer === serviceKey`
+  therefore refuses every `functions.invoke` between edge functions. This shipped and took out
+  **all** automated email except OTPs for an unknown period (`E2`, 2026-09-22); the OTP paths
+  survived only because they use a raw `fetch` that sets the header by hand. Use
+  `_shared/service-role.ts`, never a bare header comparison.
+- **A guard that refuses without logging is how an outage hides.** `send-email` returned 401 with
+  no log line, and `review-club-claim` threw away the reason it was handed — a
+  `FunctionsHttpError`'s `.message` is ALWAYS the generic "non-2xx" string, and the real reason
+  is in the response **body**. Log the refusal; read the body.
 - **`send-reminders` is the one email path that bypasses `send-email`** — unescaped, and it
   marks failed sends as delivered. Logged as `S5`/`R1`/`R2`, deferred by decision.
 
