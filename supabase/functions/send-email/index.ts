@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { validateRsvpEmailRequest } from "./rsvp-email-rules.ts";
 import { esc, safeUrl } from "./email-escape.ts";
+import { isServiceRoleCaller } from "../_shared/service-role.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -473,7 +474,11 @@ const handler = async (req: Request): Promise<Response> => {
     const dataIn: Record<string, unknown> = (data ?? {}) as Record<string, unknown>;
 
     const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    const isServiceRole = bearer.length > 0 && bearer === supabaseServiceKey;
+    // Checks the apikey header too — see _shared/service-role.ts. supabase-js
+    // omits the bearer entirely for a non-JWT key, which is what the NEW
+    // `sb_secret_…` service key is, so every server-to-server invoke was
+    // arriving here with no bearer and being refused.
+    const isServiceRole = isServiceRoleCaller((n) => req.headers.get(n), supabaseServiceKey);
 
     const from = "ZotHub <notifications@zothub.app>";
     // Single-recipient send. Returns the Resend response verbatim at 200 — the body
@@ -499,6 +504,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.error(
           `send-email DENIED ${type}: caller is not the service role ` +
             `(bearer ${bearer ? `present, ${bearer.length} chars, starts "${bearer.slice(0, 6)}"` : "absent"}; ` +
+            `apikey ${req.headers.get("apikey") ? "present" : "absent"}; ` +
             `expected ${supabaseServiceKey ? `${supabaseServiceKey.length} chars, starts "${supabaseServiceKey.slice(0, 6)}"` : "SUPABASE_SERVICE_ROLE_KEY is UNSET"})`,
         );
         return jsonResponse({ error: "Not authorized." }, 401);
