@@ -24,10 +24,9 @@ export default function ForgotPassword() {
       return;
     }
 
-    if (!email.endsWith("@uci.edu")) {
-      setError("Please use your UCI email address (@uci.edu)");
-      return;
-    }
+    // No @uci.edu check: approved club accounts use the club's own email
+    // (often Gmail), and the claim-approved email sends them here when their
+    // set-password link expires. Supabase only mails existing accounts.
 
     setIsLoading(true);
 
@@ -88,7 +87,7 @@ export default function ForgotPassword() {
         <CardHeader>
           <CardTitle>Forgot your password?</CardTitle>
           <CardDescription>
-            Enter your UCI email and we'll send you a link to reset your password
+            Enter your account email and we'll send you a link to reset your password
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -100,7 +99,7 @@ export default function ForgotPassword() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">UCI Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"

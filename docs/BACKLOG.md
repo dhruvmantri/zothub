@@ -356,12 +356,14 @@ anything on it** (`CLAUDE.md` § Documentation discipline).
 | ~~3~~ | ~~**MB6** — how far does account deletion go?~~ **ANSWERED 2026-08-23: moot for launch — deletion is post-launch.** Revisit when it is built. |
 | 4 | `/admin` review cadence during club outreach (from the superseded 10-day plan, never settled). |
 | 5 | **MB2** — storage bucket policy for student avatars (Bucket B decision was deferred). |
+| 2026-09-24 | **C1 — club set-password link** | **A club president's set-password link expired and Forgot password refused their (non-UCI) club email.** Maintainer raised the Supabase email-link lifetime ("Email OTP Expiration") from 1 hour to **24 hours**, the platform maximum; a week was asked for but is not possible. Maintainer sent that president a recovery email by hand from the Supabase dashboard. **Removing expiry entirely was rejected**: the link sets the account's password, so a link that never expires is a standing takeover risk. Then: **let Forgot password accept any email.** | The setting lives in the dashboard, not the repo, and also lengthens the signup email code. `C1` shipped the same day. Open follow-up: the admin claims panel can re-send a set-password link only when the first email *failed*, so an expired-but-delivered link still needs the dashboard. |
 
 ---
 
 ## Done
 
 **Shipped to production**
+- **C1 — Forgot password accepts club emails** (2026-09-24). `ForgotPassword.tsx` refused any address not ending in `@uci.edu`, so the fallback the claim-approved email advertises ("if it expires, use Forgot password") was a dead end for every club on a non-UCI email. Check removed and the "UCI Email" wording changed to "Email"; Supabase itself only mails existing accounts. Browser test `tests/browser/forgot-password-club-email.mjs` (10/10) judges the request that actually reaches `/auth/v1/recover`; on the old code it fails exactly the Gmail cases (6/10).
 - **MB5 seed** — 724 ZotSpot clubs seeded, published, with unclaimed-profile treatment.
 - **MB5 claim flow** — logged-out-only admin-reviewed claiming; edge functions
   `submit-club-claim` / `review-club-claim`; `/admin` claims panel; migrations
