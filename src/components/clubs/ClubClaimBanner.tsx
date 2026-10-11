@@ -92,7 +92,7 @@ export function ClubClaimBanner({ clubName, clubId, sourceUrl, importedAt }: Clu
   if (user) return null;
 
   const provenance = (
-    <p className="mt-3 text-[12px] leading-relaxed text-ink-3">
+    <p className="mt-3 text-[12px] leading-relaxed text-ink-2">
       {sourceUrl ? (
         <>
           Imported from the{" "}

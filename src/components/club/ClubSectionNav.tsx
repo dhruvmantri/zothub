@@ -141,7 +141,7 @@ export function ClubSectionNav({ counts }: ClubSectionNavProps) {
               >
                 {tab.label}
                 {tab.count && tab.count > 0 ? (
-                  <span className="font-data text-[12px] tabular-nums opacity-70">
+                  <span className="font-data text-[12px] tabular-nums">
                     {tab.count > 99 ? "99+" : tab.count}
                   </span>
                 ) : null}

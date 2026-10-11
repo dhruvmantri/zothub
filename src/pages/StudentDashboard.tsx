@@ -346,7 +346,7 @@ export default function StudentActivity() {
                     {/* A count is only shown when there is something to count —
                         a row of zeros is noise, not information. */}
                     {s.count > 0 && (
-                      <span className="font-data text-[12px] tabular-nums opacity-70">
+                      <span className="font-data text-[12px] tabular-nums">
                         {s.count}
                       </span>
                     )}

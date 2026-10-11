@@ -170,8 +170,8 @@ export function MessageThread({
                     </p>
                     <p
                       className={cn(
-                        "font-data text-[10px] mt-1",
-                        isSent ? "text-accent-ink/70" : "text-ink-3",
+                        "font-data text-[10.5px] mt-1",
+                        isSent ? "text-accent-ink/85" : "text-ink-3",
                       )}
                     >
                       {formatMessageDate(message.created_at)}

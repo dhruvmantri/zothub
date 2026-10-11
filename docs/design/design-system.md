@@ -128,6 +128,7 @@ Re-tokened shadcn/Radix, not replaced. Compact = a **variant**, never a differen
 3. **Accent = demands action** — blue for the thing to act on now + primary CTAs; status stays status; colour never the sole carrier of meaning.
 4. **Density follows the task** — cards ↔ list ↔ table first-class on any collection; same components, compact variant.
 5. **AA is a merge gate** — every pair measured (1.4.3 text *and* 1.4.11 boundaries); visible focus everywhere; 44×44 targets; every icon-only control labelled.
+   **Two ways a token pair that passes on paper fails on screen** (both shipped; found 2026-10-10): (a) **never dim text with `opacity-*`** — `ink-3` at `opacity-70` on `bg-3` is 2.7:1 light / 3.0:1 dark; the tokens already carry the hierarchy, so drop to the next ink instead; (b) **`ink-3` is for `bg`, `bg-2` and `bg-3` — not `accent-wash`**, where dark mode gives 4.49:1; use `ink-2` inside wash surfaces. Measure the rendered pixel, not the class: `tests/browser/aa-contrast-audit.mjs` composites colour, alpha and every ancestor's opacity over the real background.
 6. **Not UCI-official** — campus-adjacent, not impersonating: the blue and photo say "built for UCI," never a seal/gold/endorsement. Identity lives in tokens → a rebrand is a token swap.
 
 ---
