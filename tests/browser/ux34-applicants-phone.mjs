@@ -157,7 +157,8 @@ async function openAt(width, height, path = "/applicants") {
 // were unreachable.
 {
   const { ctx, page } = await openAt(390, 844, "/applicants/events");
-  const cancel = page.getByRole("button", { name: "Cancel RSVP" });
+  // "Decline RSVP" since G6-07 (decision 2026-10-11); it was "Cancel RSVP".
+  const cancel = page.getByRole("button", { name: "Decline RSVP" });
   const confirm = page.getByRole("button", { name: "Confirm RSVP" });
   check("the RSVP queue offers its controls on a phone",
     (await cancel.count()) === 2 && (await confirm.count()) === 2,

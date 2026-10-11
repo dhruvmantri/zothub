@@ -15,6 +15,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -89,6 +99,17 @@ export function RSVPReview() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  // G6-07 (maintainer decision 2026-10-11): declining an RSVP asks first, as
+  // declining an application does (UX18). It used to fire on the first tap and
+  // email the student before the row re-rendered — and a bulk decline acted on
+  // every selected row, confirmed attendees included.
+  const [pendingDecline, setPendingDecline] = useState<{
+    scope: "one" | "bulk";
+    ids: string[];
+    names: string[];
+    confirmedCount: number;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -330,6 +351,31 @@ export function RSVPReview() {
     }
   };
 
+  const attendeeName = (rsvp: RSVP) => rsvp.student.full_name || rsvp.student.email || "this student";
+
+  const askToDecline = (rsvp: RSVP) =>
+    setPendingDecline({ scope: "one", ids: [rsvp.id], names: [attendeeName(rsvp)], confirmedCount: rsvp.status === "confirmed" ? 1 : 0 });
+
+  const askForBulkDecline = () => {
+    if (selectedIds.size === 0) return;
+    const chosen = rsvps.filter((r) => selectedIds.has(r.id));
+    setPendingDecline({
+      scope: "bulk",
+      ids: chosen.map((r) => r.id),
+      names: chosen.map(attendeeName),
+      confirmedCount: chosen.filter((r) => r.status === "confirmed").length,
+    });
+  };
+
+  const confirmDecline = async () => {
+    if (!pendingDecline) return;
+    const { scope, ids } = pendingDecline;
+    // Close first, so a second click cannot land on the same confirm button.
+    setPendingDecline(null);
+    if (scope === "one") await updateRsvpStatus(ids[0], "cancelled");
+    else await handleBulkStatusUpdate("cancelled");
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(new Set(filteredRsvps.map(rsvp => rsvp.id)));
@@ -494,12 +540,12 @@ export function RSVPReview() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleBulkStatusUpdate("cancelled")}
+                onClick={askForBulkDecline}
                 disabled={isBulkUpdating}
                 className="gap-1 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad"
               >
                 <X className="w-3 h-3" />
-                Cancel
+                Decline
               </Button>
             </div>
             <Button
@@ -594,12 +640,12 @@ export function RSVPReview() {
                         size="sm"
                         variant="outline"
                         className="flex-1 gap-1.5 text-bad hover:bg-bad-wash hover:text-bad"
-                        onClick={() => updateRsvpStatus(rsvp.id, "cancelled")}
+                        onClick={() => askToDecline(rsvp)}
                         disabled={isUpdating}
-                        aria-label="Cancel RSVP"
+                        aria-label="Decline RSVP"
                       >
                         <X className="h-4 w-4" />
-                        Cancel
+                        Decline
                       </Button>
                     </div>
                   )}
@@ -694,9 +740,9 @@ export function RSVPReview() {
                         size="icon-sm"
                         variant="ghost"
                         className="text-bad hover:bg-bad-wash hover:text-bad"
-                        onClick={() => updateRsvpStatus(rsvp.id, "cancelled")}
+                        onClick={() => askToDecline(rsvp)}
                         disabled={isUpdating}
-                        aria-label="Cancel RSVP"
+                        aria-label="Decline RSVP"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -790,12 +836,12 @@ export function RSVPReview() {
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  onClick={() => updateRsvpStatus(selectedRsvp.id, "cancelled")}
+                  onClick={() => askToDecline(selectedRsvp)}
                   disabled={isUpdating}
                   className="gap-2 flex-1 border-bad/40 text-bad hover:bg-bad-wash hover:text-bad sm:flex-none"
                 >
                   <X className="w-4 h-4" />
-                  Cancel RSVP
+                  Decline RSVP
                 </Button>
                 <Button
                   variant="success"
@@ -820,6 +866,48 @@ export function RSVPReview() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingDecline !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDecline(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDecline && pendingDecline.names.length === 1
+                ? `Decline ${pendingDecline.names[0]}'s RSVP?`
+                : `Decline ${pendingDecline?.names.length ?? 0} RSVPs?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDecline && pendingDecline.names.length > 1 && (
+                <span className="mb-3 block font-medium text-ink">
+                  {pendingDecline.names.slice(0, 5).join(", ")}
+                  {pendingDecline.names.length > 5 && ` and ${pendingDecline.names.length - 5} more`}
+                </span>
+              )}
+              {pendingDecline && pendingDecline.confirmedCount > 0 && (
+                <span className="mb-3 block">
+                  {pendingDecline.names.length === 1
+                    ? "They are already confirmed, so they lose their spot."
+                    : `${pendingDecline.confirmedCount} of them ${pendingDecline.confirmedCount === 1 ? "is" : "are"} already confirmed and will lose their spot.`}
+                </span>
+              )}
+              They are emailed straight away that their RSVP was declined. ZotHub cannot take that back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDecline}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Decline
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
