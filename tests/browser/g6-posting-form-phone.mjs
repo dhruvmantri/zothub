@@ -48,8 +48,11 @@ for (const path of ["/postings/new", "/postings/events/new", "/postings/r1/edit"
   await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
 
-  const boxes = await page.evaluate(() => {
-    const wanted = [/^cancel$/i, /save as draft/i, /^(publish|save changes)/i];
+  // Edit forms have no "Save as draft" since G6-06 (2026-10-11): the Published
+  // switch is their one visibility control.
+  const isEdit = path.endsWith("/edit");
+  const boxes = await page.evaluate((isEdit) => {
+    const wanted = isEdit ? [/^cancel$/i, /^save changes/i] : [/^cancel$/i, /save as draft/i, /^publish/i];
     const els = [...document.querySelectorAll("form a, form button")];
     return wanted.map((re) => {
       const el = els.find((e) => re.test((e.textContent ?? "").trim()));
@@ -57,8 +60,8 @@ for (const path of ["/postings/new", "/postings/events/new", "/postings/r1/edit"
       const r = el.getBoundingClientRect();
       return { text: (el.textContent ?? "").trim(), left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width) };
     });
-  });
-  const labels = ["Cancel", "Save as draft", "Publish / Save changes"];
+  }, isEdit);
+  const labels = isEdit ? ["Cancel", "Save changes"] : ["Cancel", "Save as draft", "Publish"];
   boxes.forEach((b, i) => {
     check(`${path}: "${labels[i]}" exists`, !!b);
     if (b) check(`${path}: "${labels[i]}" is fully on screen`, b.left >= 0 && b.right <= 390, `left ${b.left}, right ${b.right}`);

@@ -33,9 +33,7 @@ import {
   Calendar,
   HelpCircle,
   ArrowLeft,
-  Save,
   Loader2,
-  Eye,
 } from "lucide-react";
 
 export default function CreateOpportunity() {
@@ -52,7 +50,6 @@ export default function CreateOpportunity() {
   const [description, setDescription] = useState("");
   const [requirements, setRequirements] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [isActive, setIsActive] = useState(true);
   const [showApplicationCount, setShowApplicationCount] = useState(false);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -83,7 +80,10 @@ export default function CreateOpportunity() {
       description: description.trim() || null,
       requirements: requirements.trim() || null,
       deadline: deadline || null,
-      is_active: asDraft ? false : isActive,
+      // G6-06 (decision 2026-10-11): the button says what happens. There was
+      // also a "Publish immediately" switch, and switching it off then pressing
+      // Publish saved a draft while the popup announced it was live.
+      is_active: !asDraft,
       application_questions: questionsForValidation,
     });
 
@@ -279,21 +279,6 @@ export default function CreateOpportunity() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  <Label htmlFor="isActive" className="text-base">Publish immediately</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Turn off to save as draft
-                  </p>
-                </div>
-                <Switch
-                  aria-label="Publish immediately"
-                  id="isActive"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <div>
                   <Label htmlFor="showApplicationCount" className="text-base">Show application count</Label>
@@ -345,20 +330,16 @@ export default function CreateOpportunity() {
               onClick={(e) => handleSubmit(e, true)}
               disabled={isSubmitting}
             >
-              <Eye className="w-4 h-4 mr-2" />
-              Save as Draft
+              Save as draft
             </Button>
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
+                  Publishing…
                 </>
               ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Publish Opportunity
-                </>
+                "Publish"
               )}
             </Button>
           </div>
@@ -387,7 +368,6 @@ export default function CreateOpportunity() {
               setDescription("");
               setRequirements("");
               setDeadline("");
-              setIsActive(true);
               setShowApplicationCount(false);
               setApplicationQuestions([]);
             },

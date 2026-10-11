@@ -33,7 +33,6 @@ import {
   ArrowLeft,
   Save,
   Loader2,
-  Eye,
 } from "lucide-react";
 import { toDatetimeLocalValue } from "@/lib/datetimeLocal";
 
@@ -93,7 +92,7 @@ export default function EditOpportunity() {
     setIsLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldErrors({});
 
@@ -119,7 +118,10 @@ export default function EditOpportunity() {
       description: description.trim() || null,
       requirements: requirements.trim() || null,
       deadline: deadline || null,
-      is_active: asDraft ? false : isActive,
+      // G6-06 (decision 2026-10-11): the Published switch is the only
+      // visibility control here. A "Save as Draft" button beside it used to
+      // unpublish a live posting while the switch still read Published.
+      is_active: isActive,
       application_questions: questionsForValidation,
     });
 
@@ -162,7 +164,7 @@ export default function EditOpportunity() {
       // directory counts — the `opportunities` prefix reaches all of them.
       queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
 
-      toast.success(asDraft ? "Opportunity saved as draft" : "Opportunity updated successfully!");
+      toast.success(isActive ? "Changes saved" : "Changes saved — it is unpublished, so students can't see it");
       navigate("/postings");
     } catch (err) {
       console.error("Error:", err);
@@ -201,7 +203,7 @@ export default function EditOpportunity() {
           </p>
         </div>
 
-        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <Card>
             <CardHeader>
@@ -353,22 +355,12 @@ export default function EditOpportunity() {
           </Card>
 
           {/* Actions */}
-          {/* Stacked on a phone, Publish on top: in one row the three buttons need
-              ~470px, so at 390px the row overflowed to the LEFT — where a page
-              cannot scroll — and Cancel was off-screen (audit G6-03). */}
+          {/* Stacked on a phone, Save on top: in one row the buttons overflowed to
+              the LEFT at 390px — where a page cannot scroll — and Cancel was
+              off-screen (audit G6-03). */}
           <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
               <Link to="/postings">Cancel</Link>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={(e) => handleSubmit(e, true)}
-              disabled={isSubmitting}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Save as Draft
             </Button>
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting ? (
@@ -379,7 +371,7 @@ export default function EditOpportunity() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  Save changes
                 </>
               )}
             </Button>

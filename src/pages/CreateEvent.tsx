@@ -22,9 +22,7 @@ import {
   Users,
   Image,
   ArrowLeft,
-  Save,
   Loader2,
-  Eye,
   Clock,
   Info,
   ClipboardList,
@@ -46,7 +44,6 @@ export default function CreateEvent() {
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [isActive, setIsActive] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
   // RSVP form state
@@ -70,7 +67,9 @@ export default function CreateEvent() {
       location: location.trim() || null,
       capacity: capacity ? parseInt(capacity, 10) : null,
       banner_url: bannerUrl.trim() || null,
-      is_active: asDraft ? false : isActive,
+      // G6-06 (decision 2026-10-11): the button says what happens — see
+      // CreateOpportunity. The "Publish immediately" card is gone.
+      is_active: !asDraft,
     });
 
     if (!validationResult.success) {
@@ -330,33 +329,6 @@ export default function CreateEvent() {
             </CardContent>
           </Card>
 
-          {/* Publishing Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5 text-accent" />
-                Publishing Options
-              </CardTitle>
-              <CardDescription>Control when your event goes live</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="isActive" className="text-base">Publish immediately</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Turn off to save as draft and publish later
-                  </p>
-                </div>
-                <Switch
-                  aria-label="Publish immediately"
-                  id="isActive"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Actions */}
           {/* Stacked on a phone, Publish on top: in one row the three buttons need
               ~470px, so at 390px the row overflowed to the LEFT — where a page
@@ -372,20 +344,16 @@ export default function CreateEvent() {
               onClick={(e) => handleSubmit(e, true)}
               disabled={isSubmitting}
             >
-              <Eye className="w-4 h-4 mr-2" />
-              Save as Draft
+              Save as draft
             </Button>
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
+                  Publishing…
                 </>
               ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Publish Event
-                </>
+                "Publish"
               )}
             </Button>
           </div>
@@ -415,7 +383,6 @@ export default function CreateEvent() {
               setLocation("");
               setCapacity("");
               setBannerUrl("");
-              setIsActive(true);
               setRsvpQuestions([]);
               setRequiresApproval(false);
             },
