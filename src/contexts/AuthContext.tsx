@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isProviderEnabled } from "@/lib/oauthProvider";
 
 type UserRole = "student" | "club" | "admin" | null;
 
@@ -210,6 +211,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (intendedRole?: "student" | "club") => {
     try {
+      // A7. Ask before navigating: with the provider switched off in the
+      // dashboard, signInWithOAuth still redirects — onto Supabase's raw JSON
+      // error. Only a definite "off" stops here; an unknown result proceeds.
+      const enabled = await isProviderEnabled(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "google",
+      );
+      if (enabled === false) {
+        console.error("Google sign-in is switched off for this Supabase project (Authentication → Sign In / Providers → Google). Backlog A7.");
+        return { error: new Error("Google sign-in isn't available right now. Please use your email instead.") };
+      }
+
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signInWithOAuth({
