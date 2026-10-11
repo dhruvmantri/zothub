@@ -3,7 +3,7 @@
 **The single log** of everything to implement, fix, remove, or decide. If another
 document disagrees with this file, **this file wins**.
 
-- **Last updated:** 2026-08-23 — maintainer decisions recorded; see [Decisions made](#decisions-made).
+- **Last updated:** 2026-10-10 — post-launch audit logged; see [Post-launch audit](#post-launch-audit--2026-10-10).
 - **Replaces:** `docs/LAUNCH-BACKLOG.md`, plus the scattered "still open" sections in
   `00-handoff.md` §6, `implementation-audit.md`, `plan.md` (WS10–12), the design and
   strategy docs, and the untracked `[launch-blocking]` tags in `prd.md`. See
@@ -17,21 +17,25 @@ document disagrees with this file, **this file wins**.
 
 ## Now / next
 
-1. ✅ **Phase 0 — verify the live site. COMPLETE.** All public-side checks, all six
-   `verify_prod_state.sql` queries, and the `S2` admin audit are done. Results in the
-   findings table below. **No security abuse; no wrongly-hidden clubs; `MB1` and `S2`
-   closed.** One action fell out of it: `D1` is wider than thought (3 test clubs).
-2. ✅ **Phase 1 — tracking consolidated.** This file is now the only tracker; superseded
-   planning docs are archived; stale docs corrected.
-3. 🔄 **Phase 2 — UI/UX + pre-launch fix-up. IN PROGRESS.** Defects are logged in
-   [Phase 2 — UI/UX defect log](#phase-2--uiux-defect-log) (`UX1`–`UX17`). Read
-   [`HANDOFF.md`](./HANDOFF.md) before starting. **Scope decision 2026-08-23: everything —
-   no date pressure, the app is finished before launch strategy is planned.**
-4. **Order is fixed by dependency, not by size:** `UX15` (adopt TanStack Query) lands
-   **first**, because every per-page `UX*` fix touches the same data-fetching code and would
-   otherwise be written twice. Then the nav restructure (`UX2`+`UX6`), then the shared
-   toolbar (`UX11`/`UX13`), then per-page polish.
-5. Everything else waits and is logged below. Nothing has been dropped.
+**Phase: LIVE, and the maintainer is doing in-person club outreach** (since the Anteater
+Involvement Fair). Everything before launch — Phase 0–2, the design + journey pass (`UX16`),
+the test-data purge (`D1`) — is done; the history below is kept as history.
+
+**The order now is set by what a club officer met at a fair, or a student they bring, hits
+first:**
+
+1. **Sign-in that works.** `A7` (Google provider is off — maintainer dashboard steps) is gated
+   on `A7b` (a first Google sign-in from Login leaves the account role-less — agent fix,
+   needs a decision). Then `LR2` (is Forgot password's mail actually delivered?).
+2. **The claim loop.** `LR3`/`G8-03` (nobody is told a claim arrived), `G8-02`/`G1-03` (the
+   nav's Get started walks a listed club into creating a duplicate), `G3-01` (Claim sits below
+   the fold for ~45% of clubs on a phone), `LR7`/`G8-16` (re-send an expired set-password link).
+3. **A claimed club's first five minutes.** `G5-01`/`G8-05`/`G6-01` (My Club and the empty
+   Postings/Applicants states give no next step), `G6-06`/`G6-08`/`G8-09` (the publish
+   controls and success popup), `G6-07` (RSVP decline has no confirmation), `G6-05`.
+4. **Things that silently cost us:** `LR4` (no backups), `LR5` (Resend daily cap), `LR6`
+   (no error reporting), `T14` (the security suite cannot run).
+5. **Then the landing-page polish pass** — the rest of [Post-launch audit](#post-launch-audit--2026-10-10).
 
 ---
 
@@ -512,6 +516,14 @@ anything on it** (`CLAUDE.md` § Documentation discipline).
 | ~~3~~ | ~~**MB6** — how far does account deletion go?~~ **ANSWERED 2026-08-23: moot for launch — deletion is post-launch.** Revisit when it is built. |
 | 4 | `/admin` review cadence during club outreach (from the superseded 10-day plan, never settled). |
 | 5 | **MB2** — storage bucket policy for student avatars (Bucket B decision was deferred). |
+| 6 | **A7b** — a brand-new person taps "Sign in with UCI Google" on **Login**: make them a student automatically, or ask "student or club?" first? (Gates enabling Google, `A7`.) |
+| 7 | **LR3** — email the maintainer when a club claim arrives, and email the officer a receipt? (Needs two edge-function deploys.) |
+| 8 | **LR4** — backups: Supabase Pro (~$25/month, daily backups), a free nightly dump, or accept the risk? |
+| 9 | **G6-07** — extend the `UX18` decline confirmation to RSVPs? |
+| 10 | **G6-06** — one publish control per form (Create: Save as draft / Publish; Edit: the Published switch)? |
+| 11 | **G3-05** — the apply panel's privacy sentence is untrue; approve the corrected wording. |
+| 12 | **LR10 / G7-07 / G8-12** — say ZotHub is independent of UC Irvine, and stop printing UCI's postal address as ours? Wording. (Also `UX31`: the trigger, outreach, has arrived.) |
+| 13 | **G2-07 / G2-03** — club search ranking and the "0 recruiting right now" line (offered 2026-09-22, not approved). |
 
 ---
 

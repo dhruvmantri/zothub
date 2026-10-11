@@ -133,9 +133,18 @@ ever code-verified. UI work is checked in the browser, in both themes, at mobile
 ```bash
 npx tsc -p tsconfig.app.json --noEmit   # 0 errors
 npm run build                            # must succeed
-node --experimental-strip-types --test src/lib/captchaToken.test.ts src/lib/emailResult.test.ts
+node --experimental-strip-types --test src/lib/*.test.ts
 bash tests/e2e/run.sh                    # EXECUTED 115/115; warns before wiping local data
 ```
+
+**The E2E suite cannot currently run to completion from a fresh database** (`T14`): the `R2`
+migration refuses to apply without a Vault secret, and in a cloud session the edge functions
+then fail to boot because the session proxy re-signs HTTPS. Say so when you report — a partial
+run of a security suite is an unknown, not a pass.
+
+**Never stop a process with `pkill -f <pattern>` here.** The pattern also matches your own
+shell's command line, and kills it (it has happened three times). Stop a process by a PID you
+recorded when you started it, or by the owner of its port (`ss -ltnp`).
 
 Run the E2E suite before finishing anything auth-, email-, or claim-related.
 
