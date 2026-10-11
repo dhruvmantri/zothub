@@ -7,7 +7,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubCount } from "@/hooks/useClubCount";
-import { SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/constants";
+import { INDEPENDENCE_STATEMENT, SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/constants";
 
 /**
  * Honest about state (Foundation §2). The hero shows **live counts only** —
@@ -300,6 +300,11 @@ export default function Landing() {
               &copy; <span className="font-data">{new Date().getFullYear()}</span> ZotHub &middot; built for UCI
             </p>
           </div>
+        </div>
+        <div className="container mx-auto px-4 pb-8">
+          <p className="text-center text-[12.5px] leading-relaxed text-ink-3 md:text-left">
+            {INDEPENDENCE_STATEMENT}
+          </p>
         </div>
       </footer>
     </RoleBasedLayout>

@@ -2,7 +2,7 @@ import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Shield, Database, Share2, Clock, Mail, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SUPPORT_EMAIL } from "@/lib/constants";
+import { INDEPENDENCE_STATEMENT, SUPPORT_EMAIL } from "@/lib/constants";
 
 export default function Privacy() {
   return (
@@ -147,8 +147,10 @@ export default function Privacy() {
                   If you have questions about this Privacy Policy or your data, please contact us:
                 </p>
                 <p className="text-foreground font-medium">ZotHub</p>
-                <p className="text-muted-foreground">University of California, Irvine</p>
-                <p className="text-muted-foreground">Irvine, CA 92697</p>
+                {/* Not UC Irvine's postal address: ZotHub is not a university
+                    service, and printing the campus address as ours implied it
+                    was (decision 2026-10-11). */}
+                <p className="text-muted-foreground">{INDEPENDENCE_STATEMENT}</p>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
                   className="mt-2 inline-block text-accent-text underline underline-offset-2 hover:no-underline"

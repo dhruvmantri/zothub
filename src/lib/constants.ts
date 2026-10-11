@@ -14,6 +14,11 @@ export const ADMIN_ALLOWED_EMAILS = ["zothub.uci@gmail.com"];
 // it from here, so replacing it (backlog UX31) is a one-line change.
 export const SUPPORT_EMAIL = "zothub.uci@gmail.com";
 
+// Said wherever ZotHub signs its name (decision 2026-10-11): the footer, the
+// privacy policy, and the email footer in send-email (kept in step by hand).
+export const INDEPENDENCE_STATEMENT =
+  "ZotHub is an independent, student-built platform, not affiliated with or endorsed by UC Irvine.";
+
 // ZotHub's own profiles, linked from the home-page footer (decision 2026-10-10).
 export const SOCIAL_LINKS = {
   linkedin: "https://www.linkedin.com/company/zothub",

@@ -331,8 +331,14 @@ export default function OpportunityDetail() {
               {role === "student" && !hasApplied && !deadlinePassed && (
                 <div className="rounded-lg border border-accent-line bg-accent-wash p-5">
                   <p className="text-[15px] font-semibold text-ink">Ready to apply?</p>
+                  {/* G3-05 (maintainer decision 2026-10-11). This used to promise
+                      "name, year and major — nothing else", but applying grants
+                      the club the whole profile row (RLS "Clubs can view
+                      applicant profiles", 20251223083053) and attaches the saved
+                      résumé. Say what is actually shared. */}
                   <p className="mt-1 text-sm text-ink-2">
-                    They see your name, year and major — nothing else from your profile.
+                    {club?.club_name ?? "The club"} will see your profile — name, UCI email, year,
+                    major, skills, links and résumé — and your answers.
                   </p>
                   <Button className="mt-4 w-full" onClick={() => setShowApplicationForm(true)}>
                     Start application
