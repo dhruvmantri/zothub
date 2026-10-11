@@ -219,7 +219,7 @@ export default function OpportunityDetail() {
 
         {/* Body */}
         <div className="container mx-auto max-w-5xl px-4 py-8">
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex flex-col gap-4">
               {/* Deadline: accent means "act now", bad means the door is shut. */}
               <div

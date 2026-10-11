@@ -183,7 +183,7 @@ export default function EventDetail() {
             />
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex flex-col gap-4">
               <section className="rounded-lg border border-line bg-surface p-5 shadow-e1">
                 <dl className="flex flex-col gap-3 text-[15px]">

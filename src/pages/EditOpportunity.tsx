@@ -353,20 +353,24 @@ export default function EditOpportunity() {
           </Card>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" asChild>
+          {/* Stacked on a phone, Publish on top: in one row the three buttons need
+              ~470px, so at 390px the row overflowed to the LEFT — where a page
+              cannot scroll — and Cancel was off-screen (audit G6-03). */}
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
               <Link to="/postings">Cancel</Link>
             </Button>
             <Button
               type="button"
               variant="secondary"
+              className="w-full sm:w-auto"
               onClick={(e) => handleSubmit(e, true)}
               disabled={isSubmitting}
             >
               <Eye className="w-4 h-4 mr-2" />
               Save as Draft
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

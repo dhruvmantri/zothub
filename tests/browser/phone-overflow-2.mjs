@@ -5,7 +5,12 @@
  *  has a role or event (447px), Postings → Events (428px), and Notifications
  *  once anything is unread (451px). The first two are the UX27 grid trap again
  *  (a bare `grid` sizes its implicit track to the longest truncated title);
- *  the third is two rows that could not wrap.
+ *  the third is two rows that could not wrap. My Club carried the same bare
+ *  grid and overflowed to 840px with a long event title — found by this test.
+ *
+ *  The role and event pages carried it too, but did NOT overflow on the old
+ *  code even with a long club name (the audit predicted they would). Their
+ *  checks are regression guards, not proof of a fix.
  *
  *  The assertion is the symptom — document scrollWidth against the viewport —
  *  and the titles are longer than any real one so it keeps biting.
@@ -30,8 +35,10 @@ const user = { id: USER_ID, aud: "authenticated", role: "authenticated", email: 
 const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: exp, refresh_token: "r", user };
 
 const soon = new Date(Date.now() + 5 * 864e5).toISOString();
+// A long CLUB name too: the role and event pages truncate it in their sidebar,
+// which is what sized their grid track.
 const CLUB = {
-  id: "c1", club_name: "Anteater Robotics", category: "Engineering", user_id: USER_ID,
+  id: "c1", club_name: "Associated Students Interdisciplinary Undergraduate Robotics and Autonomous Systems Consortium", category: "Engineering", user_id: USER_ID,
   description: "We build competition robots.", logo_url: null, banner_url: null, website_url: "https://example.org",
   linkedin_url: null, instagram_url: null, discord_url: null, source: "self", source_url: null, imported_at: null,
   claimed_at: null, published: true,
@@ -80,6 +87,9 @@ for (const [label, path, signedIn] of [
   ["public club page with a role and an event", "/clubs/c1", false],
   ["club Postings → Events", "/postings/events", true],
   ["Notifications with three unread", "/notifications", true],
+  ["role page with a long club name", "/opportunities/o1", false],
+  ["event page with a long club name", "/events/e1", false],
+  ["My Club with a long event title", "/my-club", true],
 ]) {
   const r = await measure(path, signedIn);
   check(`${label}: rendered`, r.mounted);
