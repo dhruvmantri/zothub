@@ -84,12 +84,13 @@ This project is built with modern web technologies:
 
    Run the migrations in the \`supabase/migrations/\` directory in your Supabase project.
 
-   Also deploy the 6 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`, \`submit-club-claim\`, \`review-club-claim\`) via the Supabase CLI. Signup (OTP verification), all outbound email, and the club-claim flow depend on these.
+   Also deploy the 7 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`, \`submit-club-claim\`, \`review-club-claim\`, \`provision-oauth-user\`) via the Supabase CLI. Signup (OTP verification), all outbound email, the club-claim flow and Google sign-up (\`provision-oauth-user\`, which keeps \`verify_jwt = true\`) depend on these.
 
    **Required Edge Function secrets** — set these *before* deploying, or signup fails closed:
    - \`RESEND_API_KEY\` — all outbound email.
    - \`TURNSTILE_SECRET_KEY\` — **required.** Without it, \`send-otp\` and \`submit-club-claim\` return **503** by design (fail-closed bot protection). The only supported bypass is \`CAPTCHA_DISABLED=true\`, which is for **local development only — never set it in production**.
    - \`PUBLIC_SITE_URL\` — e.g. \`https://zothub.app\`; used to build password-set links.
+   - \`ADMIN_ALERT_EMAIL\` — *optional*; where "New club claim" alerts go. Defaults to \`zothub.uci@gmail.com\`.
 
    Also allowlist \`<your-site>/reset-password\` under Supabase **Auth → redirect URLs**.
 
@@ -199,7 +200,7 @@ ZotHub is **live in production** on **Vercel** at [zothub.app](https://zothub.ap
 
 3. Environment variables are set in the Vercel project dashboard (see below).
 
-4. OAuth redirect URLs and Auth settings are configured in the Supabase project dashboard.
+4. OAuth redirect URLs and Auth settings are configured in the Supabase project dashboard. **Google sign-in needs the Google provider switched ON there** (Authentication → Sign In / Providers → Google), with a Google Cloud OAuth *Web* client whose redirect URI is \`https://<project-ref>.supabase.co/auth/v1/callback\` and whose publishing status is *In production*. It is not in \`supabase/config.toml\`, and it does not move with the project: after the move off Lovable Cloud it silently stayed off (\`A7\`). Check with \`GET /auth/v1/settings\` → \`external.google\`.
 
 Edge Functions (\`supabase/functions/\`) deploy separately via the Supabase CLI — see \`docs/BACKLOG.md\` for current open work.
 
@@ -234,6 +235,7 @@ Do **not** hand-apply SQL to production as the normal path, and never run \`supa
 | \`RESEND_API_KEY\` | All outbound email. |
 | \`TURNSTILE_SECRET_KEY\` | Turnstile **secret** key, from the same widget as the site key. **Required** — without it \`send-otp\` / \`submit-club-claim\` return 503. |
 | \`PUBLIC_SITE_URL\` | Public origin, e.g. \`https://zothub.app\`. Used to build password-set links. |
+| \`ADMIN_ALERT_EMAIL\` | *Optional.* Recipient of the "New club claim" alert sent by \`submit-club-claim\`. Defaults to \`zothub.uci@gmail.com\`. |
 | \`CAPTCHA_DISABLED\` | **Local development only.** \`true\` skips captcha verification. Never set in production. |
 
 ## Security
