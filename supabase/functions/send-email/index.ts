@@ -23,7 +23,7 @@ const jsonResponse = (body: Record<string, unknown>, status: number): Response =
   });
 
 interface EmailRequest {
-  type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_declined" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "claim_approved" | "claim_rejected" | "email_otp";
+  type: "application_confirmation" | "application_status" | "application_notification" | "rsvp_confirmation" | "rsvp_declined" | "rsvp_reminder" | "deadline_reminder" | "event_cancelled" | "new_club_post" | "waitlist_confirmation" | "waitlist_approved" | "waitlist_rejected" | "claim_approved" | "claim_rejected" | "claim_received" | "claim_received_admin" | "email_otp";
   to: string;
   data: Record<string, unknown>;
 }
@@ -47,6 +47,17 @@ const isPreferenceEnabled = async (
   return value === null || value === undefined ? true : Boolean(value);
 };
 
+// For mail to someone who may not have an account (a claim receipt) or to the
+// admin: there is no preference to unsubscribe from, so no unsubscribe link —
+// "you received this because you have an account" would be untrue.
+const getTransactionalFooter = () => `
+  <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
+    <p style="color: #a1a1aa; font-size: 11px; margin: 0;">
+      ZotHub is an independent, student-built platform, not affiliated with or endorsed by UC Irvine.
+    </p>
+  </div>
+`;
+
 const getEmailFooter = (type: string) => `
   <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5;">
     <p style="color: #71717a; font-size: 12px; margin: 0;">
@@ -55,7 +66,7 @@ const getEmailFooter = (type: string) => `
       <a href="https://zothub.app/unsubscribe" style="color: #3b82f6;">Manage all preferences</a>
     </p>
     <p style="color: #a1a1aa; font-size: 11px; margin-top: 12px;">
-      ZotHub • University of California, Irvine • Irvine, CA 92697
+      ZotHub is an independent, student-built platform, not affiliated with or endorsed by UC Irvine.
     </p>
   </div>
 `;
@@ -327,6 +338,45 @@ const getEmailContent = (type: string, data: Record<string, unknown>) => {
         `,
       };
 
+    // LR3 (maintainer decision 2026-10-11) — sent by submit-club-claim when a
+    // NEW claim is filed (never for a duplicate). Service-role only.
+    case "claim_received":
+      return {
+        subject: `We got your claim for ${data.clubName}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">Your claim is in</h1>
+            <p>Thanks — we received your request to claim <strong>${esc(data.clubName)}</strong> on ZotHub.</p>
+            <p>We check every claim by hand. When yours is approved, we'll email this address a link to set your password and start managing your club's page.</p>
+            <p style="color: #71717a; font-size: 13px;">Didn't ask for this? Email <a href="mailto:zothub.uci@gmail.com" style="color: #0F5FA8;">zothub.uci@gmail.com</a> and we won't approve it.</p>
+            <p style="color: #71717a; font-size: 14px;">— The ZotHub Team</p>
+            ${getTransactionalFooter()}
+          </div>
+        `,
+      };
+
+    case "claim_received_admin":
+      return {
+        subject: `New club claim: ${data.clubName}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a1a2e;">New club claim</h1>
+            <p><strong>${esc(data.claimantEmail)}</strong> wants to claim <strong>${esc(data.clubName)}</strong>.</p>
+            ${data.note ? `
+            <div style="margin: 16px 0; padding: 12px 16px; background: #f4f6f8; border-left: 4px solid #0F5FA8; border-radius: 4px;">
+              <p style="margin: 0; white-space: pre-wrap;">${esc(data.note)}</p>
+            </div>
+            ` : ""}
+            <div style="margin: 24px 0;">
+              <a href="https://zothub.app/admin" style="display: inline-block; padding: 12px 24px; background: #0F5FA8; color: white; text-decoration: none; border-radius: 8px;">Review it in Admin</a>
+            </div>
+            <p><a href="https://zothub.app/clubs/${esc(encodeURIComponent(String(data.clubId ?? "")))}" style="color: #0F5FA8;">Open the club's page</a></p>
+            <p style="color: #71717a; font-size: 13px;">Before approving, check the address really belongs to the club — its website or Instagram, or an officer you met.</p>
+            ${getTransactionalFooter()}
+          </div>
+        `,
+      };
+
     case "waitlist_confirmation":
       return {
         subject: "You're on the ZotHub Waitlist!",
@@ -444,6 +494,8 @@ const TEMPLATE_TYPES = new Set([
   "waitlist_rejected",
   "claim_approved",
   "claim_rejected",
+  "claim_received",
+  "claim_received_admin",
   "email_otp",
 ]);
 
@@ -453,6 +505,8 @@ const SERVICE_ROLE_ONLY = new Set([
   "email_otp",
   "claim_approved",
   "claim_rejected",
+  "claim_received",
+  "claim_received_admin",
   "new_club_post",
   "deadline_reminder",
   "rsvp_reminder",

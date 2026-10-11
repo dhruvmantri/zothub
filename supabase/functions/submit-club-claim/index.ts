@@ -9,6 +9,7 @@
 // runtime has no trusted client IP, and x-forwarded-for is caller-spoofable).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildClaimAlerts, sendClaimAlerts } from "../_shared/claim-alerts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,6 +136,24 @@ serve(async (req) => {
         return json({ ok: true, alreadyPending: true }, 200);
       }
       return json({ error: "Could not submit your claim. Please try again." }, 500);
+    }
+
+    // LR3: a receipt to the officer and an alert to the admin — only for a NEW
+    // claim (both duplicate paths above return before this). Best effort: a
+    // failed email is logged and never changes the response, which must stay
+    // identical either way so it reveals nothing about the address.
+    const alertResults = await sendClaimAlerts(
+      supabase,
+      buildClaimAlerts({
+        clubId,
+        clubName: club.club_name,
+        claimantEmail: normalizedEmail,
+        note: note ? String(note) : null,
+        adminEmail: Deno.env.get("ADMIN_ALERT_EMAIL"),
+      }),
+    );
+    for (const r of alertResults) {
+      if (!r.ok) console.error(`submit-club-claim: ${r.type} not delivered for ${club.club_name}: ${r.error}`);
     }
 
     return json({ ok: true }, 200);
