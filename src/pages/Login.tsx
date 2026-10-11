@@ -105,7 +105,13 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const { error } = await signInWithGoogle();
+    // "student", not nothing (A7b, maintainer decision 2026-10-11). Google
+    // creates the account on first sign-in, and with no intended role stored the
+    // new account was never provisioned: role-less, looking signed out, every
+    // dashboard a dead end. The role only applies to an account that has none —
+    // provision-oauth-user returns early on an existing role or waitlist row —
+    // so returning students, clubs and pending accounts are untouched.
+    const { error } = await signInWithGoogle("student");
     
     if (error) {
       toast({
