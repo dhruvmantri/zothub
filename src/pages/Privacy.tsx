@@ -2,6 +2,7 @@ import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Shield, Database, Share2, Clock, Mail, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 export default function Privacy() {
   return (
@@ -149,10 +150,10 @@ export default function Privacy() {
                 <p className="text-muted-foreground">University of California, Irvine</p>
                 <p className="text-muted-foreground">Irvine, CA 92697</p>
                 <a
-                  href="mailto:zothub.uci@gmail.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="mt-2 inline-block text-accent-text underline underline-offset-2 hover:no-underline"
                 >
-                  zothub.uci@gmail.com
+                  {SUPPORT_EMAIL}
                 </a>
               </div>
             </section>

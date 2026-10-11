@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { GraduationCap, Users, ShieldQuestion, Mail, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackToHome } from "@/components/BackToHome";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import {
   Accordion,
   AccordionContent,
@@ -209,8 +210,6 @@ const ACCOUNT_FAQ: QA[] = [
     ),
   },
 ];
-
-const SUPPORT_EMAIL = "zothub.uci@gmail.com";
 
 // Pre-filled so a report arrives with something we can act on. Encoded rather
 // than interpolated so a newline never breaks the mailto.

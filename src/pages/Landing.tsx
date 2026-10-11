@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Instagram, Linkedin, Mail } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubCount } from "@/hooks/useClubCount";
+import { SOCIAL_LINKS, SUPPORT_EMAIL } from "@/lib/constants";
 
 /**
  * Honest about state (Foundation §2). The hero shows **live counts only** —
@@ -271,9 +272,34 @@ export default function Landing() {
               </Link>
             ))}
           </nav>
-          <p className="text-sm text-ink-3">
-            &copy; <span className="font-data">{new Date().getFullYear()}</span> ZotHub &middot; built for UCI
-          </p>
+          <div className="flex flex-col items-center gap-2 md:items-end">
+            {/* size="icon" is 44px, the same target as the nav links beside it;
+                -mr-3 lines the last glyph up with the copyright, not its padding.
+                Email is a plain mailto, so it opens in place, not a new tab. */}
+            <ul className="flex items-center gap-1 md:-mr-3" aria-label="ZotHub elsewhere">
+              {[
+                { href: SOCIAL_LINKS.linkedin, label: "ZotHub on LinkedIn", Icon: Linkedin, external: true },
+                { href: SOCIAL_LINKS.instagram, label: "ZotHub on Instagram", Icon: Instagram, external: true },
+                { href: `mailto:${SUPPORT_EMAIL}`, label: `Email ZotHub at ${SUPPORT_EMAIL}`, Icon: Mail, external: false },
+              ].map(({ href, label, Icon, external }) => (
+                <li key={label}>
+                  <Button variant="ghost" size="icon" asChild>
+                    <a
+                      href={href}
+                      aria-label={label}
+                      title={label}
+                      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    >
+                      <Icon className="size-5" aria-hidden="true" />
+                    </a>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-ink-3">
+              &copy; <span className="font-data">{new Date().getFullYear()}</span> ZotHub &middot; built for UCI
+            </p>
+          </div>
         </div>
       </footer>
     </RoleBasedLayout>
