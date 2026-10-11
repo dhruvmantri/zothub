@@ -35,6 +35,7 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
+import { toDatetimeLocalValue } from "@/lib/datetimeLocal";
 
 export default function EditOpportunity() {
   const { id } = useParams<{ id: string }>();
@@ -81,7 +82,7 @@ export default function EditOpportunity() {
     setType(data.type);
     setDescription(data.description || "");
     setRequirements(data.requirements || "");
-    setDeadline(data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : "");
+    setDeadline(data.deadline ? toDatetimeLocalValue(data.deadline) : "");
     setIsActive(data.is_active ?? true);
     setShowApplicationCount(data.show_application_count ?? false);
     

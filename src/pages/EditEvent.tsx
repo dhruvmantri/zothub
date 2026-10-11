@@ -28,6 +28,7 @@ import {
   ClipboardList,
   ShieldCheck,
 } from "lucide-react";
+import { toDatetimeLocalValue } from "@/lib/datetimeLocal";
 
 export default function EditEvent() {
   const { id } = useParams<{ id: string }>();
@@ -75,7 +76,7 @@ export default function EditEvent() {
 
     setTitle(data.title);
     setDescription(data.description || "");
-    setEventDate(new Date(data.event_date).toISOString().slice(0, 16));
+    setEventDate(toDatetimeLocalValue(data.event_date));
     setLocation(data.location || "");
     setCapacity(data.capacity?.toString() || "");
     setBannerUrl(data.banner_url || "");
