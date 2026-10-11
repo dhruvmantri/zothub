@@ -190,7 +190,10 @@ export default function Notifications() {
 
   const content = (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+      {/* Both rows wrap: with anything unread, "Notifications · N unread" plus
+          Preferences, and the tabs plus Mark all read plus Clear all, are each
+          wider than a 390px phone, and the page scrolled sideways (451px). */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink flex items-center gap-2">
             <Bell className="w-6 h-6 text-accent-text" />
@@ -219,7 +222,7 @@ export default function Notifications() {
 
       <Card>
         <div className="p-4 border-b border-line">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>

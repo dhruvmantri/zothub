@@ -121,7 +121,9 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
           )}
         </div>
       ) : (
-        <div className="grid gap-4">
+        // grid-cols-1, not bare `grid`: an implicit track sizes to the longest
+        // truncated title and scrolled Postings → Events sideways on a phone (UX27 trap).
+        <div className="grid grid-cols-1 gap-4">
           {filteredEvents.map((event) => {
             const capacityPercent = event.capacity
               ? Math.min((event.rsvps_count / event.capacity) * 100, 100)

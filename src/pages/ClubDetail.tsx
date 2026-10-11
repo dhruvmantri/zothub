@@ -238,7 +238,11 @@ const ClubDetail = () => {
               />
             </div>
           )}
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          {/* grid-cols-1 / minmax(0,1fr): a grid track defaults to min-width:auto,
+              so one long role or event title (truncated, but its min-content is
+              the whole string) widened the page to ~447px on a 390px phone.
+              Same trap as UX27; see CLAUDE.md. */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex flex-col gap-6">
               <section>
                 <h2 className="mb-3 text-[18px] font-semibold tracking-[-0.018em] text-ink">
