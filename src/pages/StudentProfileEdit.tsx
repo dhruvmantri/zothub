@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/discover/ErrorState";
 import { FileUpload } from "@/components/ui/file-upload";
 import {
   Select,
@@ -40,6 +41,10 @@ export default function StudentProfileEdit() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  // The read FAILED, as distinct from "no profile yet". Without this the form
+  // rendered blank after a failed load, and Save upserts every column — so one
+  // flaky-wifi visit plus a tap on Save erased the real profile (audit G4-05).
+  const [loadFailed, setLoadFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form state
@@ -67,6 +72,7 @@ export default function StudentProfileEdit() {
   const fetchProfile = async () => {
     if (!user) return;
 
+    setLoadFailed(false);
     try {
       const { data, error } = await supabase
         .from("student_profiles")
@@ -76,7 +82,7 @@ export default function StudentProfileEdit() {
 
       if (error) {
         console.error("Error fetching profile:", error);
-        toast.error("Failed to load profile");
+        setLoadFailed(true);
         return;
       }
 
@@ -94,13 +100,20 @@ export default function StudentProfileEdit() {
       }
     } catch (err) {
       console.error("Error:", err);
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const retryLoad = () => {
+    setIsLoading(true);
+    fetchProfile();
+  };
+
   const handleSave = async () => {
-    if (!user) return;
+    // Never write over a profile we could not read (see loadFailed).
+    if (!user || loadFailed) return;
 
     // Sanitize skills and interests
     const sanitizedSkills = skills.map((s) => sanitizeText(s)).filter((s) => s.length > 0);
@@ -220,6 +233,8 @@ export default function StudentProfileEdit() {
                 <Skeleton key={i} className="h-52 w-full rounded-lg" />
               ))}
             </div>
+          ) : loadFailed ? (
+            <ErrorState noun="your profile" onRetry={retryLoad} />
           ) : (
             <div className="space-y-4">
               <Panel title="Basics" hint="Your name and where you are at UCI.">
