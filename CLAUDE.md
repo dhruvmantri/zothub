@@ -192,8 +192,14 @@ cloud session start the daemon with `sudo dockerd`.
   no log line, and `review-club-claim` threw away the reason it was handed — a
   `FunctionsHttpError`'s `.message` is ALWAYS the generic "non-2xx" string, and the real reason
   is in the response **body**. Log the refusal; read the body.
-- **`send-reminders` is the one email path that bypasses `send-email`** — unescaped, and it
-  marks failed sends as delivered. Logged as `S5`/`R1`/`R2`, deferred by decision.
+- **Two things still depend on the LEGACY JWT keys: the live site (its public anon key is an
+  `eyJ…` JWT) and the hourly reminder job.** `cron.job` posts to `send-reminders` with a bearer
+  token read from Vault (`R2`); the function is not in `config.toml`, so the gateway's default
+  `verify_jwt` checks that token as a JWT. Edge functions themselves now see the new
+  `sb_secret_…` key (`E2`). So **switching off legacy API keys in the dashboard takes the site
+  down loudly and stops every reminder email silently** — and the `R2` migration would refuse to
+  re-store a new-format key (it demands `eyJ…`). Move both first (`T14`). Reminders no longer
+  bypass `send-email`; that was fixed by `S5`.
 
 ## Reporting
 
