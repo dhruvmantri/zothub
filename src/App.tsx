@@ -125,6 +125,12 @@ const LEGACY_ROUTES: { from: string; to: string }[] = [
   { from: "/club/events/:id/edit", to: "/postings/events/:id/edit" },
   { from: "/club/profile", to: "/my-club/edit" },
   { from: "/club/messages", to: "/messages" },
+  // Not an old app route — an EMAIL link. The "new application" email that
+  // send-email sends every club links here (send-email/index.ts, the
+  // application_notification template), and no route served it, so the button in a
+  // club's first ZotHub email opened a 404. This entry also repairs every copy
+  // already sitting in an inbox, which changing the template alone cannot.
+  { from: "/club/applications", to: "/applicants" },
   { from: "/student/dashboard", to: "/activity" },
   { from: "/student/profile/edit", to: "/profile/edit" },
   { from: "/student/profile", to: "/profile" },
