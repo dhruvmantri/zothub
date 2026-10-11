@@ -19,6 +19,7 @@ import {
   fetchOpenOpportunityCountsByClub,
   fetchUpcomingEventCountsByClub,
 } from "@/lib/queryFns";
+import { clubMatchTier } from "@/lib/clubSearch";
 
 type SortOption = "name-asc" | "name-desc" | "most-active";
 
@@ -102,32 +103,39 @@ export default function ClubsPage() {
   }, [clubs]);
 
   const filteredAndSortedClubs = useMemo(() => {
-    const needle = searchQuery.toLowerCase();
+    const searching = searchQuery.trim() !== "";
+    // G2-07: while searching, how well each club matches decides the order —
+    // exact name, then an acronym, then the start of the name, … then a
+    // description-only match — and the chosen sort only breaks ties. A–Z alone
+    // put a club typing its own name 3rd–6th (src/lib/clubSearch.ts).
+    const tiers = new Map<string, number>();
     const result = clubs.filter((club) => {
-      const matchesSearch =
-        club.club_name.toLowerCase().includes(needle) ||
-        (club.description?.toLowerCase().includes(needle) ?? false);
       // An empty selection means "every category", not "no category".
       const matchesCategory =
         selectedCategories.length === 0 ||
         (club.category !== null && selectedCategories.includes(club.category));
-      return matchesSearch && matchesCategory;
+      if (!matchesCategory) return false;
+      if (!searching) return true;
+      const tier = clubMatchTier(club.club_name, club.description, searchQuery);
+      if (tier === null) return false;
+      tiers.set(club.id, tier);
+      return true;
     });
 
-    switch (sortBy) {
-      case "name-asc":
-        result.sort((a, b) => a.club_name.localeCompare(b.club_name));
-        break;
-      case "name-desc":
-        result.sort((a, b) => b.club_name.localeCompare(a.club_name));
-        break;
-      case "most-active":
-        result.sort(
-          (a, b) =>
-            b.opportunity_count + b.event_count - (a.opportunity_count + a.event_count),
-        );
-        break;
-    }
+    const byChosenSort = (a: Club, b: Club) => {
+      switch (sortBy) {
+        case "name-desc":
+          return b.club_name.localeCompare(a.club_name);
+        case "most-active":
+          return b.opportunity_count + b.event_count - (a.opportunity_count + a.event_count);
+        case "name-asc":
+        default:
+          return a.club_name.localeCompare(b.club_name);
+      }
+    };
+    result.sort((a, b) =>
+      searching ? (tiers.get(a.id)! - tiers.get(b.id)!) || byChosenSort(a, b) : byChosenSort(a, b),
+    );
 
     return result;
   }, [clubs, searchQuery, selectedCategories, sortBy]);
@@ -157,12 +165,18 @@ export default function ClubsPage() {
             <h1 className="text-[clamp(30px,4vw,40px)] font-medium tracking-[-0.03em] text-ink">
               Clubs
             </h1>
-            {/* Honest asymmetry: most clubs are not recruiting at any given
-                moment, and saying so is more useful than implying they all are. */}
+            {/* G2-03 (decision 2026-10-11): the recruiting count only when there
+                is one. "722 clubs · 0 recruiting right now" was true and read as
+                "nothing happens here" — the first line an officer sees. */}
             <p className="mt-2 text-ink-2">
               <span className="font-data">{clubs.length}</span>{" "}
-              {clubs.length === 1 ? "club" : "clubs"} ·{" "}
-              <span className="font-data">{recruitingCount}</span> recruiting right now
+              {clubs.length === 1 ? "club" : "clubs"}
+              {recruitingCount > 0 && (
+                <>
+                  {" · "}
+                  <span className="font-data">{recruitingCount}</span> recruiting right now
+                </>
+              )}
             </p>
 
             {/* Signed out only, and that is the whole point: a club claim is

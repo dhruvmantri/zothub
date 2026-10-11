@@ -42,22 +42,24 @@ export function ClubList({ clubs }: { clubs: ClubCardData[] }) {
               </Link>
             </p>
             <p className="mt-0.5 truncate text-[12px] text-ink-3">
-              {club.category ? `${club.category} · ` : ""}
-              {club.opportunity_count > 0 ? (
-                <span className="font-semibold text-accent-text">
-                  <span className="font-data">{club.opportunity_count}</span>{" "}
-                  {club.opportunity_count === 1 ? "role" : "roles"}
-                </span>
-              ) : (
-                "Not recruiting"
-              )}
-              {club.event_count > 0 && (
-                <>
-                  {" · "}
-                  <span className="font-data">{club.event_count}</span>{" "}
-                  {club.event_count === 1 ? "event" : "events"}
-                </>
-              )}
+              {/* Category, then only what IS happening (G2-03): no "Not recruiting". */}
+              {[
+                club.category,
+                club.opportunity_count > 0 && (
+                  <span key="roles" className="font-semibold text-accent-text">
+                    <span className="font-data">{club.opportunity_count}</span>{" "}
+                    {club.opportunity_count === 1 ? "role" : "roles"}
+                  </span>
+                ),
+                club.event_count > 0 && (
+                  <span key="events">
+                    <span className="font-data">{club.event_count}</span>{" "}
+                    {club.event_count === 1 ? "event" : "events"}
+                  </span>
+                ),
+              ]
+                .filter(Boolean)
+                .flatMap((part, i) => (i === 0 ? [part] : [" · ", part]))}
             </p>
           </div>
         </li>

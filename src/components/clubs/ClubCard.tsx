@@ -23,7 +23,7 @@ export interface ClubCardData {
  * purely from public club fields, so a ZotSpot-seeded (unclaimed) club is
  * INDISTINGUISHABLE here from a claimed one (maintainer decision) — a missing
  * logo falls back to the initials avatar, a missing description reads
- * "No description yet.", and zero postings read "Not recruiting". The unclaimed
+ * "No description yet.", and a club with no postings shows no status line. The unclaimed
  * distinction (claim banner + source line) lives only on the club's profile page.
  *
  * The card title is `truncate`, so its min-content width is the WHOLE club
@@ -66,27 +66,26 @@ export function ClubCard({ club }: { club: ClubCardData }) {
         {club.description || "No description yet."}
       </p>
 
-      <p className="mt-3 text-[12.5px] text-ink-3">
-        {club.opportunity_count > 0 ? (
-          <span className="font-semibold text-accent-text">
-            <span className="font-data">{club.opportunity_count}</span> open{" "}
-            {club.opportunity_count === 1 ? "role" : "roles"}
-          </span>
-        ) : (
-          "Not recruiting"
-        )}
-        {/* Hidden at zero, matching ClubList and the 2026-09-20 decision that
-            a count of zero is noise rather than information. The card used to
-            read "Not recruiting · 0 events", which is the same nothing said
-            twice — and it disagreed with the list view of the same club. */}
-        {club.event_count > 0 && (
-          <>
-            {" · "}
-            <span className="font-data">{club.event_count}</span>{" "}
-            {club.event_count === 1 ? "event" : "events"}
-          </>
-        )}
-      </p>
+      {/* Only what IS happening (G2-03, decision 2026-10-11). "Not recruiting"
+          was stamped on every card — all 722 on launch day — and says nothing a
+          missing line doesn't; it also can't be verified for an unclaimed club. */}
+      {(club.opportunity_count > 0 || club.event_count > 0) && (
+        <p className="mt-3 text-[12.5px] text-ink-3">
+          {club.opportunity_count > 0 && (
+            <span className="font-semibold text-accent-text">
+              <span className="font-data">{club.opportunity_count}</span> open{" "}
+              {club.opportunity_count === 1 ? "role" : "roles"}
+            </span>
+          )}
+          {club.opportunity_count > 0 && club.event_count > 0 && " · "}
+          {club.event_count > 0 && (
+            <>
+              <span className="font-data">{club.event_count}</span>{" "}
+              {club.event_count === 1 ? "event" : "events"}
+            </>
+          )}
+        </p>
+      )}
 
       {(club.website_url || club.instagram_url || club.linkedin_url) && (
         <div className="relative z-10 mt-auto flex gap-1 pt-4">
