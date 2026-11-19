@@ -1,56 +1,124 @@
-# CP1 — Posting events and roles for a club that has not claimed its listing
+# CP1 — Automated posting of club events and roles
 
-**Status:** proposal, 2026-11-19. Nothing built. Open decisions are in `../BACKLOG.md`
-(`CP1`, and *Decisions needed* #14). If this file and the backlog disagree, the backlog wins.
+**Status:** plan v2, 2026-11-19. Nothing built. Decisions are dated in `../BACKLOG.md`
+(*Decisions made*, CP1 rows); open questions are *Decisions needed* #15. If this file and the
+backlog disagree, the backlog wins.
 
 ## Goal
 
-The maintainer gathers a club's public announcements (Instagram etc.) and hands them to the
-agent, which turns them into ZotHub events and roles that appear under that club — as if the
-club posted them — for a club that has **not** claimed its listing.
+A dedicated Claude session reads a Google Sheet (filled by Meta Muse daily at 1 PM) every day
+at 2 PM and publishes the events and roles in it under the right club — claimed or unclaimed —
+indistinguishable from a post the club wrote, with **Apply Externally / RSVP Externally**
+buttons pointing at the club's own link. **Done** = the backend and website can take those
+posts safely, and the automation session exists, has run in dry-run, and has been switched on.
 
-## What the live system looks like (measured read-only, 2026-11-19)
+## Live system facts this plan rests on (measured read-only, 2026-11-19)
 
-- 722 clubs, all ZotSpot-seeded and published; **710 unclaimed** (`user_id IS NULL`), 12
-  claimed. **0 events, 0 opportunities** in the database.
-- `events.club_id` and `opportunities.club_id` reference **`club_profiles.id`** (the listing),
-  not a user. So a post for an unclaimed club is valid data, and the day the club claims, the
-  existing owner RLS (`club_profiles.user_id = auth.uid()`) hands them full control of it
-  automatically. No migration of ownership is needed.
-- **Nothing records who created a post** (no `created_by`, no `source` on posts).
-- **Every write policy requires being the club's owner.** There is no admin write policy on
-  `events`, `opportunities`, or the `club-assets` bucket (uploads must sit in a folder named
-  after the uploader's user id). Today only the service role or SQL could create such a post.
-- **Responses to an unclaimed club go nowhere.** `notify_club_on_new_application` returns early
-  when the club has no owner, so an application is stored for a club nobody can read, and
-  nobody is told. An RSVP to a `requires_approval` event would sit `pending` forever.
-  Applicants grant the club their full profile (decision G3-05) — to nobody, in this case.
-- There is **no external link field** on posts (e.g. the club's own Google Form / sign-up
-  link), which is how most Instagram announcements take sign-ups.
-- **No club has `instagram_url` set (0/722)**, so matching an Instagram account to a listing
-  needs a lookup by name the first time, then the handle should be saved.
-- Instagram image URLs expire; flyers must be re-hosted into `club-assets`.
-- `notify_followers_on_new_post` is an **AFTER INSERT** trigger and ignores `is_active`, so
-  **even a saved draft notifies every follower** — a mistaken post is announced the instant it
-  is saved, before anyone reviews it. (This is also a latent bug for clubs using "Save as
-  draft" today.) Relevant to any import or review step.
+- 722 clubs, all ZotSpot-seeded and published; 710 unclaimed, 12 claimed. 0 events, 0 roles.
+- Posts reference `club_profiles.id`, not a user — a post for an unclaimed club is valid, and
+  on claim the owner RLS hands it over automatically.
+- Every write policy (posts and `club-assets` uploads) requires being the club's owner. There
+  is no non-owner write path except the service role.
+- Posts record no provenance. No `external_url`. No DB check on `opportunities.type` (the
+  allowed list lives only in `src/lib/constants.ts`).
+- `notify_followers_on_new_post` is `AFTER INSERT` and ignores `is_active` → **drafts notify**.
+- `send-reminders` emails followers about posts whose `created_at` is in the last hour and are
+  active → **a draft published later is never emailed**, and a batch of N posts sends each
+  follower N emails.
+- `Events.tsx` / `Opportunities.tsx` fetch **`limit(50)` with no pagination** → past 50
+  upcoming items, students silently can't see the rest. Automation will cross 50 quickly.
+- The claim form has **no consent wording** about ZotHub posting for the club.
+- `archive_past_events` (cron, nightly 09:00 UTC) hides events an hour after they start.
+- `config.toml`: functions that authenticate themselves run with `verify_jwt = false`.
+- Cloud environment: one personal "Default", unrestricted network, no secrets saved.
 
-## Proposed changes (each one needs maintainer sign-off; migrations + deploys are theirs)
+## Why not "Claude gives the maintainer SQL to run each day"
 
-1. **Migration — provenance on posts.** `source` (`'club'` | `'zothub'`), `source_url`
-   (the original post), `created_by` (the admin who published it), and `external_url`
-   (club's own sign-up link) on `events` and `opportunities`.
-2. **Migration — admin write access.** Let the `admin` role insert/update/delete posts **for
-   unclaimed clubs only**, plus an admin storage folder in `club-assets` for flyers.
-3. **Migration — responses for unclaimed clubs.** Either posts by ZotHub for unclaimed clubs
-   point students to `external_url` instead of in-app Apply/RSVP-with-approval, or
-   responses are held and handed over on claim. Decision needed.
-4. **Migration — follower notification fires on publish, not on insert**, so drafts don't
-   announce themselves.
-5. **Frontend — `/admin` "Post for a club" screen**: pick the club, paste or import the
-   agent's prepared posts, preview them exactly as students will see them, publish.
-6. **Frontend — honest label** on such posts (wording is a decision), and the claim banner
-   can point at them ("3 events are already listed for your club — claim it to manage them").
-7. **Workflow.** Maintainer sends raw material → agent drafts the post(s) as a file → the
-   maintainer reviews and publishes in `/admin`. The agent never writes to production itself
-   (CLAUDE.md non-negotiable) unless the maintainer explicitly decides otherwise.
+It puts the maintainer back in the loop daily (contradicts "automate it all"), and a
+hand-pasted SQL script has full power over the database — one bad line can delete data.
+And handing the automation the Supabase connector or the service key is the same risk with
+no human in between. **Instead: one locked-down door** (below) that can do only three things
+to posts, checks every row, and logs every write.
+
+## Phase 1 — Database (one migration; maintainer approval; backup first)
+
+1. `events` and `opportunities` gain:
+   - `external_url text` — `CHECK (external_url IS NULL OR external_url ~* '^https://')`
+   - `source text NOT NULL DEFAULT 'club' CHECK (source IN ('club','automation'))`
+   - `source_key text` — the sheet row's stable id; partial **unique** index where not null
+   - `source_url text` — the original Instagram post (never displayed)
+   - `automation_written_at timestamptz` — when the automation last wrote the row
+   - `announced_at timestamptz` — when followers were told (set once)
+2. Replace `notify_followers_on_new_post` with an announce-on-publish trigger: fires when a
+   post is inserted active, or flips inactive→active, **and** `announced_at IS NULL`; sets
+   `announced_at`. Re-publishing never re-announces. Applies to clubs' own posts too.
+3. `opportunities.type` CHECK against the six allowed values (no existing rows to violate).
+4. `automation_log` — every write the door makes: run id, action, table, post id, source key,
+   outcome, reason, payload, timestamp. Service-role only (RLS on, no policies).
+5. Dry-run nothing; 0 posts exist, so no backfill.
+
+## Phase 2 — Edge functions (deploy after the migration; maintainer approval)
+
+**New `publish-club-posts`** (`verify_jwt = false`, own auth):
+- Auth: header `x-automation-key` compared in constant time to secret `AUTOMATION_KEY`.
+  A refusal is **logged** (CLAUDE.md trap: a silent guard hides outages). No key set → 503.
+- Actions: `upsert` (a batch, max 50), `hide` (by `source_key`; sets `is_active=false`, never
+  deletes), `undo_run` (hides everything a run created). Every action supports `dry_run`.
+- Per-row checks, each returning a readable reason: club exists and is published; kind is
+  event|opportunity; title 3–120 chars, description ≤ 5,000; event date in the future and
+  within a year; times given as **Pacific wall-clock** and converted in one place (the UTC trap);
+  role type in the allowed list; `external_url` required and https; optional image fetched,
+  must be JPEG/PNG/WebP ≤ 5 MB, re-hosted to `club-assets/automation/<club_id>/…` (Instagram
+  image links expire); `source_key` required.
+- Duplicate guard: skip if the club already has an active post of the same kind with a
+  near-identical title on the same day (catches a claimed club that posted it themselves).
+- Edit guard: on update, if the row's `updated_at` is later than `automation_written_at`, a
+  person edited it → **skip and report**, never overwrite (pending decision #15).
+- Returns per-row `{created|updated|hidden|skipped|failed, reason}`; writes `automation_log`.
+- Pure validation logic in its own module with unit tests (runnable in this cloud session;
+  the function itself can't boot locally here — `T14`).
+
+**Changed `send-reminders`**: new-post emails key on `announced_at` (not `created_at`).
+
+## Phase 3 — Website (agent ships after Phase 1–2 are live; browser-tested both themes, phone)
+
+1. Event and role detail pages: when `external_url` is set, the primary button is
+   **RSVP Externally** / **Apply Externally**, opening the link in a new tab (`noopener`);
+   the in-app form, "Approval needed", "N going"/"N applied" counts and spots-left are hidden.
+2. Lists and cards: hide in-app counts on external posts.
+3. Club dashboard: automated posts appear in the club's postings like any other (they own
+   them); the applicants/RSVP review screens say responses come in on their own link instead
+   of an empty state.
+4. Create/Edit forms: an optional external-link field (pending #15). **Edit must load and
+   save `external_url`** — otherwise editing an automated post silently drops its link.
+5. **Pagination ("Show more")** on Events and Opportunities, server-side ordering, in the
+   query key (CLAUDE.md trap). Required before volume, not optional.
+6. Claim form: a consent sentence (pending #15).
+7. Regenerate `src/integrations/supabase/types.ts` for the new columns.
+
+## Phase 4 — The automation session
+
+- **Separate cloud environment** `zothub-automation`: network limited to the Supabase project
+  host; the automation key saved as a network secret for that host (header `x-automation-key`)
+  via the secure credential form — so dev sessions never carry it and the agent never sees it.
+- **Runbook** `docs/automation/RUNBOOK.md`: ground rules, the sheet's column contract, the
+  daily procedure, the report format, and what to do on every failure. The scheduled prompt is
+  short and points here, so rules change by editing one file.
+- **Sheet contract (draft, to settle with the maintainer):** row id · club Instagram handle ·
+  club name · kind (event/role) · title · description · event date+time (Pacific) · location ·
+  role type · deadline · external link · image link · status (active/cancelled).
+- **Club matching:** by saved Instagram handle; first sighting falls back to name lookup via
+  the public `get_all_clubs_public` RPC; ambiguous → skip and report (pending #15).
+- **Scheduled task:** daily ~2 PM Pacific, a fresh session each run, Google Sheets connector
+  attached. It: reads the sheet → validates → calls the door with `dry_run` → calls it for
+  real → reports.
+- **Rollout:** run in **dry-run for the first several days**, maintainer reads the reports,
+  then switch on. **Kill switch:** pause the scheduled task, or remove `AUTOMATION_KEY`
+  (the door then refuses everything). **Undo:** `undo_run` with the run id from the report.
+
+## Deploy order (CLAUDE.md)
+
+Migration → `publish-club-posts` + `AUTOMATION_KEY` secret → `send-reminders` → push frontend
+(the site reads the new columns, so it cannot ship first) → environment + scheduled task →
+dry-run → live. Update `CLAUDE.md` (the narrow write exception), `README.md` (new function,
+secret, environment) and `prd.md` (posting model) as each lands.
