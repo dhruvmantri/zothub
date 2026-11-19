@@ -3,7 +3,7 @@
 **The single log** of everything to implement, fix, remove, or decide. If another
 document disagrees with this file, **this file wins**.
 
-- **Last updated:** 2026-10-10 — post-launch audit logged; see [Post-launch audit](#post-launch-audit--2026-10-10).
+- **Last updated:** 2026-11-19 — `CP1` (posting for unclaimed clubs) scoped and logged. Previously 2026-10-10 — post-launch audit logged; see [Post-launch audit](#post-launch-audit--2026-10-10).
 - **Replaces:** `docs/LAUNCH-BACKLOG.md`, plus the scattered "still open" sections in
   `00-handoff.md` §6, `implementation-audit.md`, `plan.md` (WS10–12), the design and
   strategy docs, and the untracked `[launch-blocking]` tags in `prd.md`. See
@@ -198,6 +198,13 @@ student (capacity tests), ≥1 club team member. **Several are blocked by D1.**
 |---|---|---|
 | ⬜ **RS1** | UX | **Club recruiting walkthrough + artifacts.** Never obtained. Blocks confident design of the review pipeline and the application-review screen — currently built on assumption. Source: `docs/strategy/02-research.md` §4. |
 | ⬜ **RS2** | UX | **Student interviews / assumption A5** — do students already discover clubs via ZotSpot? Decides the student-side headline ("finally, one place" vs "the same clubs, without the friction"), i.e. the landing page. Interview guide is written and ready to run. Source: `docs/strategy/02-research.md` §3. |
+
+### Features — proposed
+
+| ID | Impact | Item |
+|---|---|---|
+| ⬜ **CP1** | UX · Trust | **Post events and roles for a club that has not claimed its listing** (maintainer request 2026-11-19: turn clubs' Instagram announcements into ZotHub posts that appear under the club). Investigated read-only against production 2026-11-19 — **plan proposed, nothing built**. Blockers found: only a club's owner can create posts (no admin path, also for flyer uploads); posts record no provenance; an application to an unclaimed club is stored for nobody and notifies nobody, and an approval-required RSVP would wait forever; no field for the club's own sign-up link; 0/722 clubs have an Instagram handle saved. Needs migrations + an `/admin` screen; decisions are *Decisions needed* #14. Full notes: `docs/design/cp1-posting-for-unclaimed-clubs.md`. |
+| ⬜ **CP1-a** | Reliability | **A saved draft notifies every follower.** `notify_followers_on_new_post` is `AFTER INSERT` and ignores `is_active`, so "Save as draft" announces an unpublished post (whose link a follower cannot open). Found 2026-11-19 while scoping `CP1`; fix is a migration (fire on publish). |
 
 ### Polish / housekeeping — nobody notices these
 
@@ -534,6 +541,7 @@ anything on it** (`CLAUDE.md` § Documentation discipline).
 | ~~11~~ | **ANSWERED 2026-10-11 — see Decisions made.** ~~**G3-05** — the apply panel's privacy sentence is untrue; approve the corrected wording.~~ |
 | ~~12~~ | **ANSWERED 2026-10-11 — see Decisions made.** ~~**LR10 / G7-07 / G8-12** — say ZotHub is independent of UC Irvine, and stop printing UCI's postal address as ours? Wording. (Also `UX31`: the trigger, outreach, has arrived.)~~ |
 | ~~13~~ | **ANSWERED 2026-10-11 — see Decisions made.** ~~**G2-07 / G2-03** — club search ranking and the "0 recruiting right now" line (offered 2026-09-22, not approved).~~ |
+| 14 | **CP1** — posting for unclaimed clubs: (a) does the agent publish directly, or prepare posts the maintainer approves in `/admin`? (b) is a post labelled as shared by ZotHub, or shown exactly like the club's own? (c) where do students respond — the club's own sign-up link, or in-app? (d) also for clubs that have already claimed? |
 
 ---
 
