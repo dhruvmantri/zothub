@@ -1,7 +1,7 @@
 # CP1 — Automated posting of club events and roles
 
-**Status:** plan v2, 2026-11-19. Nothing built. Decisions are dated in `../BACKLOG.md`
-(*Decisions made*, CP1 rows); open questions are *Decisions needed* #15. If this file and the
+**Status:** plan v3 (final), 2026-11-19 — all decisions answered, nothing built. Decisions are
+dated in `../BACKLOG.md` (*Decisions made*, CP1 rows). If this file and the
 backlog disagree, the backlog wins.
 
 ## Goal
@@ -73,7 +73,7 @@ to posts, checks every row, and logs every write.
 - Duplicate guard: skip if the club already has an active post of the same kind with a
   near-identical title on the same day (catches a claimed club that posted it themselves).
 - Edit guard: on update, if the row's `updated_at` is later than `automation_written_at`, a
-  person edited it → **skip and report**, never overwrite (pending decision #15).
+  person edited it → **skip and report**, never overwrite (decided 2026-11-19: the club wins).
 - Returns per-row `{created|updated|hidden|skipped|failed, reason}`; writes `automation_log`.
 - Pure validation logic in its own module with unit tests (runnable in this cloud session;
   the function itself can't boot locally here — `T14`).
@@ -83,17 +83,18 @@ to posts, checks every row, and logs every write.
 ## Phase 3 — Website (agent ships after Phase 1–2 are live; browser-tested both themes, phone)
 
 1. Event and role detail pages: when `external_url` is set, the primary button is
-   **RSVP Externally** / **Apply Externally**, opening the link in a new tab (`noopener`);
+   **RSVP Externally** / **Apply Externally**, opening the link in a new tab (`noopener`) —
+   **for signed-out visitors too, no sign-in step** (decided 2026-11-19);
    the in-app form, "Approval needed", "N going"/"N applied" counts and spots-left are hidden.
 2. Lists and cards: hide in-app counts on external posts.
 3. Club dashboard: automated posts appear in the club's postings like any other (they own
    them); the applicants/RSVP review screens say responses come in on their own link instead
    of an empty state.
-4. Create/Edit forms: an optional external-link field (pending #15). **Edit must load and
+4. Create/Edit forms: an optional external-link field (decided 2026-11-19: clubs may add one). **Edit must load and
    save `external_url`** — otherwise editing an automated post silently drops its link.
 5. **Pagination ("Show more")** on Events and Opportunities, server-side ordering, in the
    query key (CLAUDE.md trap). Required before volume, not optional.
-6. Claim form: a consent sentence (pending #15).
+6. Claim form: unchanged (decided 2026-11-19: no consent sentence).
 7. Regenerate `src/integrations/supabase/types.ts` for the new columns.
 
 ## Phase 4 — The automation session
@@ -104,14 +105,18 @@ to posts, checks every row, and logs every write.
 - **Runbook** `docs/automation/RUNBOOK.md`: ground rules, the sheet's column contract, the
   daily procedure, the report format, and what to do on every failure. The scheduled prompt is
   short and points here, so rules change by editing one file.
-- **Sheet contract (draft, to settle with the maintainer):** row id · club Instagram handle ·
-  club name · kind (event/role) · title · description · event date+time (Pacific) · location ·
+- **Sheet contract (draft, to settle with the maintainer):** row id · **club name** (always
+  present, decided 2026-11-19) · club Instagram handle · kind (event/role) · title · description · event date+time (Pacific) · location ·
   role type · deadline · external link · image link · status (active/cancelled).
-- **Club matching:** by saved Instagram handle; first sighting falls back to name lookup via
-  the public `get_all_clubs_public` RPC; ambiguous → skip and report (pending #15).
+- **Club matching:** by the sheet's club name against the public `get_all_clubs_public` RPC
+  (handle as a tiebreak). **Rule, everywhere: whenever the automation is not confident —
+  matching or anything else — it does not post, and reports it** (decided 2026-11-19).
 - **Scheduled task:** daily ~2 PM Pacific, a fresh session each run, Google Sheets connector
   attached. It: reads the sheet → validates → calls the door with `dry_run` → calls it for
-  real → reports.
+  real → writes the report.
+- **Daily report → a "Report" tab in the same Google Sheet** (decided 2026-11-19): one row
+  per sheet row handled — created / updated / hidden / skipped / failed, and why — plus the
+  run id. So the session needs **write** access to that sheet.
 - **Rollout:** run in **dry-run for the first several days**, maintainer reads the reports,
   then switch on. **Kill switch:** pause the scheduled task, or remove `AUTOMATION_KEY`
   (the door then refuses everything). **Undo:** `undo_run` with the run id from the report.
