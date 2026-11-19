@@ -70,7 +70,7 @@ signed-out visitors read posts through a column allowlist and would never see th
 
 ## Phase 2 — Edge functions (deploy after the migration; maintainer approval)
 
-**Built 2026-11-19, not yet deployed.** `supabase/functions/publish-club-posts/` —
+**✅ Deployed 2026-11-19** (door v1, locked until `AUTOMATION_KEY` exists; `send-reminders` v8). `supabase/functions/publish-club-posts/` —
 `index.ts` (key check only), `door.ts` (all logic; database client and fetch are injected),
 `rules.ts` (pure checks). Tests: `rules.test.ts` (19, Node unit) and
 `tests/automation/door.integration.ts` (21, Node against a real LOCAL database — the edge
