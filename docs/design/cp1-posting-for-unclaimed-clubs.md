@@ -42,6 +42,17 @@ to posts, checks every row, and logs every write.
 
 ## Phase 1 — Database (one migration; maintainer approval; backup first)
 
+**Built 2026-11-19, NOT yet applied to production:** `supabase/migrations/20261119000100_cp1_automated_posts.sql`.
+Undo: `supabase/rollback/20261119000100_cp1_automated_posts.down.sql` (restores the live
+trigger exactly; tested). Checks: `tests/sql/cp1-automated-posts.test.sql` — **26/26 on a local
+database**; proved in reverse (removing the guard trigger fails check 1; restoring the old
+notify-on-insert trigger fails "saving a draft sends no notification").
+As built, two changes from the plan below: `automation_written_at` became **`club_edited_at`**
+(a page view, an RSVP counter and the nightly archive all UPDATE a post, so "last changed"
+cannot tell a club's edit apart); and **`GRANT SELECT (external_url) … TO anon`**, because
+signed-out visitors read posts through a column allowlist and would never see the buttons.
+
+
 1. `events` and `opportunities` gain:
    - `external_url text` — `CHECK (external_url IS NULL OR external_url ~* '^https://')`
    - `source text NOT NULL DEFAULT 'club' CHECK (source IN ('club','automation'))`
