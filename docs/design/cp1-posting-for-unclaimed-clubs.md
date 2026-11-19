@@ -42,7 +42,7 @@ to posts, checks every row, and logs every write.
 
 ## Phase 1 — Database (one migration; maintainer approval; backup first)
 
-**Built 2026-11-19, NOT yet applied to production:** `supabase/migrations/20261119000100_cp1_automated_posts.sql`.
+**✅ Applied to production 2026-11-19** (maintainer OK; recorded in migration history as `20261119000100 cp1_automated_posts`; live function logic verified identical to the tested copy): `supabase/migrations/20261119000100_cp1_automated_posts.sql`.
 Undo: `supabase/rollback/20261119000100_cp1_automated_posts.down.sql` (restores the live
 trigger exactly; tested). Checks: `tests/sql/cp1-automated-posts.test.sql` — **26/26 on a local
 database**; proved in reverse (removing the guard trigger fails check 1; restoring the old
