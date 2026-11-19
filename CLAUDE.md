@@ -203,8 +203,10 @@ cloud session start the daemon with `sudo dockerd`.
   is in the response **body**. Log the refusal; read the body.
 - **Two things still depend on the LEGACY JWT keys: the live site (its public anon key is an
   `eyJ…` JWT) and the hourly reminder job.** `cron.job` posts to `send-reminders` with a bearer
-  token read from Vault (`R2`); the function is not in `config.toml`, so the gateway's default
-  `verify_jwt` checks that token as a JWT. Edge functions themselves now see the new
+  token read from Vault (`R2`). **Correction, measured 2026-11-19:** the LIVE `send-reminders`
+  has `verify_jwt = false` (now mirrored in `config.toml`), so the gateway does NOT check that token
+  and the function checks none itself — anyone with the URL can trigger a run (`S11`). The `R2`
+  migration still demands an `eyJ…` key to store. Edge functions themselves now see the new
   `sb_secret_…` key (`E2`). So **switching off legacy API keys in the dashboard takes the site
   down loudly and stops every reminder email silently** — and the `R2` migration would refuse to
   re-store a new-format key (it demands `eyJ…`). Move both first (`T14`). Reminders no longer

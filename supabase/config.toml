@@ -29,6 +29,15 @@ verify_jwt = false
 [functions.review-club-claim]
 verify_jwt = false
 
+# Mirrors LIVE (measured 2026-11-19 — it was deployed this way). The function does no auth of
+# its own, so anyone can trigger a run: backlog S11. Kept as-is so a redeploy changes nothing.
+[functions.send-reminders]
+verify_jwt = false
+
+# CP1 posting door: authenticates with its own AUTOMATION_KEY (x-automation-key), not a JWT.
+[functions.publish-club-posts]
+verify_jwt = false
+
 # Edge functions that REQUIRE an authenticated caller (gateway JWT check on, the
 # platform default — declared explicitly so the trust boundary is readable here
 # rather than only in the function body):

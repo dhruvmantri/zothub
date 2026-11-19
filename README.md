@@ -84,7 +84,7 @@ This project is built with modern web technologies:
 
    Run the migrations in the \`supabase/migrations/\` directory in your Supabase project.
 
-   Also deploy the 7 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`, \`submit-club-claim\`, \`review-club-claim\`, \`provision-oauth-user\`) via the Supabase CLI. Signup (OTP verification), all outbound email, the club-claim flow and Google sign-up (\`provision-oauth-user\`, which keeps \`verify_jwt = true\`) depend on these.
+   Also deploy the 8 Edge Functions in \`supabase/functions/\` (\`send-email\`, \`send-otp\`, \`verify-otp\`, \`send-reminders\`, \`submit-club-claim\`, \`review-club-claim\`, \`provision-oauth-user\`, \`publish-club-posts\` — the daily posting automation's door, see \`docs/design/cp1-posting-for-unclaimed-clubs.md\`) via the Supabase CLI. Signup (OTP verification), all outbound email, the club-claim flow and Google sign-up (\`provision-oauth-user\`, which keeps \`verify_jwt = true\`) depend on these.
 
    **Required Edge Function secrets** — set these *before* deploying, or signup fails closed:
    - \`RESEND_API_KEY\` — all outbound email.
@@ -237,6 +237,7 @@ Do **not** hand-apply SQL to production as the normal path, and never run \`supa
 | \`PUBLIC_SITE_URL\` | Public origin, e.g. \`https://zothub.app\`. Used to build password-set links. |
 | \`ADMIN_ALERT_EMAIL\` | *Optional.* Recipient of the "New club claim" alert sent by \`submit-club-claim\`. Defaults to \`zothub.uci@gmail.com\`. |
 | \`CAPTCHA_DISABLED\` | **Local development only.** \`true\` skips captcha verification. Never set in production. |
+| \`AUTOMATION_KEY\` | The posting automation's own secret (≥ 32 random characters), checked by \`publish-club-posts\` against the \`x-automation-key\` header. **Without it the posting door refuses everything (503) — that is also its kill switch.** Not the service key; never commit it. |
 
 ## Security
 

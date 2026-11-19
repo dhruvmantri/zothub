@@ -289,10 +289,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // --- 3 & 4. New posts from followed clubs, in the last hour -------------
+    // --- 3 & 4. New posts from followed clubs, PUBLISHED in the last hour -----
     // NOTE (R2): this one-hour lookback is why the cron schedule matters. A
     // paused job does not delay these emails, it SKIPS them permanently — the
     // window has moved on by the time it resumes.
+    //
+    // Keyed on `announced_at` (CP1, migration 20261119000100), the moment a post
+    // was first published — the same moment the in-app notification fires. It
+    // used to be `created_at`, so a draft published more than an hour after it
+    // was saved was never emailed to anyone.
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
     for (const kind of ["opportunity", "event"] as const) {
@@ -301,7 +306,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from(table)
         .select(`id, title, club_profiles:club_id(id, club_name)`)
         .eq("is_active", true)
-        .gte("created_at", oneHourAgo.toISOString());
+        .gte("announced_at", oneHourAgo.toISOString());
 
       if (postsErr) {
         results.errors.push(`New ${kind} query error: ${postsErr.message}`);

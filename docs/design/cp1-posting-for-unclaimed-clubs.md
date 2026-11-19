@@ -70,6 +70,22 @@ signed-out visitors read posts through a column allowlist and would never see th
 
 ## Phase 2 — Edge functions (deploy after the migration; maintainer approval)
 
+**Built 2026-11-19, not yet deployed.** `supabase/functions/publish-club-posts/` —
+`index.ts` (key check only), `door.ts` (all logic; database client and fetch are injected),
+`rules.ts` (pure checks). Tests: `rules.test.ts` (19, Node unit) and
+`tests/automation/door.integration.ts` (21, Node against a real LOCAL database — the edge
+runtime itself cannot boot in a cloud session, `T14`). Proved in reverse: removing the
+club-edit guard, the deleted-post check or the club-name match each fails its tests.
+Differences from the plan below, as built: `dry_run` must be stated explicitly (no default);
+the club is identified by `club_id` **and** `club_name`, which must match after normalising
+(case, spacing, accents, `&`→and) — the automation looks the id up by name; `hide` is a
+`status: "cancelled"` row inside `upsert`; an **undo also stamps `club_edited_at`** ("a person
+stepped in"), otherwise the next day's run would quietly redo it; images are stored at a path
+derived from the source link, so an unchanged image is never re-copied.
+`send-reminders`: one line — new-post emails key on `announced_at`. Its live `verify_jwt =
+false` is preserved (and now mirrored in `config.toml`; see `S11`).
+
+
 **New `publish-club-posts`** (`verify_jwt = false`, own auth):
 - Auth: header `x-automation-key` compared in constant time to secret `AUTOMATION_KEY`.
   A refusal is **logged** (CLAUDE.md trap: a silent guard hides outages). No key set → 503.
