@@ -215,6 +215,13 @@ Schema changes use **normal Supabase migration files + the Supabase CLI** (the m
 
 Do **not** hand-apply SQL to production as the normal path, and never run \`supabase db reset\` against production.
 
+An undo script for a migration, where one exists, lives in \`supabase/rollback/<version>_<name>.down.sql\` — outside \`supabase/migrations/\` so it is never applied by \`db push\` or \`db reset\`.
+
+Checks that run against a **local** database only (\`npx supabase start\` first):
+
+- \`psql -v ON_ERROR_STOP=1 postgresql://postgres:postgres@127.0.0.1:54322/postgres -f tests/sql/cp1-automated-posts.test.sql\` — the automated-posting migration's rules (rolls itself back).
+- \`node --experimental-strip-types --test tests/automation/door.integration.ts\` — the \`publish-club-posts\` logic against a real database (reads its keys from \`supabase status\`).
+
 ## Environment Variables
 
 | Variable | Description | Example |

@@ -23,6 +23,7 @@ import {
   ApplicationQuestion 
 } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import { SuccessModal } from "@/components/SuccessModal";
+import { ExternalLinkField } from "@/components/forms/ExternalLinkField";
 import { ShareButton } from "@/components/ShareButton";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
@@ -52,6 +53,7 @@ export default function CreateOpportunity() {
   const [deadline, setDeadline] = useState("");
   const [showApplicationCount, setShowApplicationCount] = useState(false);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
+  const [externalUrl, setExternalUrl] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent, asDraft = false) => {
@@ -80,6 +82,7 @@ export default function CreateOpportunity() {
       description: description.trim() || null,
       requirements: requirements.trim() || null,
       deadline: deadline || null,
+      external_url: externalUrl,
       // G6-06 (decision 2026-10-11): the button says what happens. There was
       // also a "Publish immediately" switch, and switching it off then pressing
       // Publish saved a draft while the popup announced it was live.
@@ -127,6 +130,7 @@ export default function CreateOpportunity() {
         is_active: validatedData.is_active,
         application_questions: validatedData.application_questions,
         show_application_count: showApplicationCount,
+        external_url: validatedData.external_url,
       }).select("id").single();
 
       if (error) {
@@ -296,7 +300,15 @@ export default function CreateOpportunity() {
             </CardContent>
           </Card>
 
-          {/* Application Questions */}
+          <ExternalLinkField
+            kind="opportunity"
+            value={externalUrl}
+            onChange={setExternalUrl}
+            error={fieldErrors.external_url}
+          />
+
+          {/* Application Questions — not used when applications happen on the club's own form. */}
+          {!externalUrl.trim() && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -314,6 +326,7 @@ export default function CreateOpportunity() {
               />
             </CardContent>
           </Card>
+          )}
 
           {/* Actions */}
           {/* Stacked on a phone, Publish on top: in one row the three buttons need

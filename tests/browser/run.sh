@@ -13,8 +13,13 @@ cd "$(dirname "$0")/../.."
 
 PORT="${ZOTHUB_TEST_PORT:-8080}"
 export ZOTHUB_BASE_URL="http://127.0.0.1:${PORT}"
-[ -x /opt/pw-browsers/chromium-1194/chrome-linux/chrome ] && \
-  export PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
+# Cloud sessions pre-install one Chromium; its versioned path changes between
+# images, so prefer the stable symlink and fall back to the old pinned path.
+if [ -z "${PLAYWRIGHT_CHROMIUM_PATH:-}" ]; then
+  for c in /opt/pw-browsers/chromium /opt/pw-browsers/chromium-1194/chrome-linux/chrome; do
+    [ -x "$c" ] && { export PLAYWRIGHT_CHROMIUM_PATH="$c"; break; }
+  done
+fi
 
 npx vite --host 127.0.0.1 --port "$PORT" --strictPort > /tmp/zothub-vite-$$.log 2>&1 &
 VITE_PID=$!

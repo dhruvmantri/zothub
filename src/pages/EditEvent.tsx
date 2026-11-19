@@ -14,6 +14,7 @@ import { ClubLayout } from "@/components/club/ClubLayout";
 import { eventSchema, validateInput, formatValidationErrors } from "@/lib/validation";
 import { eventKeys } from "@/lib/queryKeys";
 import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { ExternalLinkField } from "@/components/forms/ExternalLinkField";
 import {
   Calendar,
   MapPin,
@@ -45,6 +46,7 @@ export default function EditEvent() {
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
@@ -80,6 +82,8 @@ export default function EditEvent() {
     setLocation(data.location || "");
     setCapacity(data.capacity?.toString() || "");
     setBannerUrl(data.banner_url || "");
+    // Loaded and saved back — or the first edit of a post would drop its link.
+    setExternalUrl(data.external_url || "");
     setIsActive(data.is_active ?? true);
     setRsvpQuestions(Array.isArray(data.rsvp_questions) ? (data.rsvp_questions as unknown as ApplicationQuestion[]) : []);
     setRequiresApproval(data.requires_approval ?? false);
@@ -104,6 +108,7 @@ export default function EditEvent() {
       location: location.trim() || null,
       capacity: capacity ? parseInt(capacity, 10) : null,
       banner_url: bannerUrl.trim() || null,
+      external_url: externalUrl,
       // G6-06 (decision 2026-10-11): the Published switch is the only
       // visibility control here. A "Save as Draft" button beside it used to
       // unpublish a live posting while the switch still read Published.
@@ -131,6 +136,7 @@ export default function EditEvent() {
           location: validatedData.location,
           capacity: validatedData.capacity,
           banner_url: validatedData.banner_url,
+          external_url: validatedData.external_url,
           is_active: validatedData.is_active,
           rsvp_questions: rsvpQuestions as unknown as null,
           requires_approval: requiresApproval,
@@ -328,7 +334,15 @@ export default function EditEvent() {
             </CardContent>
           </Card>
 
-          {/* RSVP Settings */}
+          <ExternalLinkField
+            kind="event"
+            value={externalUrl}
+            onChange={setExternalUrl}
+            error={fieldErrors.external_url}
+          />
+
+          {/* RSVP Settings — not used when sign-ups happen on the club's own form. */}
+          {!externalUrl.trim() && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -364,6 +378,7 @@ export default function EditEvent() {
               />
             </CardContent>
           </Card>
+          )}
 
           {/* Publishing Options */}
           <Card>

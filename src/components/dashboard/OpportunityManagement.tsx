@@ -29,6 +29,7 @@ import {
   Edit, 
   Trash2, 
   Eye,
+  ExternalLink,
   Users,
   Clock,
   Filter,
@@ -179,10 +180,18 @@ export function OpportunityManagement({ opportunities, onDelete, isLoading }: Op
                             <Eye className="w-3.5 h-3.5" />
                             {opportunity.views}
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5" />
-                            {opportunity.applications_count}
-                          </div>
+                          {opportunity.external_url ? (
+                            // CP1: applications happen on the club's own form.
+                            <span className="flex items-center gap-1.5 font-sans text-ink-3">
+                              <ExternalLink aria-hidden className="w-3.5 h-3.5" />
+                              On your link
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5" />
+                              {opportunity.applications_count}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">

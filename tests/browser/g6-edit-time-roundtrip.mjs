@@ -29,15 +29,20 @@ const user = { id: USER_ID, aud: "authenticated", role: "authenticated", email: 
 const session = { access_token: jwt, token_type: "bearer", expires_in: 3600, expires_at: exp, refresh_token: "r", user };
 
 const CLUB = { id: "c1", club_name: "Hack at UCI", logo_url: null, user_id: USER_ID };
+// NEXT year's dates, never a fixed year: the edit form refuses a date in the past,
+// so a hard-coded 2026 event stopped saving at all once October 2026 went by and
+// the test failed for a reason unrelated to the time bug. Oct 20 is always
+// daylight time (PDT, -7h) and Dec 4 always standard time (PST, -8h).
+const Y = new Date().getFullYear() + 1;
 const CASES = [
   // 6:00pm PDT on Oct 20 = 01:00Z Oct 21 — the evening event that lands on the wrong DAY when shifted.
   { kind: "event", path: "/postings/events/e1/edit", table: "events", field: "event_date", input: "#eventDate",
-    stored: "2026-10-21T01:00:00+00:00", shows: "2026-10-20T18:00",
+    stored: `${Y}-10-21T01:00:00+00:00`, shows: `${Y}-10-20T18:00`,
     row: { id: "e1", club_id: "c1", title: "Fall Kickoff", description: "Robots.", location: "ISEB 1010",
            capacity: 40, banner_url: null, is_active: true, rsvp_questions: [], requires_approval: false } },
   // 11:59pm PST on Dec 4 = 07:59Z Dec 5 — a winter deadline, so the 8-hour offset is covered too.
   { kind: "role", path: "/postings/r1/edit", table: "opportunities", field: "deadline", input: "#deadline",
-    stored: "2026-12-05T07:59:00+00:00", shows: "2026-12-04T23:59",
+    stored: `${Y}-12-05T07:59:00+00:00`, shows: `${Y}-12-04T23:59`,
     row: { id: "r1", club_id: "c1", title: "Competition Team Lead", type: "leadership", description: "Lead the build team for the regional competition.",
            requirements: "", is_active: true, show_application_count: false, application_questions: [] } },
 ];

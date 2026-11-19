@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OPPORTUNITY_TYPE_VALUES, YEAR_OPTIONS, CLUB_CATEGORIES } from "@/lib/constants";
+import { checkExternalLinkInput } from "@/lib/externalLink";
 
 // ============= Common Validators =============
 
@@ -8,6 +9,23 @@ const optionalUrlSchema = z.string().optional().nullable().refine(
   (val) => !val || val.trim() === "" || z.string().url().safeParse(val).success,
   { message: "Please enter a valid URL" }
 ).transform(val => val?.trim() || null);
+
+// CP1: the optional "Apply/RSVP Externally" link. Empty means ZotHub's own
+// Apply/RSVP; otherwise a full https address (the database refuses anything else).
+const externalLinkSchema = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((val, ctx) => {
+    const result = checkExternalLinkInput(val ?? "");
+    // `"error" in`, not `!result.ok`: this project's tsconfig is not strict, and
+    // without strictNullChecks a boolean-literal discriminant does not narrow.
+    if ("error" in result) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+      return z.NEVER;
+    }
+    return result.value;
+  });
 
 // Required URL validation
 const requiredUrlSchema = z.string().url({ message: "Please enter a valid URL" }).transform(val => val.trim());
@@ -97,6 +115,7 @@ export const eventSchema = z.object({
     .optional()
     .nullable(),
   banner_url: optionalUrlSchema,
+  external_url: externalLinkSchema,
   is_active: z.boolean().default(true),
 });
 
@@ -119,6 +138,7 @@ export const opportunitySchema = z.object({
   description: sanitizedTextSchema(5000, "Description").optional().nullable(),
   requirements: sanitizedTextSchema(3000, "Requirements").optional().nullable(),
   deadline: futureDateSchema.optional().nullable(),
+  external_url: externalLinkSchema,
   is_active: z.boolean().default(true),
   application_questions: z.array(applicationQuestionSchema).max(50, { message: "Maximum 50 questions allowed" }).optional(),
 });

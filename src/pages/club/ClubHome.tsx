@@ -304,7 +304,8 @@ export default function ClubHome() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-ink">{opp.title}</p>
                           <p className="font-data text-xs text-ink-3">
-                            {countOf(opp.applications_count, "application")} · {countOf(opp.views, "view")}
+                            {opp.external_url ? "Applications on your link" : countOf(opp.applications_count, "application")} ·{" "}
+                            {countOf(opp.views, "view")}
                           </p>
                         </div>
                       </Link>

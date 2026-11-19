@@ -109,6 +109,17 @@ false` is preserved (and now mirrored in `config.toml`; see `S11`).
 
 ## Phase 3 — Website (agent ships after Phase 1–2 are live; browser-tested both themes, phone)
 
+**Built and tested 2026-11-19** (`tests/browser/cp1-external-and-paging.mjs`, 158/158). As built:
+`src/lib/externalLink.ts` (the one check before a stored link becomes an `href`, and the
+form's input rule — a link pasted without `https://` is completed, `http://` is refused),
+`src/components/ExternalActionButton.tsx`, `src/components/forms/ExternalLinkField.tsx`
+(`type="text"` + `inputMode="url"` — the native URL type blocked the form on `forms.gle/…`),
+`src/lib/listPages.ts` + `src/components/discover/ShowMore.tsx`. Events/Opportunities use
+`useInfiniteQuery` on the same keys; each page is `range(offset, offset+49)` with
+`count: "exact"`, ordered by the chosen sort then `id`. While a link is set the form hides
+ZotHub's own RSVP/application questions (state kept, so clearing the link brings them back).
+
+
 1. Event and role detail pages: when `external_url` is set, the primary button is
    **RSVP Externally** / **Apply Externally**, opening the link in a new tab (`noopener`) —
    **for signed-out visitors too, no sign-in step** (decided 2026-11-19);

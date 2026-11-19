@@ -27,6 +27,10 @@ export interface EventDetailData {
    *  FULL event advertised every seat as available. Dropping the embed also
    *  takes per-viewer data out of the cached payload. */
   confirmed_rsvps_count: number;
+  /** CP1: the club's own sign-up link. When set, the page offers
+   *  "RSVP Externally" instead of ZotHub's RSVP. Anon may read it (column grant
+   *  in 20261119000100). */
+  external_url: string | null;
 }
 
 /**
@@ -48,7 +52,7 @@ async function fetchEventDetail(
   const { data, error } = (await supabase
     .from("events")
     .select(
-      `id, title, description, event_date, location, capacity, banner_url, requires_approval, confirmed_rsvps_count, ${isAuthed ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url)`,
+      `id, title, description, event_date, location, capacity, banner_url, requires_approval, confirmed_rsvps_count, external_url, ${isAuthed ? "rsvp_questions, " : ""}club_profiles (id, club_name, logo_url)`,
     )
     .eq("id", eventId)
     .maybeSingle()) as unknown as {

@@ -29,6 +29,9 @@ export interface OpportunityDetailData {
    *  `applications` array that RLS filtered to the viewer's own rows, so a
    *  logged-out visitor read 0 on every role however busy it was. */
   applications_count: number;
+  /** CP1: the club's own application link. When set, the page offers
+   *  "Apply Externally" instead of ZotHub's application. Anon may read it. */
+  external_url: string | null;
 }
 
 /** The stored questions are untyped JSON; normalise once, here. */
@@ -67,7 +70,7 @@ async function fetchOpportunityDetail(
   const { data, error } = (await supabase
     .from("opportunities")
     .select(
-      `id, title, type, description, requirements, deadline, ${isAuthed ? "application_questions, " : ""}show_application_count, applications_count, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url)`,
+      `id, title, type, description, requirements, deadline, ${isAuthed ? "application_questions, " : ""}show_application_count, applications_count, external_url, created_at, club_id, club_profiles (id, club_name, logo_url, description, website_url)`,
     )
     .eq("id", opportunityId)
     .eq("is_active", true)

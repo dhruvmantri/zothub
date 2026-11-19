@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Bookmark, Heart } from "lucide-react";
 
 import { RoleBasedLayout } from "@/components/RoleBasedLayout";
@@ -23,6 +23,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchAppliedOpportunityIds } from "@/lib/queryFns";
 import { applicationKeys, opportunityKeys, EMPTY_ID_SET } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
+import { LIST_PAGE_SIZE, flattenPages, nextPageIndex, type ListPage } from "@/lib/listPages";
+import { ShowMore } from "@/components/discover/ShowMore";
 
 interface OpportunityRow {
   id: string;
@@ -44,6 +46,8 @@ interface OpportunityRow {
   /** The club's "show applicant count" switch. Defaults to false in the
    *  database, so a null means the club never opted in. */
   show_application_count: boolean | null;
+  /** CP1: applications happen on the club's own form — no in-app count. */
+  external_url: string | null;
 }
 
 /** Module-level so the fallback identity is stable. `data ?? []` allocates a
@@ -84,11 +88,12 @@ const SORT_OPTIONS = [
  * with `retry: 1` it fires twice per failure and again on every background
  * refetch. Failure is surfaced from render, via `isError`.
  */
-async function fetchOpportunitiesList(sort: OpportunitySort): Promise<OpportunityRow[]> {
+async function fetchOpportunitiesList(sort: OpportunitySort, pageIndex: number): Promise<ListPage<OpportunityRow>> {
   const now = new Date().toISOString();
   let query = supabase
     .from("opportunities")
-    .select(`
+    .select(
+      `
       id,
       title,
       type,
@@ -97,11 +102,14 @@ async function fetchOpportunitiesList(sort: OpportunitySort): Promise<Opportunit
       club_id,
       applications_count,
       show_application_count,
+      external_url,
       club_profiles (
         club_name,
         logo_url
       )
-    `)
+    `,
+      { count: "exact" },
+    )
     .eq("is_active", true)
     .or(`deadline.is.null,deadline.gte.${now}`);
 
@@ -121,11 +129,15 @@ async function fetchOpportunitiesList(sort: OpportunitySort): Promise<Opportunit
   // deterministic tiebreak the same sort can return rows in a different order
   // on each fetch, which reads as the list jumping about by itself.
   query = query.order("created_at", { ascending: false });
+  // created_at can tie (a batch of posts); a unique last key keeps page
+  // boundaries exact, so "Show more" never repeats or skips a role.
+  query = query.order("id", { ascending: true });
 
-  const { data, error } = await query.limit(50);
+  const from = pageIndex * LIST_PAGE_SIZE;
+  const { data, error, count } = await query.range(from, from + LIST_PAGE_SIZE - 1);
 
   if (error) throw new Error(`Failed to load opportunities: ${error.message}`);
-  return data ?? [];
+  return { rows: (data ?? []) as OpportunityRow[], total: count ?? 0 };
 }
 
 /** Module-level, so TanStack can memoise the derived Set. An inline arrow would
@@ -173,9 +185,14 @@ export default function OpportunitiesPage() {
   // it instant — and unlike the sort it is safe there, because filtering can
   // only ever narrow the rows already in hand, never reveal rows the 50-row cap
   // left behind.
-  const opportunitiesQuery = useQuery({
+  //
+  // "Show more" (CP1): 50 at a time, in the database's order; see
+  // src/lib/listPages.ts.
+  const opportunitiesQuery = useInfiniteQuery({
     queryKey: opportunityKeys.listSorted(sortOption),
-    queryFn: () => fetchOpportunitiesList(sortOption),
+    queryFn: ({ pageParam }) => fetchOpportunitiesList(sortOption, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: nextPageIndex,
     // Switching sort is now a network round trip. Without this the page would
     // drop straight back to the six grey skeletons — a full-page flash for what
     // reads as a local re-ordering. The previous rows stay on screen, dimmed,
@@ -195,7 +212,11 @@ export default function OpportunitiesPage() {
     select: selectAppliedIdSet,
   });
 
-  const opportunities = opportunitiesQuery.data ?? EMPTY_OPPORTUNITIES;
+  const opportunities = useMemo(
+    () => (opportunitiesQuery.data ? flattenPages(opportunitiesQuery.data.pages) : EMPTY_OPPORTUNITIES),
+    [opportunitiesQuery.data],
+  );
+  const totalOpportunities = opportunitiesQuery.data?.pages[0]?.total ?? 0;
   const appliedOpportunityIds = appliedQuery.data ?? EMPTY_ID_SET;
   /** True while a newly-chosen sort is still in flight and the rows on screen
    *  are the PREVIOUS order. */
@@ -280,7 +301,7 @@ export default function OpportunitiesPage() {
       // (maintainer decisions, 2026-09-20). A brand-new posting should look
       // new, not ignored — and at launch nearly every card is at zero.
       meta:
-        opp.show_application_count && opp.applications_count > 0
+        !opp.external_url && opp.show_application_count && opp.applications_count > 0
           ? `Due ${formatDeadline(opp.deadline)} · ${opp.applications_count} applied`
           : `Due ${formatDeadline(opp.deadline)}`,
       tag: { label: opportunityTypeLabel(opp.type) },
@@ -434,7 +455,7 @@ export default function OpportunitiesPage() {
                         deadline={`Due ${formatDeadline(opportunity.deadline)}`}
                         deadlineAt={opportunity.deadline}
                         applicants={opportunity.applications_count}
-                        showApplicants={opportunity.show_application_count ?? false}
+                        showApplicants={!opportunity.external_url && (opportunity.show_application_count ?? false)}
                         isBookmarked={isBookmarked(opportunity.id)}
                         onBookmark={() => toggleBookmark(opportunity.id)}
                         hasApplied={appliedOpportunityIds.has(opportunity.id)}
@@ -473,6 +494,17 @@ export default function OpportunitiesPage() {
                     }
                   />
                 )
+              )}
+
+              {opportunitiesQuery.hasNextPage && (
+                <ShowMore
+                  noun="roles"
+                  loaded={opportunities.length}
+                  total={totalOpportunities}
+                  filtered={hasFilters}
+                  loading={opportunitiesQuery.isFetchingNextPage}
+                  onShowMore={() => opportunitiesQuery.fetchNextPage()}
+                />
               )}
             </div>
           )}

@@ -16,6 +16,7 @@ import { eventSchema, validateInput, formatValidationErrors } from "@/lib/valida
 import { eventKeys } from "@/lib/queryKeys";
 import { ApplicationQuestionsBuilder, ApplicationQuestion } from "@/components/dashboard/ApplicationQuestionsBuilder";
 import { SuccessModal } from "@/components/SuccessModal";
+import { ExternalLinkField } from "@/components/forms/ExternalLinkField";
 import {
   Calendar,
   MapPin,
@@ -44,6 +45,7 @@ export default function CreateEvent() {
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
   // RSVP form state
@@ -67,6 +69,7 @@ export default function CreateEvent() {
       location: location.trim() || null,
       capacity: capacity ? parseInt(capacity, 10) : null,
       banner_url: bannerUrl.trim() || null,
+      external_url: externalUrl,
       // G6-06 (decision 2026-10-11): the button says what happens — see
       // CreateOpportunity. The "Publish immediately" card is gone.
       is_active: !asDraft,
@@ -110,6 +113,7 @@ export default function CreateEvent() {
         location: validatedData.location,
         capacity: validatedData.capacity,
         banner_url: validatedData.banner_url,
+        external_url: validatedData.external_url,
         is_active: validatedData.is_active,
         rsvp_questions: rsvpQuestions as unknown as null,
         requires_approval: requiresApproval,
@@ -292,7 +296,15 @@ export default function CreateEvent() {
             </CardContent>
           </Card>
 
-          {/* RSVP Settings */}
+          <ExternalLinkField
+            kind="event"
+            value={externalUrl}
+            onChange={setExternalUrl}
+            error={fieldErrors.external_url}
+          />
+
+          {/* RSVP Settings — not used when sign-ups happen on the club's own form. */}
+          {!externalUrl.trim() && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -328,6 +340,7 @@ export default function CreateEvent() {
               />
             </CardContent>
           </Card>
+          )}
 
           {/* Actions */}
           {/* Stacked on a phone, Publish on top: in one row the three buttons need

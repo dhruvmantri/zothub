@@ -62,6 +62,48 @@ export type Database = {
           },
         ]
       }
+      automation_log: {
+        Row: {
+          action: string
+          club_id: string | null
+          created_at: string
+          dry_run: boolean
+          id: number
+          kind: string | null
+          payload: Json | null
+          post_id: string | null
+          reason: string | null
+          run_id: string
+          source_key: string | null
+        }
+        Insert: {
+          action: string
+          club_id?: string | null
+          created_at?: string
+          dry_run?: boolean
+          id?: never
+          kind?: string | null
+          payload?: Json | null
+          post_id?: string | null
+          reason?: string | null
+          run_id: string
+          source_key?: string | null
+        }
+        Update: {
+          action?: string
+          club_id?: string | null
+          created_at?: string
+          dry_run?: boolean
+          id?: never
+          kind?: string | null
+          payload?: Json | null
+          post_id?: string | null
+          reason?: string | null
+          run_id?: string
+          source_key?: string | null
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           club_id: string | null
@@ -404,52 +446,70 @@ export type Database = {
       }
       events: {
         Row: {
+          announced_at: string | null
           banner_url: string | null
           capacity: number | null
+          club_edited_at: string | null
           club_id: string
           confirmed_rsvps_count: number
           created_at: string
           description: string | null
           event_date: string
+          external_url: string | null
           id: string
           is_active: boolean | null
           location: string | null
           requires_approval: boolean | null
           rsvp_questions: Json | null
+          source: string
+          source_key: string | null
+          source_url: string | null
           title: string
           updated_at: string
           views: number | null
         }
         Insert: {
+          announced_at?: string | null
           banner_url?: string | null
           capacity?: number | null
+          club_edited_at?: string | null
           club_id: string
           confirmed_rsvps_count?: number
           created_at?: string
           description?: string | null
           event_date: string
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
           requires_approval?: boolean | null
           rsvp_questions?: Json | null
+          source?: string
+          source_key?: string | null
+          source_url?: string | null
           title: string
           updated_at?: string
           views?: number | null
         }
         Update: {
+          announced_at?: string | null
           banner_url?: string | null
           capacity?: number | null
+          club_edited_at?: string | null
           club_id?: string
           confirmed_rsvps_count?: number
           created_at?: string
           description?: string | null
           event_date?: string
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
           requires_approval?: boolean | null
           rsvp_questions?: Json | null
+          source?: string
+          source_key?: string | null
+          source_url?: string | null
           title?: string
           updated_at?: string
           views?: number | null
@@ -565,48 +625,66 @@ export type Database = {
       }
       opportunities: {
         Row: {
+          announced_at: string | null
           application_questions: Json | null
           applications_count: number
+          club_edited_at: string | null
           club_id: string
           created_at: string
           deadline: string | null
           description: string | null
+          external_url: string | null
           id: string
           is_active: boolean | null
           requirements: string | null
           show_application_count: boolean | null
+          source: string
+          source_key: string | null
+          source_url: string | null
           title: string
           type: string
           updated_at: string
           views: number | null
         }
         Insert: {
+          announced_at?: string | null
           application_questions?: Json | null
           applications_count?: number
+          club_edited_at?: string | null
           club_id: string
           created_at?: string
           deadline?: string | null
           description?: string | null
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           requirements?: string | null
           show_application_count?: boolean | null
+          source?: string
+          source_key?: string | null
+          source_url?: string | null
           title: string
           type: string
           updated_at?: string
           views?: number | null
         }
         Update: {
+          announced_at?: string | null
           application_questions?: Json | null
           applications_count?: number
+          club_edited_at?: string | null
           club_id?: string
           created_at?: string
           deadline?: string | null
           description?: string | null
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           requirements?: string | null
           show_application_count?: boolean | null
+          source?: string
+          source_key?: string | null
+          source_url?: string | null
           title?: string
           type?: string
           updated_at?: string

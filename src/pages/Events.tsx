@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import { Bookmark, Heart } from "lucide-react";
 import { isAfter, isBefore, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
@@ -21,6 +21,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { eventKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
+import { LIST_PAGE_SIZE, flattenPages, nextPageIndex, type ListPage } from "@/lib/listPages";
+import { ShowMore } from "@/components/discover/ShowMore";
 
 interface EventRow {
   id: string;
@@ -41,6 +43,8 @@ interface EventRow {
    *  viewer's own rows, so "spots left" was computed from 0 for a logged-out
    *  visitor: a FULL event advertised every seat as still available. */
   confirmed_rsvps_count: number;
+  /** CP1: sign-ups happen on the club's own form — no in-app head-count. */
+  external_url: string | null;
 }
 
 /** Module-level so the fallback identity is stable. `data ?? []` allocates a
@@ -80,11 +84,12 @@ const SORT_OPTIONS = [
  * (T8): with `retry: 1` it would fire twice per failure and again on every
  * background refetch. Failure is surfaced from render, via `isError`.
  */
-async function fetchUpcomingEvents(sort: EventSort): Promise<EventRow[]> {
+async function fetchUpcomingEvents(sort: EventSort, pageIndex: number): Promise<ListPage<EventRow>> {
   const now = new Date().toISOString();
   let query = supabase
     .from("events")
-    .select(`
+    .select(
+      `
       id,
       title,
       description,
@@ -94,11 +99,15 @@ async function fetchUpcomingEvents(sort: EventSort): Promise<EventRow[]> {
       banner_url,
       club_id,
       confirmed_rsvps_count,
+      external_url,
       club_profiles (
         club_name,
         logo_url
       )
-    `)
+    `,
+      // The total lets the page say "showing 50 of 132" — and know there IS more.
+      { count: "exact" },
+    )
     .eq("is_active", true)
     .gte("event_date", now);
 
@@ -109,11 +118,15 @@ async function fetchUpcomingEvents(sort: EventSort): Promise<EventRow[]> {
   // ordered by which happens first, which is the only answer a student cares
   // about. It doubles as the whole ordering for "soonest first".
   query = query.order("event_date", { ascending: true });
+  // A unique last key, so pages never overlap or skip a row when two events
+  // share a start time (page boundaries are positions in THIS order).
+  query = query.order("id", { ascending: true });
 
-  const { data, error } = await query.limit(50);
+  const from = pageIndex * LIST_PAGE_SIZE;
+  const { data, error, count } = await query.range(from, from + LIST_PAGE_SIZE - 1);
 
   if (error) throw new Error(`Failed to load events: ${error.message}`);
-  return data ?? [];
+  return { rows: (data ?? []) as EventRow[], total: count ?? 0 };
 }
 
 /**
@@ -152,15 +165,26 @@ export default function EventsPage() {
   // trip. Filtering stays client-side over the cached rows, which is what makes
   // it instant — and unlike the sort it is safe there, because filtering can
   // only narrow the rows already in hand.
-  const eventsQuery = useQuery({
+  //
+  // "Show more" (CP1): the database hands back 50 at a time IN THE CHOSEN ORDER,
+  // so page two of "most popular" is the next 50 most popular, not 50 more by
+  // date. The sort stays in the key; the page number is the infinite query's
+  // own page param.
+  const eventsQuery = useInfiniteQuery({
     queryKey: eventKeys.upcomingSorted(sortOption),
-    queryFn: () => fetchUpcomingEvents(sortOption),
+    queryFn: ({ pageParam }) => fetchUpcomingEvents(sortOption, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: nextPageIndex,
     // Switching sort is a network round trip. Without this the page drops back
     // to six grey skeletons for what reads as a local re-ordering.
     placeholderData: keepPreviousData,
   });
 
-  const events = eventsQuery.data ?? EMPTY_EVENTS;
+  const events = useMemo(
+    () => (eventsQuery.data ? flattenPages(eventsQuery.data.pages) : EMPTY_EVENTS),
+    [eventsQuery.data],
+  );
+  const totalEvents = eventsQuery.data?.pages[0]?.total ?? 0;
   /** True while a newly-chosen sort is still in flight and the rows on screen
    *  are the PREVIOUS order. */
   const isReordering = eventsQuery.isPlaceholderData;
@@ -358,8 +382,8 @@ export default function EventsPage() {
                         clubLogo={event.club_profiles?.logo_url || undefined}
                         eventDate={event.event_date}
                         location={event.location || ""}
-                        attendees={event.confirmed_rsvps_count}
-                        capacity={event.capacity ?? undefined}
+                        attendees={event.external_url ? undefined : event.confirmed_rsvps_count}
+                        capacity={event.external_url ? undefined : event.capacity ?? undefined}
                         isBookmarked={isBookmarked(event.id)}
                         onBookmark={() => toggleBookmark(event.id)}
                         viewOnly={isViewOnly}
@@ -395,6 +419,17 @@ export default function EventsPage() {
                     }
                   />
                 )
+              )}
+
+              {eventsQuery.hasNextPage && (
+                <ShowMore
+                  noun="events"
+                  loaded={events.length}
+                  total={totalEvents}
+                  filtered={hasFilters}
+                  loading={eventsQuery.isFetchingNextPage}
+                  onShowMore={() => eventsQuery.fetchNextPage()}
+                />
               )}
             </div>
           )}

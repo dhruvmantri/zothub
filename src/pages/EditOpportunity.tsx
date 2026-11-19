@@ -22,6 +22,7 @@ import {
   ApplicationQuestionsBuilder, 
   ApplicationQuestion 
 } from "@/components/dashboard/ApplicationQuestionsBuilder";
+import { ExternalLinkField } from "@/components/forms/ExternalLinkField";
 import { opportunitySchema, validateInput, formatValidationErrors, sanitizeText } from "@/lib/validation";
 import { OPPORTUNITY_TYPES } from "@/lib/constants";
 import { opportunityKeys } from "@/lib/queryKeys";
@@ -53,6 +54,7 @@ export default function EditOpportunity() {
   const [isActive, setIsActive] = useState(true);
   const [showApplicationCount, setShowApplicationCount] = useState(false);
   const [applicationQuestions, setApplicationQuestions] = useState<ApplicationQuestion[]>([]);
+  const [externalUrl, setExternalUrl] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -84,6 +86,8 @@ export default function EditOpportunity() {
     setDeadline(data.deadline ? toDatetimeLocalValue(data.deadline) : "");
     setIsActive(data.is_active ?? true);
     setShowApplicationCount(data.show_application_count ?? false);
+    // Loaded and saved back — or the first edit of a post would drop its link.
+    setExternalUrl(data.external_url || "");
     
     // Parse application questions
     const questions = (data.application_questions as unknown) as ApplicationQuestion[] | null;
@@ -118,6 +122,7 @@ export default function EditOpportunity() {
       description: description.trim() || null,
       requirements: requirements.trim() || null,
       deadline: deadline || null,
+      external_url: externalUrl,
       // G6-06 (decision 2026-10-11): the Published switch is the only
       // visibility control here. A "Save as Draft" button beside it used to
       // unpublish a live posting while the switch still read Published.
@@ -148,6 +153,7 @@ export default function EditOpportunity() {
           is_active: validatedData.is_active,
           application_questions: validatedData.application_questions,
           show_application_count: showApplicationCount,
+          external_url: validatedData.external_url,
         })
         .eq("id", id);
 
@@ -335,7 +341,15 @@ export default function EditOpportunity() {
             </CardContent>
           </Card>
 
-          {/* Application Questions */}
+          <ExternalLinkField
+            kind="opportunity"
+            value={externalUrl}
+            onChange={setExternalUrl}
+            error={fieldErrors.external_url}
+          />
+
+          {/* Application Questions — not used when applications happen on the club's own form. */}
+          {!externalUrl.trim() && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -353,6 +367,7 @@ export default function EditOpportunity() {
               />
             </CardContent>
           </Card>
+          )}
 
           {/* Actions */}
           {/* Stacked on a phone, Save on top: in one row the buttons overflowed to

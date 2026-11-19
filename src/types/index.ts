@@ -194,6 +194,8 @@ export interface DashboardOpportunity {
   show_application_count?: boolean;
   created_at?: string;
   applications_count: number;
+  /** CP1: applications happen on the club's own form. */
+  external_url?: string | null;
 }
 
 export interface DashboardEvent {
@@ -209,6 +211,8 @@ export interface DashboardEvent {
   requires_approval?: boolean | null;
   created_at?: string;
   rsvps_count: number;
+  /** CP1: sign-ups happen on the club's own form. */
+  external_url?: string | null;
 }
 
 // ============= Review Types (ApplicationReview & RSVPReview) =============

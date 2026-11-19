@@ -27,6 +27,7 @@ import {
   Edit, 
   Trash2, 
   Eye,
+  ExternalLink,
   Users,
   Clock,
   MapPin,
@@ -161,22 +162,40 @@ export function EventManagement({ events, onDelete, isLoading }: EventManagement
 
                   {/* Stats */}
                   <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="font-data text-2xl font-semibold text-ink">{event.rsvps_count}</p>
-                      <p className="text-xs text-ink-2">RSVPs</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-data text-2xl font-semibold text-ink">{event.capacity || "∞"}</p>
-                      <p className="text-xs text-ink-2">Capacity</p>
-                    </div>
+                    {event.external_url ? (
+                      // CP1: sign-ups happen on the club's own form, so ZotHub
+                      // has no RSVP count or capacity to show for this event.
+                      <a
+                        href={event.external_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent-text hover:underline"
+                      >
+                        <ExternalLink aria-hidden className="size-4" />
+                        RSVPs on your link
+                        <span className="sr-only">(opens in a new tab)</span>
+                      </a>
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <p className="font-data text-2xl font-semibold text-ink">{event.rsvps_count}</p>
+                          <p className="text-xs text-ink-2">RSVPs</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-data text-2xl font-semibold text-ink">{event.capacity || "∞"}</p>
+                          <p className="text-xs text-ink-2">Capacity</p>
+                        </div>
+                      </>
+                    )}
                     <div className="text-center">
                       <p className="font-data text-2xl font-semibold text-ink">{event.views}</p>
                       <p className="text-xs text-ink-2">Views</p>
                     </div>
                   </div>
 
-                  {/* Progress */}
-                  {event.capacity && (
+                  {/* Progress — not for an event that takes sign-ups on its own
+                      form: ZotHub's RSVP count would always read 0%. */}
+                  {event.capacity && !event.external_url && (
                     <div className="lg:w-32">
                       <div className="mb-1 flex items-center justify-between text-xs text-ink-2">
                         <span>Capacity</span>

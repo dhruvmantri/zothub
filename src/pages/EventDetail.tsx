@@ -18,6 +18,8 @@ import { ErrorState } from "@/components/discover/ErrorState";
 import { RSVPForm } from "@/components/RSVPForm";
 import { AddToCalendarButton } from "@/components/AddToCalendarButton";
 import { ShareButton } from "@/components/ShareButton";
+import { ExternalActionButton } from "@/components/ExternalActionButton";
+import { safeExternalUrl } from "@/lib/externalLink";
 import { cn } from "@/lib/utils";
 
 /**
@@ -104,6 +106,10 @@ export default function EventDetail() {
   const isPast = date < new Date();
   const club = event.club_profiles;
   const full = spotsLeft !== null && spotsLeft <= 0;
+  // CP1: an event that takes sign-ups on the club's own form. ZotHub's RSVP,
+  // its approval step and its head-count do not apply: "N going" and "spots
+  // left" would count only in-app RSVPs, which this event does not take.
+  const externalUrl = safeExternalUrl(event.external_url);
 
   return (
     <RoleBasedLayout>
@@ -143,7 +149,7 @@ export default function EventDetail() {
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Tag variant="neutral">Event</Tag>
-                  {event.requires_approval && <Tag variant="accent">Approval needed</Tag>}
+                  {!externalUrl && event.requires_approval && <Tag variant="accent">Approval needed</Tag>}
                   {isPast && <Tag variant="neutral">Ended</Tag>}
                 </div>
               </div>
@@ -206,7 +212,9 @@ export default function EventDetail() {
                     // the row still earns its place by saying how many seats are
                     // free; without one there is nothing to say yet, so the row
                     // goes rather than announcing the zero.
-                    ...(confirmedRsvps > 0
+                    ...(externalUrl
+                      ? []
+                      : confirmedRsvps > 0
                       ? [{
                           Icon: Users,
                           label: "Attending",
@@ -267,6 +275,27 @@ export default function EventDetail() {
                     <Button variant="outline" className="mt-4 w-full" asChild>
                       <Link to={`/clubs/${club?.id}`}>View club</Link>
                     </Button>
+                  </>
+                ) : externalUrl ? (
+                  <>
+                    <p className="text-[15px] font-semibold text-ink">Sign up with the club</p>
+                    <p className="mt-2 text-sm text-ink-2">
+                      {club?.club_name ?? "The club"} takes RSVPs on its own form. It opens in a new
+                      tab.
+                    </p>
+                    <ExternalActionButton href={externalUrl} kind="rsvp" className="mt-4 w-full" />
+                    <div className="mt-3">
+                      <AddToCalendarButton
+                        className="w-full"
+                        event={{
+                          title: event.title,
+                          description: event.description || "",
+                          location: event.location || "",
+                          startDate: date,
+                          endDate: new Date(date.getTime() + 2 * 60 * 60 * 1000),
+                        }}
+                      />
+                    </div>
                   </>
                 ) : (
                   <>

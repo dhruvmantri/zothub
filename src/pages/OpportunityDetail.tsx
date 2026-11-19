@@ -16,6 +16,8 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 import { useOpportunityDetail } from "@/hooks/useOpportunityDetail";
 import { ApplicationForm } from "@/components/ApplicationForm";
 import { ShareButton } from "@/components/ShareButton";
+import { ExternalActionButton } from "@/components/ExternalActionButton";
+import { safeExternalUrl } from "@/lib/externalLink";
 import { SuccessModal } from "@/components/SuccessModal";
 import { opportunityTypeLabel } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -112,6 +114,10 @@ export default function OpportunityDetail() {
 
   const club = opportunity.club_profiles;
   const applicantCount = opportunity.applications_count;
+  // CP1: a role that takes applications on the club's own form. ZotHub's Apply,
+  // its questions and its applicant count do not apply to it — the count would
+  // only ever read the in-app applications, which this role does not take.
+  const externalUrl = safeExternalUrl(opportunity.external_url);
 
   return (
     <RoleBasedLayout>
@@ -153,7 +159,7 @@ export default function OpportunityDetail() {
                   {/* Hidden at zero as well as when the club turned it off: "0 people
                   have applied" on a new posting reads as a verdict rather than
                   a fact (maintainer decisions, 2026-09-20). */}
-              {opportunity.show_application_count && applicantCount > 0 && (
+              {!externalUrl && opportunity.show_application_count && applicantCount > 0 && (
                     <span className="text-[13px] text-ink-3">
                       <span className="font-data">{applicantCount}</span>{" "}
                       {applicantCount === 1 ? "person has" : "people have"} applied
@@ -170,7 +176,8 @@ export default function OpportunityDetail() {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              {role === "student" && !hasApplied && !deadlinePassed && (
+              {externalUrl && !deadlinePassed && <ExternalActionButton href={externalUrl} kind="apply" />}
+              {!externalUrl && role === "student" && !hasApplied && !deadlinePassed && (
                 <Button onClick={() => setShowApplicationForm(true)}>Apply</Button>
               )}
               {hasApplied && (
@@ -185,7 +192,7 @@ export default function OpportunityDetail() {
                   Closed
                 </Button>
               )}
-              {!user && (
+              {!externalUrl && !user && (
                 <Button asChild>
                   <Link to="/login">Log in to apply</Link>
                 </Button>
@@ -273,7 +280,7 @@ export default function OpportunityDetail() {
                 </Section>
               )}
 
-              {opportunity.application_questions && opportunity.application_questions.length > 0 && (
+              {!externalUrl && opportunity.application_questions && opportunity.application_questions.length > 0 && (
                 <Section title="What you'll be asked">
                   <p className="mb-3 text-[13.5px] text-ink-3">
                     <span className="font-data">{opportunity.application_questions.length}</span>{" "}
@@ -328,7 +335,18 @@ export default function OpportunityDetail() {
                 </div>
               </div>
 
-              {role === "student" && !hasApplied && !deadlinePassed && (
+              {externalUrl && !deadlinePassed && (
+                <div className="rounded-lg border border-accent-line bg-accent-wash p-5">
+                  <p className="text-[15px] font-semibold text-ink">Ready to apply?</p>
+                  <p className="mt-1 text-sm text-ink-2">
+                    {club?.club_name ?? "The club"} takes applications on its own form. It opens in a
+                    new tab.
+                  </p>
+                  <ExternalActionButton href={externalUrl} kind="apply" className="mt-4 w-full" />
+                </div>
+              )}
+
+              {!externalUrl && role === "student" && !hasApplied && !deadlinePassed && (
                 <div className="rounded-lg border border-accent-line bg-accent-wash p-5">
                   <p className="text-[15px] font-semibold text-ink">Ready to apply?</p>
                   {/* G3-05 (maintainer decision 2026-10-11). This used to promise

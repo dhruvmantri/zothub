@@ -33,6 +33,7 @@ import {
 // The supabase-js client. Typed loosely on purpose: the edge runtime and Node load
 // it from different places, and this file must import from neither.
 // deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
 
 export interface DoorDeps {
