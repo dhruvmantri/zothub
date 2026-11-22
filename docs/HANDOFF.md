@@ -18,6 +18,16 @@ full. Design and prioritise against that.
 — a club officer claiming a listing, and the students they bring — then bring the
 rest of the product up to the landing page's bar.
 
+## 1b. Since then — automated posting (`CP1`, 2026-11-19 → 22)
+
+The maintainer decided events and roles will be posted **by a dedicated automation**, from a
+Google Sheet that Meta Muse fills daily, appearing exactly as if the club posted them
+(claimed and unclaimed clubs). Phases 1–3 are **live**: the database columns and
+announce-on-publish trigger, the locked `publish-club-posts` door (refuses everything until
+its `AUTOMATION_KEY` exists), and the website's Apply/RSVP Externally + "Show more". Phase 4 —
+the automation session itself — is next. Plan and as-built notes:
+`docs/design/cp1-posting-for-unclaimed-clubs.md`; status and decisions: backlog `CP1`.
+
 ## 2. What the 2026-10-10 session found and did
 
 A post-launch audit: 196 screenshots (production signed-out, read-only; a local
